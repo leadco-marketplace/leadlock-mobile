@@ -1,0 +1,61 @@
+{
+  "expo": {
+    "name": "LeadCo Marketplace",
+    "slug": "leadco-marketplace",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#08101e"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.leadco.marketplace",
+      "infoPlist": {
+        "UIBackgroundModes": [
+          "remote-notification"
+        ]
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#08101e"
+      },
+      "package": "com.leadco.marketplace",
+      "permissions": [
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#f97316",
+          "sounds": []
+        }
+      ],
+      "expo-font",
+      "expo-secure-store"
+    ],
+    "extra": {
+      "supabaseUrl": "https://eyzcxxctjukrcawjrkvx.supabase.co",
+      "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5emN4eGN0anVrcmNhd2pya3Z4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1ODI2NTcsImV4cCI6MjA5MjE1ODY1N30.JL-h9Wd_2JXVukNuDom2ea1ZGHhNeIBHCeJGtjiAkak",
+      "apiBaseUrl": "https://leadco-marketplace-p5zj.vercel.app",
+      "eas": {
+        "projectId": "3e1c2994-e789-4f94-9291-5495b4b74f2b"
+      }
+    }
+  }
+}
