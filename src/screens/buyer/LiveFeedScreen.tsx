@@ -3,8 +3,9 @@ import {
   View, Text, FlatList, StyleSheet, ActivityIndicator,
   Modal, TouchableOpacity, Linking,
 } from 'react-native';
+import * as Location from 'expo-location';
 import { supabase } from '@/lib/supabase';
-import { leadsApi, creditsApi, Lead } from '@/lib/api';
+import { leadsApi, creditsApi, Lead, BuyerLocation } from '@/lib/api';
 import { LeadCard }    from '@/components/LeadCard';
 import { ScreenShell } from '@/components/ScreenShell';
 import { Button }      from '@/components/Button';
@@ -23,21 +24,39 @@ const CREDIT_PACKAGES = [
 
 export function LiveFeedScreen() {
   const { profile, refreshProfile } = useAuth();
-  const [leads,      setLeads]      = useState<Lead[]>([]);
-  const [loading,    setLoading]    = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [unlocking,  setUnlocking]  = useState<string | null>(null);
-  const [error,      setError]      = useState<string | null>(null);
-  const [buying,     setBuying]     = useState<number | null>(null);
+  const [leads,         setLeads]        = useState<Lead[]>([]);
+  const [loading,       setLoading]      = useState(true);
+  const [refreshing,    setRefreshing]   = useState(false);
+  const [unlocking,     setUnlocking]    = useState<string | null>(null);
+  const [error,         setError]        = useState<string | null>(null);
+  const [buying,        setBuying]       = useState<number | null>(null);
+  const [buyerLocation, setBuyerLocation] = useState<BuyerLocation>(null);
 
   // Credits modal state
   const [creditsModal, setCreditsModal] = useState(false);
   const [pendingLead,  setPendingLead]  = useState<Lead | null>(null);
 
-  async function load(silent = false) {
+  // Request location permission once on mount.
+  // We ask softly — if denied, the feed still works without distance badges.
+  useEffect(() => {
+    (async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') return;
+        const loc = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+        setBuyerLocation({ lat: loc.coords.latitude, lng: loc.coords.longitude });
+      } catch {
+        // Location unavailable — feed works fine without it
+      }
+    })();
+  }, []);
+
+  async function load(silent = false, loc?: BuyerLocation) {
     if (!silent) setLoading(true);
     try {
-      const data = await leadsApi.getLive();
+      const data = await leadsApi.getLive(loc ?? buyerLocation ?? undefined);
       setLeads(data);
       setError(null);
     } catch (e: any) {
@@ -48,7 +67,10 @@ export function LiveFeedScreen() {
     }
   }
 
-  useEffect(() => { load(); }, []);
+  // Re-fetch when location becomes available
+  useEffect(() => {
+    load(false, buyerLocation ?? undefined);
+  }, [buyerLocation]);
 
   useEffect(() => {
     const channel = supabase

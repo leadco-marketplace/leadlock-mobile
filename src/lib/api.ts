@@ -36,6 +36,13 @@ export type Lead = {
   published_at: string | null;
   quality_score?: number | null;
   metadata?: Record<string, unknown> | null;
+  // Proximity fields — present when buyer location was sent to the API
+  distance_miles?: number | null;
+  distance_minutes?: number | null;
+  // Provider AI score fields
+  provider_ai_score?: number | null;
+  provider_ai_answer_rate?: number | null;
+  provider_ai_calls_analyzed?: number | null;
 };
 
 export type PurchasedLead = Lead & {
@@ -47,8 +54,15 @@ export type PurchasedLead = Lead & {
   private_notes: string | null;
 };
 
+export type BuyerLocation = { lat: number; lng: number } | null;
+
 export const leadsApi = {
-  getLive: ()                          => request<Lead[]>('/api/leads'),
+  getLive: (location?: BuyerLocation) => {
+    const params = location
+      ? `?buyer_lat=${location.lat}&buyer_lng=${location.lng}`
+      : '';
+    return request<Lead[]>(`/api/leads${params}`);
+  },
   getPurchased: ()                     => request<PurchasedLead[]>('/api/my-leads'),
   unlock: (id: string)                 => request<{ success: boolean }>(`/api/leads/${id}/unlock`, { method: 'POST' }),
 };

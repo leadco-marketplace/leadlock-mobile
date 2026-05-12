@@ -44,6 +44,16 @@ export function LeadCard({ lead, onUnlock, unlocking, purchased }: LeadCardProps
           <Text style={styles.location}>
             {lead.nationwide ? '🌐 Nationwide' : `${lead.city}, ${lead.state}`}
           </Text>
+          {/* Distance badge — shown when buyer location is available */}
+          {!lead.nationwide && lead.distance_minutes != null && (
+            <View style={styles.distanceBadge}>
+              <Text style={styles.distanceText}>
+                📍 {lead.distance_minutes < 60
+                  ? `${lead.distance_minutes} min away`
+                  : `${(lead.distance_minutes / 60).toFixed(1)} hr away`}
+              </Text>
+            </View>
+          )}
         </View>
         <View style={styles.headerRight}>
           <View style={[styles.badge, lead.status === 'available' ? styles.badgeLive : styles.badgeOther]}>
@@ -160,6 +170,21 @@ const styles = StyleSheet.create({
   qualityText: {
     fontSize: FontSize.xs - 1,
     color:    Colors.accent,
+    fontWeight: '600',
+  },
+  distanceBadge: {
+    alignSelf:       'flex-start',
+    marginTop:       3,
+    paddingHorizontal: 7,
+    paddingVertical:   2,
+    borderRadius:    Radius.sm,
+    backgroundColor: 'rgba(16,185,129,0.10)',
+    borderWidth:     1,
+    borderColor:     'rgba(16,185,129,0.30)',
+  },
+  distanceText: {
+    fontSize:   FontSize.xs - 1,
+    color:      '#34d399',
     fontWeight: '600',
   },
   summaryBox: {
