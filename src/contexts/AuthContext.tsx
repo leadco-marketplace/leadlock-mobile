@@ -8,9 +8,11 @@ type AuthContextValue = {
   user:     User    | null;
   profile:  Profile | null;
   loading:  boolean;
+  isGuest:  boolean;
   signIn:   (email: string, password: string) => Promise<string | null>;
   signUp:   (email: string, password: string, role: 'buyer' | 'provider') => Promise<string | null>;
   signOut:  () => Promise<void>;
+  signInAsGuest: () => void;
   refreshProfile: () => Promise<void>;
 };
 
@@ -20,6 +22,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession]   = useState<Session | null>(null);
   const [profile, setProfile]   = useState<Profile | null>(null);
   const [loading, setLoading]   = useState(true);
+  const [isGuest, setIsGuest]   = useState(false);
 
   async function loadProfile() {
     try {
@@ -73,9 +76,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  function signInAsGuest() {
+    setIsGuest(true);
+  }
+
   async function signOut() {
     await supabase.auth.signOut();
     setProfile(null);
+    setIsGuest(false);
   }
 
   async function refreshProfile() {
@@ -88,9 +96,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user:    session?.user ?? null,
       profile,
       loading,
+      isGuest,
       signIn,
       signUp,
       signOut,
+      signInAsGuest,
       refreshProfile,
     }}>
       {children}

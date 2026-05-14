@@ -23,7 +23,7 @@ const NavTheme = {
 };
 
 export function AppNavigator() {
-  const { session, profile, loading } = useAuth();
+  const { session, profile, loading, isGuest } = useAuth();
 
   if (loading) {
     return (
@@ -35,13 +35,15 @@ export function AppNavigator() {
 
   return (
     <NavigationContainer theme={NavTheme}>
-      {!session
+      {!session && !isGuest
         ? <AuthNavigator />
-        : profile?.role === 'admin'
-          ? <AdminNavigator />
-          : profile?.role === 'provider'
-            ? <ProviderNavigator />
-            : <BuyerNavigator />
+        : isGuest
+          ? <BuyerNavigator />
+          : profile?.role === 'admin'
+            ? <AdminNavigator />
+            : profile?.role === 'provider'
+              ? <ProviderNavigator />
+              : <BuyerNavigator />
       }
     </NavigationContainer>
   );

@@ -9,6 +9,7 @@ import { ScreenShell } from '@/components/ScreenShell';
 import { Button } from '@/components/Button';
 import { Colors, FontSize, Spacing, Radius, Shadow } from '@/theme';
 import Constants from 'expo-constants';
+import { supabase } from '@/lib/supabase';
 
 const WEB_APP = (Constants.expoConfig?.extra?.apiBaseUrl as string) ?? 'https://leadco-marketplace-p5zj.vercel.app';
 
@@ -22,9 +23,10 @@ const CREDIT_PACKAGES = [
 type PhoneStep = 'idle' | 'entering' | 'sending' | 'verifying' | 'done';
 
 export function AccountScreen() {
-  const { profile, signOut, refreshProfile } = useAuth();
+  const { profile, signOut, signInAsGuest: _signInAsGuest, isGuest, refreshProfile } = useAuth();
   const [saving,     setSaving]     = useState(false);
   const [buying,     setBuying]     = useState<number | null>(null);
+  const [deleting,   setDeleting]   = useState(false);
 
   // ── Phone verification state ──────────────────────────────────────────────
   const [phoneStep,    setPhoneStep]    = useState<PhoneStep>('idle');
@@ -102,7 +104,68 @@ export function AccountScreen() {
     ]);
   }
 
-  if (!profile) return null;
+  // ── Delete account ────────────────────────────────────────────────────────
+  function handleDeleteAccount() {
+    Alert.alert(
+      'Delete Account',
+      'This will permanently delete your account and all your data. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete My Account',
+          style: 'destructive',
+          onPress: confirmDeleteAccount,
+        },
+      ]
+    );
+  }
+
+  async function confirmDeleteAccount() {
+    setDeleting(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      const res = await fetch(`${WEB_APP}/api/user/delete-account`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+      if (!res.ok) {
+        const body = await res.json();
+        Alert.alert('Error', body.error ?? 'Could not delete account. Please contact support.');
+        return;
+      }
+      // Sign out locally — server already deleted the auth user
+      await signOut();
+    } catch (e: any) {
+      Alert.alert('Error', e.message ?? 'Network error. Please try again.');
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  if (!profile) {
+    // Guest or loading state — show a sign-in prompt
+    return (
+      <ScreenShell title="My Account" scrollable>
+        <View style={styles.guestWrap}>
+          <Text style={styles.guestIcon}>👤</Text>
+          <Text style={styles.guestTitle}>Sign in to access your account</Text>
+          <Text style={styles.guestDesc}>
+            Create an account or sign in to unlock leads, manage preferences, and track your activity.
+          </Text>
+          <Button
+            label="Sign In / Sign Up"
+            onPress={signOut}
+            variant="primary"
+            fullWidth
+          />
+        </View>
+      </ScreenShell>
+    );
+  }
 
   const roleLabel =
     profile.role === 'buyer'    ? '🎯 Lead Buyer' :
@@ -300,6 +363,18 @@ export function AccountScreen() {
       {/* ── Sign out ────────────────────────────────────────────── */}
       <Button label="Sign Out" onPress={handleSignOut} variant="danger" fullWidth />
 
+      {/* ── Delete account ──────────────────────────────────────── */}
+      <TouchableOpacity
+        style={styles.deleteAccountBtn}
+        onPress={handleDeleteAccount}
+        disabled={deleting}
+        activeOpacity={0.7}
+      >
+        <Text style={styles.deleteAccountText}>
+          {deleting ? 'Deleting account…' : 'Delete Account'}
+        </Text>
+      </TouchableOpacity>
+
       <View style={{ height: Spacing.xxl }} />
     </ScreenShell>
   );
@@ -431,4 +506,30 @@ const styles = StyleSheet.create({
   cancelLinkText: { fontSize: FontSize.sm, color: Colors.muted },
   codeSentText: { fontSize: FontSize.xs, color: Colors.muted, lineHeight: 17 },
   phoneSuccess: { fontSize: FontSize.sm, color: '#4ade80', fontWeight: '600' },
+
+  // ── Guest state ────────────────────────────────────────────────────────────
+  guestWrap: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.md,
+    paddingHorizontal: Spacing.md,
+    paddingTop: Spacing.xxl,
+  },
+  guestIcon:  { fontSize: 56, textAlign: 'center' },
+  guestTitle: { fontSize: FontSize.lg, fontWeight: '700', color: Colors.foreground, textAlign: 'center' },
+  guestDesc:  { fontSize: FontSize.sm, color: Colors.muted, textAlign: 'center', lineHeight: 20, marginBottom: Spacing.sm },
+
+  // ── Delete account ────────────────────────────────────────────────────────
+  deleteAccountBtn: {
+    alignItems: 'center',
+    paddingVertical: Spacing.sm,
+    marginTop: Spacing.xs,
+  },
+  deleteAccountText: {
+    fontSize: FontSize.sm,
+    color: '#f87171',
+    textDecorationLine: 'underline',
+    opacity: 0.75,
+  },
 });

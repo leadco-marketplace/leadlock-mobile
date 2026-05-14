@@ -11,7 +11,7 @@ import type { AuthStackParamList } from '@/navigation/AuthNavigator';
 type Props = { navigation: NativeStackNavigationProp<AuthStackParamList, 'Login'> };
 
 export function LoginScreen({ navigation }: Props) {
-  const { signIn } = useAuth();
+  const { signIn, signInAsGuest } = useAuth();
   const [email,    setEmail]    = useState('');
   const [password, setPassword] = useState('');
   const [loading,  setLoading]  = useState(false);
@@ -88,6 +88,11 @@ export function LoginScreen({ navigation }: Props) {
             </Text>
           </TouchableOpacity>
         </View>
+
+        {/* Guest browse */}
+        <TouchableOpacity onPress={signInAsGuest} style={styles.guestBtn}>
+          <Text style={styles.guestText}>Browse as Guest →</Text>
+        </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -163,5 +168,14 @@ const styles = StyleSheet.create({
   footerText: {
     fontSize: FontSize.sm,
     color:    Colors.textSecondary,
+  },
+  guestBtn: {
+    alignItems: 'center',
+    paddingVertical: Spacing.sm,
+  },
+  guestText: {
+    fontSize: FontSize.sm,
+    color:    Colors.muted,
+    textDecorationLine: 'underline',
   },
 });

@@ -11,6 +11,7 @@ import { ScreenShell } from '@/components/ScreenShell';
 import { Button }      from '@/components/Button';
 import { Colors, FontSize, Spacing, Radius, Shadow } from '@/theme';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNavigation } from '@react-navigation/native';
 import Constants from 'expo-constants';
 
 const WEB_APP = (Constants.expoConfig?.extra?.apiBaseUrl as string) ?? 'https://leadco-marketplace-p5zj.vercel.app';
@@ -23,7 +24,8 @@ const CREDIT_PACKAGES = [
 ];
 
 export function LiveFeedScreen() {
-  const { profile, refreshProfile } = useAuth();
+  const { profile, refreshProfile, isGuest, signOut } = useAuth();
+  const navigation = useNavigation<any>();
   const [leads,         setLeads]        = useState<Lead[]>([]);
   const [loading,       setLoading]      = useState(true);
   const [refreshing,    setRefreshing]   = useState(false);
@@ -136,6 +138,19 @@ export function LiveFeedScreen() {
         </View>
       }
     >
+      {/* ── Guest banner ───────────────────────────────────────────── */}
+      {isGuest && (
+        <TouchableOpacity
+          style={styles.guestBanner}
+          onPress={() => { signOut(); }}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.guestBannerText}>
+            👋 Browsing as guest — <Text style={{ fontWeight: '700', textDecorationLine: 'underline' }}>Sign in to unlock leads</Text>
+          </Text>
+        </TouchableOpacity>
+      )}
+
       {error && (
         <View style={styles.errorBanner}>
           <Text style={styles.errorText}>{error}</Text>
@@ -148,7 +163,7 @@ export function LiveFeedScreen() {
         renderItem={({ item }) => (
           <LeadCard
             lead={item}
-            onUnlock={() => handleUnlock(item)}
+            onUnlock={isGuest ? undefined : () => handleUnlock(item)}
             unlocking={unlocking === item.id}
           />
         )}
@@ -295,5 +310,22 @@ const styles = StyleSheet.create({
   },
   cancelText: {
     fontSize: FontSize.sm, color: Colors.muted, fontWeight: '500',
+  },
+
+  // ── Guest banner ────────────────────────────────────────────────────────
+  guestBanner: {
+    backgroundColor: 'rgba(129,140,248,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(129,140,248,0.35)',
+    borderRadius: Radius.md,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    marginBottom: Spacing.sm,
+    alignItems: 'center',
+  },
+  guestBannerText: {
+    fontSize: FontSize.sm,
+    color: Colors.accent,
+    textAlign: 'center',
   },
 });
