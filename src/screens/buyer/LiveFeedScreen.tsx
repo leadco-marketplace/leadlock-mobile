@@ -1,42 +1,27 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View, Text, FlatList, StyleSheet, ActivityIndicator,
-  Modal, TouchableOpacity, Linking,
+  TouchableOpacity, Linking,
 } from 'react-native';
 import * as Location from 'expo-location';
 import { supabase } from '@/lib/supabase';
-import { leadsApi, creditsApi, Lead, BuyerLocation } from '@/lib/api';
+import { leadsApi, Lead, BuyerLocation } from '@/lib/api';
 import { LeadCard }    from '@/components/LeadCard';
 import { ScreenShell } from '@/components/ScreenShell';
-import { Button }      from '@/components/Button';
-import { Colors, FontSize, Spacing, Radius, Shadow } from '@/theme';
+import { Colors, FontSize, Spacing, Radius } from '@/theme';
 import { useAuth } from '@/contexts/AuthContext';
-import { useNavigation } from '@react-navigation/native';
 import Constants from 'expo-constants';
 
 const WEB_APP = (Constants.expoConfig?.extra?.apiBaseUrl as string) ?? 'https://leadco-marketplace-p5zj.vercel.app';
 
-const CREDIT_PACKAGES = [
-  { label: '$25',  cents: 2500  },
-  { label: '$50',  cents: 5000  },
-  { label: '$100', cents: 10000 },
-  { label: '$200', cents: 20000 },
-];
-
 export function LiveFeedScreen() {
   const { profile, refreshProfile, isGuest, signOut } = useAuth();
-  const navigation = useNavigation<any>();
   const [leads,         setLeads]        = useState<Lead[]>([]);
   const [loading,       setLoading]      = useState(true);
   const [refreshing,    setRefreshing]   = useState(false);
   const [unlocking,     setUnlocking]    = useState<string | null>(null);
   const [error,         setError]        = useState<string | null>(null);
-  const [buying,        setBuying]       = useState<number | null>(null);
   const [buyerLocation, setBuyerLocation] = useState<BuyerLocation>(null);
-
-  // Credits modal state
-  const [creditsModal, setCreditsModal] = useState(false);
-  const [pendingLead,  setPendingLead]  = useState<Lead | null>(null);
 
   // Request location permission once on mount.
   // We ask softly — if denied, the feed still works without distance badges.
@@ -90,29 +75,13 @@ export function LiveFeedScreen() {
       await load(true);
     } catch (e: any) {
       if (e.message === 'insufficient_credits') {
-        // Show the buy credits modal instead of a raw error
-        setPendingLead(lead);
-        setCreditsModal(true);
+        // No credits — send them straight to the website to pay for this lead
+        await Linking.openURL(`${WEB_APP}/leads/${lead.id}`);
       } else {
         setError(e.message);
       }
     } finally {
       setUnlocking(null);
-    }
-  }
-
-  async function handleBuyCredits(cents: number) {
-    setBuying(cents);
-    try {
-      const { checkoutUrl } = await creditsApi.buyCheckout(cents);
-      setCreditsModal(false);
-      await Linking.openURL(checkoutUrl);
-      // After returning, refresh balance
-      setTimeout(() => refreshProfile(), 2000);
-    } catch (e: any) {
-      setError(e.message ?? 'Checkout failed');
-    } finally {
-      setBuying(null);
     }
   }
 
@@ -180,58 +149,6 @@ export function LiveFeedScreen() {
         }
       />
 
-      {/* ── Insufficient Credits Modal ─────────────────────────────────── */}
-      <Modal
-        visible={creditsModal}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setCreditsModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            {/* Header */}
-            <Text style={styles.modalIcon}>💳</Text>
-            <Text style={styles.modalTitle}>Add Credits to Unlock</Text>
-            <Text style={styles.modalDesc}>
-              Your current balance is{' '}
-              <Text style={{ color: Colors.accent, fontWeight: '700' }}>
-                ${((profile?.credits_cents ?? 0) / 100).toFixed(2)}
-              </Text>
-              {pendingLead ? `. This lead costs $${((pendingLead.buyer_price_cents ?? pendingLead.price_cents) / 100).toFixed(2)}.` : '.'}
-            </Text>
-
-            {/* Credit packages */}
-            <View style={styles.packagesGrid}>
-              {CREDIT_PACKAGES.map((pkg) => {
-                const isLoading = buying === pkg.cents;
-                return (
-                  <TouchableOpacity
-                    key={pkg.cents}
-                    style={styles.packageCard}
-                    onPress={() => handleBuyCredits(pkg.cents)}
-                    disabled={buying !== null}
-                    activeOpacity={0.75}
-                  >
-                    {isLoading
-                      ? <ActivityIndicator color={Colors.orange} />
-                      : <Text style={styles.packageLabel}>{pkg.label}</Text>
-                    }
-                    <Text style={styles.packageSub}>credits</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
-            <Text style={styles.checkoutNote}>
-              Tapping a package opens your browser to complete payment securely via Stripe. Credits are added instantly.
-            </Text>
-
-            <TouchableOpacity style={styles.cancelBtn} onPress={() => setCreditsModal(false)}>
-              <Text style={styles.cancelText}>Maybe later</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
     </ScreenShell>
   );
 }
@@ -259,58 +176,6 @@ const styles = StyleSheet.create({
   emptyIcon:    { fontSize: 48 },
   emptyTitle:   { fontSize: FontSize.md, fontWeight: '600', color: Colors.foreground },
   emptyDesc:    { fontSize: FontSize.sm, color: Colors.muted, textAlign: 'center' },
-
-  // ── Modal ───────────────────────────────────────────────────────────────
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(8,16,30,0.85)',
-    justifyContent: 'flex-end',
-  },
-  modalCard: {
-    backgroundColor: Colors.panel,
-    borderTopLeftRadius: Radius.xxl,
-    borderTopRightRadius: Radius.xxl,
-    borderTopWidth: 1,
-    borderTopColor: Colors.borderOrange,
-    padding: Spacing.lg,
-    paddingBottom: Spacing.xxl,
-    gap: Spacing.md,
-  },
-  modalIcon:  { fontSize: 40, textAlign: 'center' },
-  modalTitle: { fontSize: FontSize.lg, fontWeight: '800', color: Colors.foreground, textAlign: 'center' },
-  modalDesc:  { fontSize: FontSize.sm, color: Colors.text, lineHeight: 20, textAlign: 'center' },
-
-  packagesGrid: {
-    flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm,
-    justifyContent: 'center',
-  },
-  packageCard: {
-    width: '45%',
-    backgroundColor: Colors.panel2,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.borderOrange,
-    paddingVertical: Spacing.md,
-    alignItems: 'center',
-    gap: 4,
-    minHeight: 68,
-    justifyContent: 'center',
-    ...Shadow.orange,
-  },
-  packageLabel:   { fontSize: FontSize.xl, fontWeight: '800', color: Colors.orange },
-  packageSub:     { fontSize: FontSize.xs, color: Colors.muted, textTransform: 'uppercase', letterSpacing: 0.5 },
-
-  checkoutNote: {
-    fontSize: FontSize.xs, color: Colors.muted,
-    lineHeight: 17, textAlign: 'center',
-  },
-  cancelBtn: {
-    alignItems: 'center',
-    paddingVertical: Spacing.sm,
-  },
-  cancelText: {
-    fontSize: FontSize.sm, color: Colors.muted, fontWeight: '500',
-  },
 
   // ── Guest banner ────────────────────────────────────────────────────────
   guestBanner: {

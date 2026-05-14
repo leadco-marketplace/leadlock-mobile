@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  Alert, Switch, Linking, ActivityIndicator, ScrollView, TextInput,
+  Alert, Switch, Linking, ScrollView, TextInput,
 } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
-import { profileApi, creditsApi, phoneVerifyApi } from '@/lib/api';
+import { profileApi, phoneVerifyApi } from '@/lib/api';
 import { ScreenShell } from '@/components/ScreenShell';
 import { Button } from '@/components/Button';
 import { Colors, FontSize, Spacing, Radius, Shadow } from '@/theme';
@@ -13,19 +13,11 @@ import { supabase } from '@/lib/supabase';
 
 const WEB_APP = (Constants.expoConfig?.extra?.apiBaseUrl as string) ?? 'https://leadco-marketplace-p5zj.vercel.app';
 
-const CREDIT_PACKAGES = [
-  { label: '$25',  cents: 2500,  tag: '' },
-  { label: '$50',  cents: 5000,  tag: 'Popular' },
-  { label: '$100', cents: 10000, tag: '' },
-  { label: '$200', cents: 20000, tag: 'Best value' },
-];
-
 type PhoneStep = 'idle' | 'entering' | 'sending' | 'verifying' | 'done';
 
 export function AccountScreen() {
   const { profile, signOut, signInAsGuest: _signInAsGuest, isGuest, refreshProfile } = useAuth();
   const [saving,     setSaving]     = useState(false);
-  const [buying,     setBuying]     = useState<number | null>(null);
   const [deleting,   setDeleting]   = useState(false);
 
   // ── Phone verification state ──────────────────────────────────────────────
@@ -46,21 +38,6 @@ export function AccountScreen() {
       Alert.alert('Error', e.message);
     } finally {
       setSaving(false);
-    }
-  }
-
-  // ── Buy credits ───────────────────────────────────────────────────────────
-  async function handleBuyCredits(cents: number) {
-    setBuying(cents);
-    try {
-      const { checkoutUrl } = await creditsApi.buyCheckout(cents);
-      await Linking.openURL(checkoutUrl);
-      // After returning from browser, refresh the profile to update balance
-      setTimeout(() => refreshProfile(), 2000);
-    } catch (e: any) {
-      Alert.alert('Error', e.message ?? 'Could not start checkout');
-    } finally {
-      setBuying(null);
     }
   }
 
@@ -284,47 +261,7 @@ export function AccountScreen() {
         )}
       </View>
 
-      {/* ── Buy Credits (buyers only) ──────────────────────────── */}
-      {isBuyer && (
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Buy Credits</Text>
-          <Text style={styles.sectionDesc}>
-            Credits are used to unlock leads instantly in the app.
-          </Text>
-
-          <View style={styles.packagesGrid}>
-            {CREDIT_PACKAGES.map((pkg) => {
-              const isLoading = buying === pkg.cents;
-              return (
-                <TouchableOpacity
-                  key={pkg.cents}
-                  style={styles.packageCard}
-                  onPress={() => handleBuyCredits(pkg.cents)}
-                  disabled={buying !== null}
-                  activeOpacity={0.75}
-                >
-                  {pkg.tag ? (
-                    <View style={styles.packageTag}>
-                      <Text style={styles.packageTagText}>{pkg.tag}</Text>
-                    </View>
-                  ) : null}
-                  {isLoading
-                    ? <ActivityIndicator color={Colors.orange} />
-                    : <Text style={styles.packageLabel}>{pkg.label}</Text>
-                  }
-                  <Text style={styles.packageSub}>credits</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-
-          <Text style={styles.checkoutNote}>
-            Tap a package → Stripe checkout opens in your browser → credits appear here instantly after payment.
-          </Text>
-        </View>
-      )}
-
-      {/* ── Billing / payment methods ──────────────────────────── */}
+      {/* ── Account & billing (buyers only) ───────────────────── */}
       {isBuyer && (
         <TouchableOpacity
           style={styles.linkCard}
@@ -332,8 +269,8 @@ export function AccountScreen() {
           activeOpacity={0.75}
         >
           <View>
-            <Text style={styles.linkCardTitle}>💳  Manage Payment Methods</Text>
-            <Text style={styles.linkCardSub}>Add or remove cards · View purchase history</Text>
+            <Text style={styles.linkCardTitle}>💳  Manage Account &amp; Billing</Text>
+            <Text style={styles.linkCardSub}>Buy credits · Manage payment methods · View purchases</Text>
           </View>
           <Text style={styles.linkArrow}>›</Text>
         </TouchableOpacity>
@@ -435,41 +372,6 @@ const styles = StyleSheet.create({
     fontSize: FontSize.sm, fontWeight: '700', color: Colors.foreground,
     textTransform: 'uppercase', letterSpacing: 0.5,
   },
-  sectionDesc: { fontSize: FontSize.xs, color: Colors.muted, lineHeight: 18, marginTop: -Spacing.xs },
-
-  packagesGrid: {
-    flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm,
-  },
-  packageCard: {
-    width: '47%',
-    backgroundColor: Colors.panel2,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.borderOrange,
-    paddingVertical: Spacing.md,
-    alignItems: 'center',
-    gap: 4,
-    position: 'relative',
-    minHeight: 72,
-    justifyContent: 'center',
-    ...Shadow.orange,
-  },
-  packageTag: {
-    position: 'absolute', top: -1, right: -1,
-    backgroundColor: Colors.orange,
-    borderTopRightRadius: Radius.lg,
-    borderBottomLeftRadius: Radius.sm,
-    paddingHorizontal: 7, paddingVertical: 2,
-  },
-  packageTagText: { fontSize: 9, fontWeight: '800', color: '#fff', textTransform: 'uppercase', letterSpacing: 0.5 },
-  packageLabel:   { fontSize: FontSize.xl, fontWeight: '800', color: Colors.orange },
-  packageSub:     { fontSize: FontSize.xs, color: Colors.muted, textTransform: 'uppercase', letterSpacing: 0.5 },
-
-  checkoutNote: {
-    fontSize: FontSize.xs, color: Colors.muted, lineHeight: 17,
-    marginTop: -Spacing.xs,
-  },
-
   toggleRow:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   toggleLabel:  { fontSize: FontSize.base, color: Colors.text },
 
