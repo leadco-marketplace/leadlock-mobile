@@ -17,10 +17,13 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.leadco.marketplace",
+      "buildNumber": "2",
       "infoPlist": {
         "UIBackgroundModes": [
+          "remote-notification",
           "remote-notification"
-        ]
+        ],
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
