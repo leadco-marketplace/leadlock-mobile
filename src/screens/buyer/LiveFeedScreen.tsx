@@ -75,8 +75,41 @@ export function LiveFeedScreen() {
       await load(true);
     } catch (e: any) {
       if (e.message === 'insufficient_credits') {
-        // No credits — send them straight to the website to pay for this lead
-        await Linking.openURL(`${WEB_APP}/leads/${lead.id}`);
+        // Not enough credits — create a Stripe checkout for this specific lead
+        // then open it in Safari. After payment, Stripe redirects to /mobile-return
+        // which fires leadco://my-leads back into the app.
+        try {
+          const { data: { session } } = await (await import('@/lib/supabase')).supabase.auth.getSession();
+          const token = session?.access_token;
+          if (!token) {
+            // Not logged in — shouldn't happen but fall back to web
+            await Linking.openURL(`${WEB_APP}/leads/${lead.id}`);
+            return;
+          }
+          const res = await fetch(`${WEB_APP}/api/leads/${lead.id}/mobile-unlock-checkout`, {
+            method:  'POST',
+            headers: {
+              'Content-Type':  'application/json',
+              'Authorization': `Bearer ${token}`,
+            },
+          });
+          const body = await res.json();
+          if (res.ok && body.checkoutUrl) {
+            await Linking.openURL(body.checkoutUrl);
+          } else if (body.error === 'already_sold') {
+            setError('This lead was just purchased by someone else.');
+            await load(true);
+          } else {
+            // Fallback: open the web lead page
+            await Linking.openURL(`${WEB_APP}/leads/${lead.id}`);
+          }
+        } catch {
+          // Network error — open the web lead page as fallback
+          await Linking.openURL(`${WEB_APP}/leads/${lead.id}`);
+        }
+      } else if (e.message === 'already_sold') {
+        setError('This lead was just sold. Refreshing the feed…');
+        await load(true);
       } else {
         setError(e.message);
       }

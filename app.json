@@ -2,6 +2,7 @@
   "expo": {
     "name": "LeadCo Marketplace",
     "slug": "leadco-marketplace",
+    "scheme": "leadco",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -17,7 +18,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.leadco.marketplace",
-      "buildNumber": "2",
+      "buildNumber": "4",
       "infoPlist": {
         "UIBackgroundModes": [
           "remote-notification",

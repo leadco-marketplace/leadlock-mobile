@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
   Alert, Switch, Linking, ScrollView, TextInput,
+  ActivityIndicator,
 } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { profileApi, phoneVerifyApi } from '@/lib/api';
@@ -17,8 +18,9 @@ type PhoneStep = 'idle' | 'entering' | 'sending' | 'verifying' | 'done';
 
 export function AccountScreen() {
   const { profile, signOut, signInAsGuest: _signInAsGuest, isGuest, refreshProfile } = useAuth();
-  const [saving,     setSaving]     = useState(false);
-  const [deleting,   setDeleting]   = useState(false);
+  const [saving,        setSaving]        = useState(false);
+  const [deleting,      setDeleting]      = useState(false);
+  const [buyingCredits, setBuyingCredits] = useState<number | null>(null); // amountCents in flight
 
   // ── Phone verification state ──────────────────────────────────────────────
   const [phoneStep,    setPhoneStep]    = useState<PhoneStep>('idle');
@@ -70,6 +72,34 @@ export function AccountScreen() {
     } catch (e: any) {
       setPhoneError(e.message ?? 'Incorrect code');
       setPhoneStep('verifying');
+    }
+  }
+
+  // ── Add credits ──────────────────────────────────────────────────────────
+  async function handleAddCredits(amountCents: number) {
+    setBuyingCredits(amountCents);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) { Alert.alert('Error', 'Please sign in again.'); return; }
+      const res = await fetch(`${WEB_APP}/api/credits/mobile-checkout`, {
+        method:  'POST',
+        headers: {
+          'Content-Type':  'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ amountCents }),
+      });
+      const body = await res.json();
+      if (res.ok && body.checkoutUrl) {
+        await Linking.openURL(body.checkoutUrl);
+      } else {
+        Alert.alert('Error', body.error ?? 'Could not open checkout. Please try again.');
+      }
+    } catch (e: any) {
+      Alert.alert('Error', e.message ?? 'Network error. Please try again.');
+    } finally {
+      setBuyingCredits(null);
     }
   }
 
@@ -261,6 +291,40 @@ export function AccountScreen() {
         )}
       </View>
 
+      {/* ── Add credits (buyers only) ─────────────────────────── */}
+      {isBuyer && (
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>💰  Add Credits</Text>
+          <Text style={styles.creditsHint}>
+            Select an amount to top up your balance. You'll be taken to a secure checkout page.
+          </Text>
+          <View style={styles.creditAmounts}>
+            {([
+              [2500,  '$25'],
+              [5000,  '$50'],
+              [10000, '$100'],
+              [20000, '$200'],
+            ] as const).map(([cents, label]) => {
+              const loading = buyingCredits === cents;
+              return (
+                <TouchableOpacity
+                  key={cents}
+                  style={[styles.creditBtn, loading && styles.creditBtnLoading]}
+                  onPress={() => handleAddCredits(cents)}
+                  disabled={buyingCredits !== null}
+                  activeOpacity={0.75}
+                >
+                  {loading
+                    ? <ActivityIndicator size="small" color={Colors.foreground} />
+                    : <Text style={styles.creditBtnText}>{label}</Text>
+                  }
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+      )}
+
       {/* ── Account & billing (buyers only) ───────────────────── */}
       {isBuyer && (
         <TouchableOpacity
@@ -269,8 +333,8 @@ export function AccountScreen() {
           activeOpacity={0.75}
         >
           <View>
-            <Text style={styles.linkCardTitle}>💳  Manage Account &amp; Billing</Text>
-            <Text style={styles.linkCardSub}>Buy credits · Manage payment methods · View purchases</Text>
+            <Text style={styles.linkCardTitle}>🧾  Manage Billing</Text>
+            <Text style={styles.linkCardSub}>View purchases · Manage payment methods</Text>
           </View>
           <Text style={styles.linkArrow}>›</Text>
         </TouchableOpacity>
@@ -421,6 +485,35 @@ const styles = StyleSheet.create({
   guestIcon:  { fontSize: 56, textAlign: 'center' },
   guestTitle: { fontSize: FontSize.lg, fontWeight: '700', color: Colors.foreground, textAlign: 'center' },
   guestDesc:  { fontSize: FontSize.sm, color: Colors.muted, textAlign: 'center', lineHeight: 20, marginBottom: Spacing.sm },
+
+  // ── Add credits ───────────────────────────────────────────────────────────
+  creditsHint: { fontSize: FontSize.xs, color: Colors.muted, lineHeight: 17 },
+  creditAmounts: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.sm,
+    marginTop: Spacing.xs,
+  },
+  creditBtn: {
+    flex: 1,
+    minWidth: '40%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.accent,
+    backgroundColor: 'rgba(129,140,248,0.10)',
+  },
+  creditBtnLoading: {
+    opacity: 0.6,
+  },
+  creditBtnText: {
+    fontSize: FontSize.md,
+    fontWeight: '700',
+    color: Colors.accent,
+    fontVariant: ['tabular-nums'],
+  },
 
   // ── Delete account ────────────────────────────────────────────────────────
   deleteAccountBtn: {

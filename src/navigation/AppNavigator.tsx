@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, ActivityIndicator } from 'react-native';
-import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme, LinkingOptions } from '@react-navigation/native';
 import { useAuth }            from '@/contexts/AuthContext';
 import { AuthNavigator }      from './AuthNavigator';
 import { BuyerNavigator }     from './BuyerNavigator';
@@ -22,6 +22,29 @@ const NavTheme = {
   },
 };
 
+/**
+ * Deep-link configuration.
+ *
+ * After a mobile payment completes, the website redirects to:
+ *   leadco://my-leads   → buyer opens My Leads tab
+ *   leadco://account    → buyer opens Account tab
+ *
+ * React Navigation handles both cold-start and foreground URL events
+ * automatically when a `linking` prop is passed to NavigationContainer.
+ */
+const linking: LinkingOptions<any> = {
+  prefixes: ['leadco://'],
+  config: {
+    screens: {
+      // These map to the tab screen NAMES defined in BuyerNavigator
+      LiveFeed: 'live-feed',
+      MyLeads:  'my-leads',
+      Alerts:   'alerts',
+      Account:  'account',
+    },
+  },
+};
+
 export function AppNavigator() {
   const { session, profile, loading, isGuest } = useAuth();
 
@@ -34,7 +57,7 @@ export function AppNavigator() {
   }
 
   return (
-    <NavigationContainer theme={NavTheme}>
+    <NavigationContainer theme={NavTheme} linking={linking}>
       {!session && !isGuest
         ? <AuthNavigator />
         : isGuest
