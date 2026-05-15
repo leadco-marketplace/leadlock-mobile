@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, FlatList, StyleSheet, ActivityIndicator,
-  TouchableOpacity, Linking,
+  TouchableOpacity, Linking, Alert,
 } from 'react-native';
 import * as Location from 'expo-location';
 import { supabase } from '@/lib/supabase';
@@ -73,6 +73,7 @@ export function LiveFeedScreen() {
       await leadsApi.unlock(lead.id);
       await refreshProfile();   // update credit balance
       await load(true);
+      Alert.alert('🔓 Lead Unlocked!', 'Your credits were used. Check the My Leads tab to view the full details.');
     } catch (e: any) {
       if (e.message === 'insufficient_credits') {
         // Not enough credits — create a Stripe checkout for this specific lead
@@ -82,10 +83,10 @@ export function LiveFeedScreen() {
           const { data: { session } } = await (await import('@/lib/supabase')).supabase.auth.getSession();
           const token = session?.access_token;
           if (!token) {
-            // Not logged in — shouldn't happen but fall back to web
-            await Linking.openURL(`${WEB_APP}/leads/${lead.id}`);
+            Alert.alert('Not Logged In', 'Please sign out and sign back in, then try again.');
             return;
           }
+
           const res = await fetch(`${WEB_APP}/api/leads/${lead.id}/mobile-unlock-checkout`, {
             method:  'POST',
             headers: {
@@ -93,24 +94,43 @@ export function LiveFeedScreen() {
               'Authorization': `Bearer ${token}`,
             },
           });
-          const body = await res.json();
+          const body = await res.json().catch(() => ({}));
+
           if (res.ok && body.checkoutUrl) {
-            await Linking.openURL(body.checkoutUrl);
+            // Confirm before opening Safari so the user knows what's happening
+            Alert.alert(
+              '💳 Add Credits to Unlock',
+              'You\'ll be taken to a secure payment page. After completing payment, tap "Open LeadCo App" to return here.',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Go to Payment',
+                  onPress: () => Linking.openURL(body.checkoutUrl).catch((err: any) =>
+                    Alert.alert('Could Not Open Browser', err?.message ?? String(err))
+                  ),
+                },
+              ]
+            );
           } else if (body.error === 'already_sold') {
             setError('This lead was just purchased by someone else.');
             await load(true);
           } else {
-            // Fallback: open the web lead page
-            await Linking.openURL(`${WEB_APP}/leads/${lead.id}`);
+            Alert.alert(
+              '⚠️ Checkout Error',
+              `Could not create checkout session.\n\nStatus: ${res.status}\nError: ${body.error ?? 'unknown'}`
+            );
           }
-        } catch {
-          // Network error — open the web lead page as fallback
-          await Linking.openURL(`${WEB_APP}/leads/${lead.id}`);
+        } catch (checkoutErr: any) {
+          Alert.alert(
+            '⚠️ Network Error',
+            `Could not reach the server.\n\n${checkoutErr?.message ?? String(checkoutErr)}`
+          );
         }
       } else if (e.message === 'already_sold') {
         setError('This lead was just sold. Refreshing the feed…');
         await load(true);
       } else {
+        Alert.alert('⚠️ Unlock Error', e.message ?? 'Something went wrong. Please try again.');
         setError(e.message);
       }
     } finally {
