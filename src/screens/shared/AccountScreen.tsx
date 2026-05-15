@@ -293,35 +293,37 @@ export function AccountScreen() {
 
       {/* ── Add credits (buyers only) ─────────────────────────── */}
       {isBuyer && (
-        <View style={styles.card}>
+        <View style={styles.creditCard}>
           <Text style={styles.sectionTitle}>💰  Add Credits</Text>
-          <Text style={styles.creditsHint}>
+          <Text style={[styles.creditsHint, { marginTop: Spacing.xs }]}>
             Select an amount to top up your balance. You'll be taken to a secure checkout page.
           </Text>
-          {([
-            [[2500, '$25'], [5000,  '$50' ]],
-            [[10000, '$100'], [20000, '$200']],
-          ] as const).map((row, rowIdx) => (
-            <View key={rowIdx} style={[styles.creditRow, rowIdx > 0 && { marginTop: Spacing.sm }]}>
-              {row.map(([cents, label]) => {
-                const loading = buyingCredits === cents;
-                return (
-                  <TouchableOpacity
-                    key={cents}
-                    style={[styles.creditBtn, loading && styles.creditBtnLoading]}
-                    onPress={() => handleAddCredits(cents)}
-                    disabled={buyingCredits !== null}
-                    activeOpacity={0.75}
-                  >
-                    {loading
-                      ? <ActivityIndicator size="small" color={Colors.foreground} />
-                      : <Text style={styles.creditBtnText}>{label}</Text>
-                    }
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          ))}
+          <View style={{ marginTop: Spacing.sm, gap: Spacing.sm }}>
+            {([
+              [[2500, '$25'], [5000,  '$50' ]],
+              [[10000, '$100'], [20000, '$200']],
+            ] as const).map((row, rowIdx) => (
+              <View key={rowIdx} style={styles.creditRow}>
+                {row.map(([cents, label]) => {
+                  const loading = buyingCredits === cents;
+                  return (
+                    <TouchableOpacity
+                      key={cents}
+                      style={[styles.creditBtn, loading && styles.creditBtnLoading]}
+                      onPress={() => handleAddCredits(cents)}
+                      disabled={buyingCredits !== null}
+                      activeOpacity={0.75}
+                    >
+                      {loading
+                        ? <ActivityIndicator size="small" color={Colors.foreground} />
+                        : <Text style={styles.creditBtnText}>{label}</Text>
+                      }
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            ))}
+          </View>
         </View>
       )}
 
@@ -487,6 +489,15 @@ const styles = StyleSheet.create({
   guestDesc:  { fontSize: FontSize.sm, color: Colors.muted, textAlign: 'center', lineHeight: 20, marginBottom: Spacing.sm },
 
   // ── Add credits ───────────────────────────────────────────────────────────
+  creditCard: {
+    backgroundColor: Colors.panel,
+    borderRadius: Radius.xl,
+    borderWidth: 1,
+    borderColor: Colors.borderOrange,
+    padding: Spacing.md,
+    marginBottom: Spacing.sm + 4,
+    ...Shadow.card,
+  },
   creditsHint: { fontSize: FontSize.xs, color: Colors.muted, lineHeight: 17 },
   creditRow: {
     flexDirection: 'row',
