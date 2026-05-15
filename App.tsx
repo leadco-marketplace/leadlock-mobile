@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Platform } from 'react-native';
+import { Platform, Alert } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as SplashScreen from 'expo-splash-screen';
@@ -63,8 +63,13 @@ async function registerForPushNotifications(userId: string): Promise<void> {
     const result = await Notifications.getExpoPushTokenAsync({ projectId });
     expoToken = result.data;
     console.log('[push] Got token:', expoToken.slice(0, 40) + '…');
-  } catch (e) {
+  } catch (e: any) {
     console.error('[push] Failed to get Expo push token:', e);
+    // Show visible alert so we can diagnose the exact error
+    Alert.alert(
+      '⚠️ Push Token Error',
+      `Could not get push token.\n\nError: ${e?.message ?? String(e)}\n\nProjectId: ${projectId}`,
+    );
     return;
   }
 
@@ -76,8 +81,11 @@ async function registerForPushNotifications(userId: string): Promise<void> {
 
   if (error) {
     console.error('[push] Failed to save token to Supabase:', error.message);
+    Alert.alert('⚠️ Token Save Error', `Could not save push token: ${error.message}`);
   } else {
-    console.log('[push] Token saved to Supabase for user', userId);
+    console.log('[push] Token saved ✅ for user', userId);
+    // Temporary success alert — remove once notifications are confirmed working
+    Alert.alert('✅ Push Ready', 'Push notification token registered successfully!');
   }
 }
 
