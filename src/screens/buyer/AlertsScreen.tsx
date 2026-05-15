@@ -512,12 +512,8 @@ export function AlertsScreen() {
 
           {/* Actions */}
           <View style={styles.formActions}>
-            <Button variant="ghost" onPress={resetForm}>
-              Cancel
-            </Button>
-            <Button variant="primary" loading={saving} onPress={handleSave}>
-              Save Alert
-            </Button>
+            <Button variant="ghost" label="Cancel" onPress={resetForm} />
+            <Button variant="primary" label="Save Alert" loading={saving} onPress={handleSave} />
           </View>
         </View>
       )}
