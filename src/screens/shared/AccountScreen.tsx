@@ -298,30 +298,30 @@ export function AccountScreen() {
           <Text style={styles.creditsHint}>
             Select an amount to top up your balance. You'll be taken to a secure checkout page.
           </Text>
-          <View style={styles.creditAmounts}>
-            {([
-              [2500,  '$25'],
-              [5000,  '$50'],
-              [10000, '$100'],
-              [20000, '$200'],
-            ] as const).map(([cents, label]) => {
-              const loading = buyingCredits === cents;
-              return (
-                <TouchableOpacity
-                  key={cents}
-                  style={[styles.creditBtn, loading && styles.creditBtnLoading]}
-                  onPress={() => handleAddCredits(cents)}
-                  disabled={buyingCredits !== null}
-                  activeOpacity={0.75}
-                >
-                  {loading
-                    ? <ActivityIndicator size="small" color={Colors.foreground} />
-                    : <Text style={styles.creditBtnText}>{label}</Text>
-                  }
-                </TouchableOpacity>
-              );
-            })}
-          </View>
+          {([
+            [[2500, '$25'], [5000,  '$50' ]],
+            [[10000, '$100'], [20000, '$200']],
+          ] as const).map((row, rowIdx) => (
+            <View key={rowIdx} style={[styles.creditRow, rowIdx > 0 && { marginTop: Spacing.sm }]}>
+              {row.map(([cents, label]) => {
+                const loading = buyingCredits === cents;
+                return (
+                  <TouchableOpacity
+                    key={cents}
+                    style={[styles.creditBtn, loading && styles.creditBtnLoading]}
+                    onPress={() => handleAddCredits(cents)}
+                    disabled={buyingCredits !== null}
+                    activeOpacity={0.75}
+                  >
+                    {loading
+                      ? <ActivityIndicator size="small" color={Colors.foreground} />
+                      : <Text style={styles.creditBtnText}>{label}</Text>
+                    }
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          ))}
         </View>
       )}
 
@@ -488,18 +488,15 @@ const styles = StyleSheet.create({
 
   // ── Add credits ───────────────────────────────────────────────────────────
   creditsHint: { fontSize: FontSize.xs, color: Colors.muted, lineHeight: 17 },
-  creditAmounts: {
+  creditRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: Spacing.sm,
-    marginTop: Spacing.xs,
   },
   creditBtn: {
     flex: 1,
-    minWidth: '40%',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
+    paddingVertical: 14,
     borderRadius: Radius.md,
     borderWidth: 1,
     borderColor: Colors.accent,
