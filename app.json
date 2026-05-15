@@ -21,7 +21,6 @@
       "buildNumber": "4",
       "infoPlist": {
         "UIBackgroundModes": [
-          "remote-notification",
           "remote-notification"
         ],
         "ITSAppUsesNonExemptEncryption": false

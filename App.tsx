@@ -8,6 +8,7 @@ import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { AppNavigator } from '@/navigation/AppNavigator';
+import { supabase } from '@/lib/supabase';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -20,10 +21,7 @@ Notifications.setNotificationHandler({
   }),
 });
 
-const API_BASE: string =
-  Constants.expoConfig?.extra?.apiBaseUrl ?? 'https://leadco-marketplace-p5zj.vercel.app';
-
-async function registerForPushNotifications(token: string | null): Promise<void> {
+async function registerForPushNotifications(userId: string): Promise<void> {
   if (!Device.isDevice) return; // simulators can't receive push notifications
 
   const { status: existingStatus } = await Notifications.getPermissionsAsync();
@@ -42,7 +40,7 @@ async function registerForPushNotifications(token: string | null): Promise<void>
   // Android requires a notification channel
   if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync('default', {
-      name:      'Lead Alerts',
+      name:       'Lead Alerts',
       importance: Notifications.AndroidImportance.MAX,
       vibrationPattern: [0, 250, 250, 250],
       lightColor: '#f97316',
@@ -50,7 +48,11 @@ async function registerForPushNotifications(token: string | null): Promise<void>
   }
 
   // Get the Expo push token for this device
-  const projectId = Constants.expoConfig?.extra?.eas?.projectId;
+  // Try both locations where EAS stores the project ID
+  const projectId =
+    Constants.expoConfig?.extra?.eas?.projectId ??
+    (Constants as unknown as { easConfig?: { projectId?: string } }).easConfig?.projectId;
+
   if (!projectId) {
     console.warn('[push] No EAS projectId in app config — cannot get push token');
     return;
@@ -60,43 +62,37 @@ async function registerForPushNotifications(token: string | null): Promise<void>
   try {
     const result = await Notifications.getExpoPushTokenAsync({ projectId });
     expoToken = result.data;
+    console.log('[push] Got token:', expoToken.slice(0, 40) + '…');
   } catch (e) {
     console.error('[push] Failed to get Expo push token:', e);
     return;
   }
 
-  // Save the token to the backend (requires the user to be authenticated)
-  if (!token) return; // no Supabase session yet
+  // Save directly via Supabase client — no web server hop, no Bearer token needed
+  const { error } = await supabase
+    .from('profiles')
+    .update({ expo_push_token: expoToken })
+    .eq('id', userId);
 
-  try {
-    const res = await fetch(`${API_BASE}/api/profile/push-token`, {
-      method:  'PUT',
-      headers: {
-        'Content-Type':  'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
-      body: JSON.stringify({ token: expoToken }),
-    });
-    if (res.ok) {
-      console.log('[push] Token registered:', expoToken.slice(0, 40) + '…');
-    } else {
-      const body = await res.json().catch(() => ({}));
-      console.warn('[push] Server rejected token:', body);
-    }
-  } catch (e) {
-    console.error('[push] Network error saving token:', e);
+  if (error) {
+    console.error('[push] Failed to save token to Supabase:', error.message);
+  } else {
+    console.log('[push] Token saved to Supabase for user', userId);
   }
 }
 
-// Inner component that has access to auth context
+// Inner component that has access to auth context.
+// Runs on every login / token refresh — safe to run multiple times
+// since Supabase upsert is idempotent.
 function PushRegistrar() {
   const { session } = useAuth();
+  const userId = session?.user?.id;
 
   useEffect(() => {
-    if (session?.access_token) {
-      registerForPushNotifications(session.access_token);
+    if (userId) {
+      registerForPushNotifications(userId);
     }
-  }, [session?.access_token]);
+  }, [userId]);
 
   return null;
 }
