@@ -46,7 +46,7 @@
         {
           "icon": "./assets/notification-icon.png",
           "color": "#f97316",
-          "sounds": []
+          "sounds": ["./assets/lead-alert.wav"]
         }
       ],
       "expo-font",

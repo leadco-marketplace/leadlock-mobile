@@ -44,6 +44,7 @@ async function registerForPushNotifications(userId: string): Promise<void> {
       importance: Notifications.AndroidImportance.MAX,
       vibrationPattern: [0, 250, 250, 250],
       lightColor: '#f97316',
+      sound:      'lead-alert.wav',
     });
   }
 
