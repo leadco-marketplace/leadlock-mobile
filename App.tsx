@@ -82,11 +82,8 @@ async function registerForPushNotifications(userId: string): Promise<void> {
 
   if (error) {
     console.error('[push] Failed to save token to Supabase:', error.message);
-    Alert.alert('⚠️ Token Save Error', `Could not save push token: ${error.message}`);
   } else {
     console.log('[push] Token saved ✅ for user', userId);
-    // Temporary success alert — remove once notifications are confirmed working
-    Alert.alert('✅ Push Ready', 'Push notification token registered successfully!');
   }
 }
 
