@@ -1,12 +1,18 @@
-import React from 'react';
+import React, { createRef } from 'react';
 import { View, ActivityIndicator } from 'react-native';
-import { NavigationContainer, DefaultTheme, LinkingOptions } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme, LinkingOptions, NavigationContainerRef } from '@react-navigation/native';
 import { useAuth }            from '@/contexts/AuthContext';
 import { AuthNavigator }      from './AuthNavigator';
 import { BuyerNavigator }     from './BuyerNavigator';
 import { ProviderNavigator }  from './ProviderNavigator';
 import { AdminNavigator }     from './AdminNavigator';
 import { Colors } from '@/theme';
+
+/**
+ * A ref to the NavigationContainer. Used by App.tsx (push notification
+ * response handler) to navigate programmatically without needing a hook.
+ */
+export const navigationRef = createRef<NavigationContainerRef<any>>();
 
 const NavTheme = {
   ...DefaultTheme,
@@ -57,7 +63,7 @@ export function AppNavigator() {
   }
 
   return (
-    <NavigationContainer theme={NavTheme} linking={linking}>
+    <NavigationContainer ref={navigationRef} theme={NavTheme} linking={linking}>
       {!session && !isGuest
         ? <AuthNavigator />
         : isGuest

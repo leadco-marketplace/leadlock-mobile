@@ -7,7 +7,7 @@ import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
-import { AppNavigator } from '@/navigation/AppNavigator';
+import { AppNavigator, navigationRef } from '@/navigation/AppNavigator';
 import { supabase } from '@/lib/supabase';
 
 SplashScreen.preventAutoHideAsync();
@@ -103,6 +103,38 @@ function PushRegistrar() {
   return null;
 }
 
+/**
+ * Listens for the user tapping a push notification (from cold-start or
+ * background). When the notification data contains a leadId we navigate
+ * directly to the LiveFeed tab and pass the ID as a route param so the
+ * screen can scroll to and highlight that specific lead.
+ */
+function PushResponseHandler() {
+  useEffect(() => {
+    const subscription = Notifications.addNotificationResponseReceivedListener(
+      (response) => {
+        const data = response.notification.request.content.data as Record<string, unknown>;
+        const leadId = data?.leadId as string | undefined;
+        if (!leadId) return;
+
+        // Wait briefly in case the navigator hasn't finished mounting yet
+        // (e.g. cold-start where JS bundle just loaded)
+        const tryNavigate = () => {
+          if (navigationRef.current?.isReady()) {
+            navigationRef.current.navigate('LiveFeed' as never, { highlightLeadId: leadId } as never);
+          } else {
+            setTimeout(tryNavigate, 200);
+          }
+        };
+        tryNavigate();
+      }
+    );
+    return () => subscription.remove();
+  }, []);
+
+  return null;
+}
+
 export default function App() {
   useEffect(() => {
     SplashScreen.hideAsync();
@@ -113,6 +145,7 @@ export default function App() {
       <AuthProvider>
         <StatusBar style="light" />
         <PushRegistrar />
+        <PushResponseHandler />
         <AppNavigator />
       </AuthProvider>
     </SafeAreaProvider>

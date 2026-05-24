@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View, Text, FlatList, StyleSheet, ActivityIndicator,
   TouchableOpacity, Linking, Alert,
 } from 'react-native';
 import * as Location from 'expo-location';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { supabase } from '@/lib/supabase';
 import { leadsApi, Lead, BuyerLocation } from '@/lib/api';
 import { LeadCard }    from '@/components/LeadCard';
@@ -14,17 +15,25 @@ import Constants from 'expo-constants';
 
 const WEB_APP = (Constants.expoConfig?.extra?.apiBaseUrl as string) ?? 'https://leadco-marketplace-p5zj.vercel.app';
 
+// Route params this screen accepts (from push-notification tap or deep link)
+type LiveFeedRouteParams = { highlightLeadId?: string };
+
 export function LiveFeedScreen() {
   const { profile, refreshProfile, isGuest, signOut } = useAuth();
+  const navigation  = useNavigation<any>();
+  const route       = useRoute<RouteProp<{ LiveFeed: LiveFeedRouteParams }, 'LiveFeed'>>();
+
   const [leads,         setLeads]        = useState<Lead[]>([]);
   const [loading,       setLoading]      = useState(true);
   const [refreshing,    setRefreshing]   = useState(false);
   const [unlocking,     setUnlocking]    = useState<string | null>(null);
   const [error,         setError]        = useState<string | null>(null);
   const [buyerLocation, setBuyerLocation] = useState<BuyerLocation>(null);
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
 
-  // Request location permission once on mount.
-  // We ask softly — if denied, the feed still works without distance badges.
+  const flatListRef = useRef<FlatList<Lead>>(null);
+
+  // ── Location permission ────────────────────────────────────────────────────
   useEffect(() => {
     (async () => {
       try {
@@ -59,6 +68,7 @@ export function LiveFeedScreen() {
     load(false, buyerLocation ?? undefined);
   }, [buyerLocation]);
 
+  // Realtime lead feed updates
   useEffect(() => {
     const channel = supabase
       .channel('leads-feed')
@@ -67,13 +77,40 @@ export function LiveFeedScreen() {
     return () => { supabase.removeChannel(channel); };
   }, []);
 
+  // ── Highlight + scroll when arriving from a push notification ─────────────
+  // route.params?.highlightLeadId is set when the user taps a notification.
+  // We wait until leads have loaded, then scroll to the target card and
+  // apply a glowing highlight for a few seconds.
+  useEffect(() => {
+    const targetId = route.params?.highlightLeadId;
+    if (!targetId || leads.length === 0) return;
+
+    const idx = leads.findIndex((l) => l.id === targetId);
+    if (idx < 0) return; // lead not in current feed (may be sold/expired)
+
+    setHighlightedId(targetId);
+
+    // Small delay so the FlatList has finished its first render pass
+    const scrollTimer = setTimeout(() => {
+      flatListRef.current?.scrollToIndex({ index: idx, animated: true, viewPosition: 0.25 });
+    }, 350);
+
+    // Auto-clear the highlight after 4 seconds
+    const clearTimer = setTimeout(() => setHighlightedId(null), 4500);
+
+    return () => { clearTimeout(scrollTimer); clearTimeout(clearTimer); };
+  }, [leads, route.params?.highlightLeadId]);
+
+  // ── Unlock handler ─────────────────────────────────────────────────────────
   async function handleUnlock(lead: Lead) {
     setUnlocking(lead.id);
     try {
       await leadsApi.unlock(lead.id);
       await refreshProfile();   // update credit balance
       await load(true);
-      Alert.alert('🔓 Lead Unlocked!', 'Your credits were used. Check the My Leads tab to view the full details.');
+      // Navigate to My Leads tab so the user immediately sees the unlocked lead.
+      // MyLeadsScreen now uses useFocusEffect so it will reload when it gains focus.
+      navigation.navigate('MyLeads');
     } catch (e: any) {
       if (e.message === 'insufficient_credits') {
         // Not enough credits — create a Stripe checkout for this specific lead
@@ -97,7 +134,6 @@ export function LiveFeedScreen() {
           const body = await res.json().catch(() => ({}));
 
           if (res.ok && body.checkoutUrl) {
-            // Confirm before opening Safari so the user knows what's happening
             Alert.alert(
               '💳 Add Credits to Unlock',
               'You\'ll be taken to a secure payment page. After completing payment, tap "Open LeadCo App" to return here.',
@@ -180,6 +216,7 @@ export function LiveFeedScreen() {
       )}
 
       <FlatList
+        ref={flatListRef}
         data={leads}
         keyExtractor={(l) => l.id}
         renderItem={({ item }) => (
@@ -187,12 +224,20 @@ export function LiveFeedScreen() {
             lead={item}
             onUnlock={isGuest ? undefined : () => handleUnlock(item)}
             unlocking={unlocking === item.id}
+            highlighted={highlightedId === item.id}
           />
         )}
         onRefresh={() => { setRefreshing(true); load(); }}
         refreshing={refreshing}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={leads.length === 0 ? styles.emptyContainer : { paddingBottom: Spacing.xxl }}
+        // Graceful fallback if the item isn't measured yet (e.g. FlatList not fully rendered)
+        onScrollToIndexFailed={(info) => {
+          flatListRef.current?.scrollToOffset({
+            offset: info.averageItemLength * info.index,
+            animated: true,
+          });
+        }}
         ListEmptyComponent={
           <View style={styles.emptyWrap}>
             <Text style={styles.emptyIcon}>📭</Text>

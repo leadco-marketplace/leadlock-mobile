@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { View, Text, FlatList, StyleSheet, ActivityIndicator, TouchableOpacity, Linking } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { leadsApi, PurchasedLead } from '@/lib/api';
 import { ScreenShell } from '@/components/ScreenShell';
 import { Colors, FontSize, Spacing, Radius, Shadow } from '@/theme';
@@ -60,7 +61,9 @@ export function MyLeadsScreen() {
     finally { setLoading(false); setRefreshing(false); }
   }
 
-  useEffect(() => { load(); }, []);
+  // Reload every time the tab comes into focus so that a lead unlocked on the
+  // Live Feed tab is immediately visible here without a manual pull-to-refresh.
+  useFocusEffect(useCallback(() => { load(); }, []));
 
   if (loading) {
     return (

@@ -10,6 +10,8 @@ interface LeadCardProps {
   onUnlock?: () => void;
   unlocking?: boolean;
   purchased?: boolean;
+  /** When true, renders a glowing accent border to indicate the notification-tapped lead */
+  highlighted?: boolean;
 }
 
 function formatPrice(cents: number) {
@@ -26,7 +28,7 @@ function timeAgo(dateStr: string) {
   return `${Math.floor(h / 24)}d ago`;
 }
 
-export function LeadCard({ lead, onUnlock, unlocking, purchased }: LeadCardProps) {
+export function LeadCard({ lead, onUnlock, unlocking, purchased, highlighted }: LeadCardProps) {
   const price = lead.buyer_price_cents ?? Math.round(lead.price_cents * 1.125);
 
   function handleUnlock() {
@@ -35,7 +37,7 @@ export function LeadCard({ lead, onUnlock, unlocking, purchased }: LeadCardProps
   }
 
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, highlighted && styles.cardHighlighted]}>
       {/* Header row */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
@@ -118,6 +120,14 @@ const styles = StyleSheet.create({
     marginBottom:    Spacing.sm + 4,
     gap:             Spacing.sm,
     ...Shadow.card,
+  },
+  cardHighlighted: {
+    borderColor:  '#22d3ee',
+    borderWidth:  2,
+    shadowColor:  '#22d3ee',
+    shadowRadius: 10,
+    shadowOpacity: 0.45,
+    elevation:    8,
   },
   header: {
     flexDirection:  'row',
