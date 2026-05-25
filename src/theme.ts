@@ -1,15 +1,16 @@
 // ── LeadCo Marketplace — Midnight + Electric + Orange design system ───────────
+// Level 3 brightness: #1e3058 base (was #08101e — lifted for readability)
 export const Colors = {
   // Backgrounds
-  bg:      '#08101e',
-  panel:   '#0d1829',
-  panel2:  '#111f34',
-  panel3:  '#162540',
+  bg:      '#1e3058',
+  panel:   '#28406e',
+  panel2:  '#2d4878',
+  panel3:  '#334f88',
 
   // Borders
-  border:  '#1a3050',
-  border2: '#224070',
-  borderOrange: 'rgba(249,115,22,0.38)',
+  border:  '#305880',
+  border2: '#3a6898',
+  borderOrange: 'rgba(249,115,22,0.44)',
 
   // Accent — electric indigo-violet
   accent:  '#818cf8',
@@ -22,9 +23,9 @@ export const Colors = {
   // Text
   foreground:    '#e8f4ff',
   text:          '#c8ddf5',
-  textSecondary: '#567090',
-  muted:         '#4a6a8a',
-  placeholder:   '#2e4a66',
+  textSecondary: '#7090b8',  // brightened — was #567090 (too dim on lighter bg)
+  muted:         '#587898',  // brightened — was #4a6a8a
+  placeholder:   '#3e5a80',  // brightened — was #2e4a66
 
   // Semantic
   danger: '#F87171',
@@ -33,7 +34,7 @@ export const Colors = {
 
   // Tab bar
   tabActive:   '#f97316',
-  tabInactive: '#344f6a',
+  tabInactive: '#5878a0',   // brightened — was #344f6a (invisible on new bg)
 };
 
 export const Spacing = {
