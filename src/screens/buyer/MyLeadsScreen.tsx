@@ -3,7 +3,7 @@ import {
   View, Text, FlatList, StyleSheet, ActivityIndicator,
   TouchableOpacity, Linking, Alert,
 } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { leadsApi, PurchasedLead } from '@/lib/api';
 import { ScreenShell } from '@/components/ScreenShell';
 import { Colors, FontSize, Spacing, Radius, Shadow } from '@/theme';
@@ -220,8 +220,13 @@ const callStyles = StyleSheet.create({
 });
 
 function PurchasedCard({ lead }: { lead: PurchasedLead }) {
+  const navigation = useNavigation<any>();
   return (
-    <View style={styles.card}>
+    <TouchableOpacity
+      style={styles.card}
+      onPress={() => navigation.navigate('LeadDetail', { leadId: lead.id })}
+      activeOpacity={0.85}
+    >
       <View style={styles.cardHeader}>
         <View style={{ flex: 1 }}>
           <Text style={styles.category}>{lead.service_category}</Text>
@@ -230,27 +235,17 @@ function PurchasedCard({ lead }: { lead: PurchasedLead }) {
             {lead.nationwide ? '🌐 Nationwide' : `${lead.city}, ${lead.state}`}
           </Text>
         </View>
-        <View>
+        <View style={{ alignItems: 'flex-end' }}>
           <Text style={styles.price}>{formatPrice(lead.price_cents)}</Text>
           <Text style={styles.unlockedLabel}>✓ Unlocked</Text>
+          <Text style={styles.tapHint}>Tap to view →</Text>
         </View>
       </View>
-
-      {/* Bridge number call panel — no direct customer data exposed */}
-      <CallPanel purchaseId={lead.purchase_id} />
-
-      {/* Private notes from the lead submission */}
-      {lead.private_notes && (
-        <View style={styles.notesBox}>
-          <Text style={styles.notesLabel}>LEAD NOTES</Text>
-          <Text style={styles.notesText}>{lead.private_notes}</Text>
-        </View>
-      )}
 
       <Text style={styles.purchasedAt}>
         Unlocked {new Date(lead.purchased_at).toLocaleDateString()}
       </Text>
-    </View>
+    </TouchableOpacity>
   );
 }
 
@@ -329,6 +324,7 @@ const styles = StyleSheet.create({
   location:     { fontSize: FontSize.xs,   color: Colors.muted },
   price:        { fontSize: FontSize.md,   fontWeight: '700', color: Colors.foreground, textAlign: 'right', fontVariant: ['tabular-nums'] },
   unlockedLabel:{ fontSize: FontSize.xs,   color: Colors.accent, textAlign: 'right', marginTop: 2 },
+  tapHint:      { fontSize: FontSize.xs - 1, color: Colors.muted, textAlign: 'right', marginTop: 4 },
   notesBox: {
     backgroundColor: Colors.panel2,
     borderRadius: Radius.md,

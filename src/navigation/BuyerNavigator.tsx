@@ -1,13 +1,16 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Text } from 'react-native';
-import { LiveFeedScreen }  from '@/screens/buyer/LiveFeedScreen';
-import { MyLeadsScreen }   from '@/screens/buyer/MyLeadsScreen';
-import { AlertsScreen }    from '@/screens/buyer/AlertsScreen';
-import { AccountScreen }   from '@/screens/shared/AccountScreen';
-import { Colors, FontSize } from '@/theme';
+import { LiveFeedScreen }    from '@/screens/buyer/LiveFeedScreen';
+import { MyLeadsScreen }     from '@/screens/buyer/MyLeadsScreen';
+import { AlertsScreen }      from '@/screens/buyer/AlertsScreen';
+import { AccountScreen }     from '@/screens/shared/AccountScreen';
+import { LeadDetailScreen }  from '@/screens/buyer/LeadDetailScreen';
+import { Colors, FontSize }  from '@/theme';
 
-const Tab = createBottomTabNavigator();
+const Tab   = createBottomTabNavigator();
+const Stack = createNativeStackNavigator();
 
 function TabIcon({ emoji, focused }: { emoji: string; focused: boolean }) {
   return (
@@ -21,10 +24,11 @@ function TabIcon({ emoji, focused }: { emoji: string; focused: boolean }) {
   );
 }
 
-export function BuyerNavigator() {
+/** The four-tab buyer bottom bar */
+function BuyerTabs() {
   return (
     <Tab.Navigator
-      screenOptions={({ route }) => ({
+      screenOptions={{
         headerShown: false,
         tabBarStyle: {
           backgroundColor: Colors.panel,
@@ -42,12 +46,12 @@ export function BuyerNavigator() {
         tabBarActiveTintColor:   Colors.orange,
         tabBarInactiveTintColor: Colors.tabInactive,
         tabBarLabelStyle: {
-          fontSize:   FontSize.xs,
-          fontWeight: '700',
-          marginTop:  -2,
+          fontSize:      FontSize.xs,
+          fontWeight:    '700',
+          marginTop:     -2,
           letterSpacing: 0.2,
         },
-      })}
+      }}
     >
       <Tab.Screen
         name="LiveFeed"
@@ -82,5 +86,18 @@ export function BuyerNavigator() {
         }}
       />
     </Tab.Navigator>
+  );
+}
+
+/**
+ * BuyerNavigator = Stack wrapping the tab bar + LeadDetail.
+ * This allows the detail screen to push on top of (and fully cover) the tabs.
+ */
+export function BuyerNavigator() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="BuyerTabs"   component={BuyerTabs} />
+      <Stack.Screen name="LeadDetail"  component={LeadDetailScreen} />
+    </Stack.Navigator>
   );
 }

@@ -121,10 +121,9 @@ export function LiveFeedScreen() {
     try {
       await leadsApi.unlock(lead.id);
       await refreshProfile();   // update credit balance
-      await load(true);
-      // Navigate to My Leads tab so the user immediately sees the unlocked lead.
-      // MyLeadsScreen now uses useFocusEffect so it will reload when it gains focus.
-      navigation.navigate('MyLeads');
+      // Navigate directly to the full lead detail so the buyer immediately sees
+      // the description, category fields, call panel, and notes.
+      navigation.navigate('LeadDetail', { leadId: lead.id });
     } catch (e: any) {
       if (e.message === 'insufficient_credits') {
         // Not enough credits — create a Stripe checkout for this specific lead
