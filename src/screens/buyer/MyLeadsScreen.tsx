@@ -7,6 +7,7 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { leadsApi, PurchasedLead } from '@/lib/api';
 import { ScreenShell } from '@/components/ScreenShell';
 import { Colors, FontSize, Spacing, Radius, Shadow } from '@/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 import Constants from 'expo-constants';
 import { supabase } from '@/lib/supabase';
 
@@ -221,28 +222,29 @@ const callStyles = StyleSheet.create({
 
 function PurchasedCard({ lead }: { lead: PurchasedLead }) {
   const navigation = useNavigation<any>();
+  useTheme(); // re-render on theme change so inline Colors.* picks up new values
   return (
     <TouchableOpacity
-      style={styles.card}
+      style={[styles.card, { backgroundColor: Colors.panel }]}
       onPress={() => navigation.navigate('LeadDetail', { leadId: lead.id })}
       activeOpacity={0.85}
     >
       <View style={styles.cardHeader}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.category}>{lead.service_category}</Text>
-          <Text style={styles.jobType}>{lead.job_type}</Text>
-          <Text style={styles.location}>
+          <Text style={[styles.category, { color: Colors.foreground }]}>{lead.service_category}</Text>
+          <Text style={[styles.jobType, { color: Colors.textSecondary }]}>{lead.job_type}</Text>
+          <Text style={[styles.location, { color: Colors.muted }]}>
             {lead.nationwide ? '🌐 Nationwide' : `${lead.city}, ${lead.state}`}
           </Text>
         </View>
         <View style={{ alignItems: 'flex-end' }}>
-          <Text style={styles.price}>{formatPrice(lead.price_cents)}</Text>
-          <Text style={styles.unlockedLabel}>✓ Unlocked</Text>
-          <Text style={styles.tapHint}>Tap to view →</Text>
+          <Text style={[styles.price, { color: Colors.foreground }]}>{formatPrice(lead.price_cents)}</Text>
+          <Text style={[styles.unlockedLabel, { color: Colors.accent }]}>✓ Unlocked</Text>
+          <Text style={[styles.tapHint, { color: Colors.muted }]}>Tap to view →</Text>
         </View>
       </View>
 
-      <Text style={styles.purchasedAt}>
+      <Text style={[styles.purchasedAt, { color: Colors.muted }]}>
         Unlocked {new Date(lead.purchased_at).toLocaleDateString()}
       </Text>
     </TouchableOpacity>
@@ -250,6 +252,7 @@ function PurchasedCard({ lead }: { lead: PurchasedLead }) {
 }
 
 export function MyLeadsScreen() {
+  useTheme(); // re-render on theme change
   const [leads,      setLeads]      = useState<PurchasedLead[]>([]);
   const [loading,    setLoading]    = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -290,10 +293,10 @@ export function MyLeadsScreen() {
         ListEmptyComponent={
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.sm, paddingTop: 80 }}>
             <Text style={{ fontSize: 48 }}>🔒</Text>
-            <Text style={{ fontSize: FontSize.md, fontWeight: '600', color: Colors.foreground }}>
+            <Text style={{ fontSize: FontSize.md, fontWeight: '600', color: Colors.foreground, textAlign: 'center' }}>
               No unlocked leads yet
             </Text>
-            <Text style={{ fontSize: FontSize.sm, color: Colors.muted }}>
+            <Text style={{ fontSize: FontSize.sm, color: Colors.muted }}
               Go to Live Feed to unlock your first lead.
             </Text>
           </View>

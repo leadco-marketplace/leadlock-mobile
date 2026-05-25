@@ -7,6 +7,7 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { leadsApi, rateApi, PurchasedLead, RatingThumb, THUMBS_UP_REASONS, THUMBS_DOWN_REASONS } from '@/lib/api';
 import { ScreenShell } from '@/components/ScreenShell';
 import { Colors, FontSize, Spacing, Radius, Shadow } from '@/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 import Constants from 'expo-constants';
 import { supabase } from '@/lib/supabase';
 import { Linking, Alert } from 'react-native';
@@ -54,6 +55,7 @@ async function authHeaders(): Promise<Record<string, string>> {
 }
 
 function CallPanel({ purchaseId }: { purchaseId: string }) {
+  useTheme(); // re-render on theme change so inline Colors.* picks up new values
   const [pinData, setPinData] = useState<PinData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState<string | null>(null);
@@ -81,16 +83,16 @@ function CallPanel({ purchaseId }: { purchaseId: string }) {
 
   if (loading) {
     return (
-      <View style={callStyles.box}>
+      <View style={[callStyles.box, { backgroundColor: Colors.panel2 }]}>
         <ActivityIndicator color={Colors.accent} size="small" />
-        <Text style={callStyles.loadingText}>Loading your extension…</Text>
+        <Text style={[callStyles.loadingText, { color: Colors.muted }]}>Loading your extension…</Text>
       </View>
     );
   }
 
   if (error) {
     return (
-      <View style={callStyles.box}>
+      <View style={[callStyles.box, { backgroundColor: Colors.panel2 }]}>
         <Text style={callStyles.errorText}>⚠️ {error}</Text>
         <TouchableOpacity onPress={fetchPin} style={callStyles.retryBtn}>
           <Text style={callStyles.retryText}>Try again</Text>
@@ -102,17 +104,17 @@ function CallPanel({ purchaseId }: { purchaseId: string }) {
   if (!pinData) return null;
 
   return (
-    <View style={callStyles.box}>
-      <Text style={callStyles.sectionLabel}>📞  CALL CUSTOMER</Text>
+    <View style={[callStyles.box, { backgroundColor: Colors.panel2 }]}>
+      <Text style={[callStyles.sectionLabel, { color: Colors.accent }]}>📞  CALL CUSTOMER</Text>
       <View style={callStyles.pinRow}>
         <View style={callStyles.pinBlock}>
-          <Text style={callStyles.pinLabel}>DIAL-IN NUMBER</Text>
-          <Text style={callStyles.dialIn}>{formatPhone(pinData.dialIn)}</Text>
+          <Text style={[callStyles.pinLabel, { color: Colors.muted }]}>DIAL-IN NUMBER</Text>
+          <Text style={[callStyles.dialIn, { color: Colors.foreground }]}>{formatPhone(pinData.dialIn)}</Text>
         </View>
         <View style={callStyles.divider} />
         <View style={callStyles.pinBlock}>
-          <Text style={callStyles.pinLabel}>YOUR EXTENSION</Text>
-          <Text style={callStyles.pin}>{pinData.pin}</Text>
+          <Text style={[callStyles.pinLabel, { color: Colors.muted }]}>YOUR EXTENSION</Text>
+          <Text style={[callStyles.pin, { color: Colors.accent }]}>{pinData.pin}</Text>
         </View>
       </View>
       <TouchableOpacity
@@ -122,12 +124,12 @@ function CallPanel({ purchaseId }: { purchaseId: string }) {
       >
         <Text style={callStyles.callBtnText}>📞  Call Customer Now</Text>
       </TouchableOpacity>
-      <Text style={callStyles.hint}>
+      <Text style={[callStyles.hint, { color: Colors.muted }]}>
         Call the number above, then enter extension{' '}
         <Text style={{ fontWeight: '700', color: Colors.accent }}>{pinData.pin}</Text> when prompted.
       </Text>
       <TouchableOpacity onPress={fetchPin}>
-        <Text style={callStyles.refreshText}>↻ Get a new extension</Text>
+        <Text style={[callStyles.refreshText, { color: Colors.muted }]}>↻ Get a new extension</Text>
       </TouchableOpacity>
     </View>
   );
@@ -200,6 +202,7 @@ const callStyles = StyleSheet.create({
 // ── Rating panel ───────────────────────────────────────────────────────────
 
 function RatingPanel({ leadId }: { leadId: string }) {
+  useTheme(); // re-render on theme change so inline Colors.* picks up new values
   const [thumb,      setThumb]      = useState<RatingThumb | null>(null);
   const [reasonCode, setReasonCode] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -228,35 +231,35 @@ function RatingPanel({ leadId }: { leadId: string }) {
 
   if (submitted) {
     return (
-      <View style={ratingStyles.box}>
-        <Text style={ratingStyles.title}>⭐  Lead Rated</Text>
-        <Text style={ratingStyles.submitted}>Thanks for your feedback!</Text>
+      <View style={[ratingStyles.box, { backgroundColor: Colors.panel }]}>
+        <Text style={[ratingStyles.title, { color: Colors.foreground }]}>⭐  Lead Rated</Text>
+        <Text style={[ratingStyles.submitted, { color: Colors.accent }]}>Thanks for your feedback!</Text>
       </View>
     );
   }
 
   return (
-    <View style={ratingStyles.box}>
-      <Text style={ratingStyles.title}>Rate This Lead</Text>
-      <Text style={ratingStyles.subtitle}>How did it go?</Text>
+    <View style={[ratingStyles.box, { backgroundColor: Colors.panel }]}>
+      <Text style={[ratingStyles.title, { color: Colors.foreground }]}>Rate This Lead</Text>
+      <Text style={[ratingStyles.subtitle, { color: Colors.muted }]}>How did it go?</Text>
 
       {/* Thumbs row */}
       <View style={ratingStyles.thumbRow}>
         <TouchableOpacity
-          style={[ratingStyles.thumbBtn, thumb === 'up' && ratingStyles.thumbBtnActiveUp]}
+          style={[ratingStyles.thumbBtn, { borderColor: Colors.border, backgroundColor: Colors.panel2 }, thumb === 'up' && ratingStyles.thumbBtnActiveUp]}
           onPress={() => { setThumb('up'); setReasonCode(null); }}
           activeOpacity={0.8}
         >
           <Text style={ratingStyles.thumbEmoji}>👍</Text>
-          <Text style={[ratingStyles.thumbLabel, thumb === 'up' && ratingStyles.thumbLabelActive]}>Good Lead</Text>
+          <Text style={[ratingStyles.thumbLabel, { color: Colors.muted }, thumb === 'up' && ratingStyles.thumbLabelActive]}>Good Lead</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[ratingStyles.thumbBtn, thumb === 'down' && ratingStyles.thumbBtnActiveDown]}
+          style={[ratingStyles.thumbBtn, { borderColor: Colors.border, backgroundColor: Colors.panel2 }, thumb === 'down' && ratingStyles.thumbBtnActiveDown]}
           onPress={() => { setThumb('down'); setReasonCode(null); }}
           activeOpacity={0.8}
         >
           <Text style={ratingStyles.thumbEmoji}>👎</Text>
-          <Text style={[ratingStyles.thumbLabel, thumb === 'down' && ratingStyles.thumbLabelActiveDown]}>Issue</Text>
+          <Text style={[ratingStyles.thumbLabel, { color: Colors.muted }, thumb === 'down' && ratingStyles.thumbLabelActiveDown]}>Issue</Text>
         </TouchableOpacity>
       </View>
 
@@ -402,6 +405,7 @@ const ratingStyles = StyleSheet.create({
 // ── Main screen ────────────────────────────────────────────────────────────
 
 export function LeadDetailScreen() {
+  useTheme(); // re-render on theme change so inline Colors.* picks up new values
   const navigation = useNavigation<any>();
   const route = useRoute<RouteProp<{ LeadDetail: LeadDetailRouteParams }, 'LeadDetail'>>();
   const { leadId } = route.params;
@@ -411,17 +415,36 @@ export function LeadDetailScreen() {
   const [error,   setError]   = useState<string | null>(null);
 
   useEffect(() => {
-    leadsApi.getPurchased()
-      .then((leads) => {
+    let cancelled = false;
+    const MAX_ATTEMPTS = 6;   // up to ~3 s of retries (6 × 500 ms)
+    const RETRY_MS     = 500;
+
+    async function fetchWithRetry(attempt: number) {
+      try {
+        const leads = await leadsApi.getPurchased();
+        if (cancelled) return;
         const found = leads.find((l) => l.id === leadId);
         if (found) {
           setLead(found);
+          setLoading(false);
+          return;
+        }
+        if (attempt < MAX_ATTEMPTS) {
+          // Purchase may not be visible yet — brief pause then retry
+          setTimeout(() => { if (!cancelled) fetchWithRetry(attempt + 1); }, RETRY_MS);
         } else {
           setError('This lead could not be found in your unlocked leads.');
+          setLoading(false);
         }
-      })
-      .catch((e) => setError(e.message ?? 'Failed to load lead'))
-      .finally(() => setLoading(false));
+      } catch (e: any) {
+        if (cancelled) return;
+        setError(e.message ?? 'Failed to load lead');
+        setLoading(false);
+      }
+    }
+
+    fetchWithRetry(0);
+    return () => { cancelled = true; };
   }, [leadId]);
 
   if (loading) {
@@ -467,24 +490,24 @@ export function LeadDetailScreen() {
         contentContainerStyle={{ gap: Spacing.md, paddingBottom: Spacing.xxl }}
       >
         {/* ── Header card ─────────────────────────────── */}
-        <View style={styles.headerCard}>
+        <View style={[styles.headerCard, { backgroundColor: Colors.panel }]}>
           <View style={styles.headerTop}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.category}>{lead.service_category}</Text>
-              <Text style={styles.jobType}>{lead.job_type}</Text>
-              <Text style={styles.location}>
+              <Text style={[styles.category, { color: Colors.foreground }]}>{lead.service_category}</Text>
+              <Text style={[styles.jobType, { color: Colors.textSecondary }]}>{lead.job_type}</Text>
+              <Text style={[styles.location, { color: Colors.muted }]}>
                 {lead.nationwide ? '🌐 Nationwide' : `📍 ${lead.city}, ${lead.state}`}
               </Text>
             </View>
             <View style={styles.priceBadge}>
-              <Text style={styles.priceLabel}>PAID</Text>
-              <Text style={styles.priceValue}>{formatPrice(price)}</Text>
+              <Text style={[styles.priceLabel, { color: Colors.muted }]}>PAID</Text>
+              <Text style={[styles.priceValue, { color: Colors.foreground }]}>{formatPrice(price)}</Text>
             </View>
           </View>
 
           <View style={styles.unlockedBadge}>
-            <Text style={styles.unlockedText}>✓ Lead Unlocked</Text>
-            <Text style={styles.purchasedDate}>
+            <Text style={[styles.unlockedText, { color: Colors.accent }]}>✓ Lead Unlocked</Text>
+            <Text style={[styles.purchasedDate, { color: Colors.muted }]}>
               {new Date(lead.purchased_at).toLocaleDateString('en-US', {
                 month: 'short', day: 'numeric', year: 'numeric',
               })}
@@ -494,20 +517,20 @@ export function LeadDetailScreen() {
 
         {/* ── Job description ──────────────────────────── */}
         {lead.public_summary && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>📋  Job Description</Text>
-            <Text style={styles.description}>{lead.public_summary}</Text>
+          <View style={[styles.section, { backgroundColor: Colors.panel }]}>
+            <Text style={[styles.sectionTitle, { color: Colors.foreground }]}>📋  Job Description</Text>
+            <Text style={[styles.description, { color: Colors.text }]}>{lead.public_summary}</Text>
           </View>
         )}
 
         {/* ── Lead details (metadata fields) ──────────── */}
         {metaEntries.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>🔍  Lead Details</Text>
+          <View style={[styles.section, { backgroundColor: Colors.panel }]}>
+            <Text style={[styles.sectionTitle, { color: Colors.foreground }]}>🔍  Lead Details</Text>
             {metaEntries.map(([key, value]) => (
-              <View key={key} style={styles.metaRow}>
-                <Text style={styles.metaKey}>{labelify(key)}</Text>
-                <Text style={styles.metaValue}>{String(value)}</Text>
+              <View key={key} style={[styles.metaRow, { borderBottomColor: Colors.border }]}>
+                <Text style={[styles.metaKey, { color: Colors.muted }]}>{labelify(key)}</Text>
+                <Text style={[styles.metaValue, { color: Colors.foreground }]}>{String(value)}</Text>
               </View>
             ))}
           </View>
@@ -518,9 +541,9 @@ export function LeadDetailScreen() {
 
         {/* ── Private notes ────────────────────────────── */}
         {lead.private_notes && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>📝  Lead Notes</Text>
-            <Text style={styles.description}>{lead.private_notes}</Text>
+          <View style={[styles.section, { backgroundColor: Colors.panel }]}>
+            <Text style={[styles.sectionTitle, { color: Colors.foreground }]}>📝  Lead Notes</Text>
+            <Text style={[styles.description, { color: Colors.text }]}>{lead.private_notes}</Text>
           </View>
         )}
 

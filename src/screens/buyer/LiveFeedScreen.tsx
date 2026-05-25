@@ -7,10 +7,12 @@ import * as Location from 'expo-location';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { supabase } from '@/lib/supabase';
 import { leadsApi, Lead, BuyerLocation } from '@/lib/api';
-import { LeadCard }    from '@/components/LeadCard';
-import { ScreenShell } from '@/components/ScreenShell';
+import { LeadCard }      from '@/components/LeadCard';
+import { UnlockModal }   from '@/components/UnlockModal';
+import { ScreenShell }   from '@/components/ScreenShell';
 import { Colors, FontSize, Spacing, Radius, Shadow } from '@/theme';
-import { useAuth } from '@/contexts/AuthContext';
+import { useTheme }      from '@/contexts/ThemeContext';
+import { useAuth }       from '@/contexts/AuthContext';
 import Constants from 'expo-constants';
 
 const WEB_APP = (Constants.expoConfig?.extra?.apiBaseUrl as string) ?? 'https://leadco-marketplace-p5zj.vercel.app';
@@ -23,6 +25,8 @@ export function LiveFeedScreen() {
   const navigation  = useNavigation<any>();
   const route       = useRoute<RouteProp<{ LiveFeed: LiveFeedRouteParams }, 'LiveFeed'>>();
 
+  useTheme(); // re-render stat cards on theme change
+
   const [leads,         setLeads]        = useState<Lead[]>([]);
   const [loading,       setLoading]      = useState(true);
   const [refreshing,    setRefreshing]   = useState(false);
@@ -30,6 +34,7 @@ export function LiveFeedScreen() {
   const [error,         setError]        = useState<string | null>(null);
   const [buyerLocation, setBuyerLocation] = useState<BuyerLocation>(null);
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
+  const [modalLead,     setModalLead]    = useState<Lead | null>(null);
 
   const flatListRef = useRef<FlatList<Lead>>(null);
 
@@ -116,18 +121,8 @@ export function LiveFeedScreen() {
   }, [leads, loading, route.params?.highlightLeadId]);
 
   // ── Unlock handler ─────────────────────────────────────────────────────────
-  function formatPrice(cents: number) { return `$${(cents / 100).toFixed(2)}`; }
-
   function handleUnlock(lead: Lead) {
-    const price = lead.buyer_price_cents ?? Math.round(lead.price_cents * 1.125);
-    Alert.alert(
-      '🔓 Unlock This Lead',
-      `${lead.service_category}${lead.job_type ? `\n${lead.job_type}` : ''}\n\nCost: ${formatPrice(price)}\n\nThis will be charged to your credit balance.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: `Unlock for ${formatPrice(price)}`, onPress: () => proceedUnlock(lead) },
-      ],
-    );
+    setModalLead(lead);  // open the payment modal
   }
 
   async function proceedUnlock(lead: Lead) {
@@ -237,19 +232,19 @@ export function LiveFeedScreen() {
       {/* ── Stats bar ──────────────────────────────────────────────── */}
       {leads.length > 0 && (
         <View style={styles.statsRow}>
-          <View style={styles.statCard}>
+          <View style={[styles.statCard, { backgroundColor: Colors.panel }]}>
             <Text style={styles.statLabel}>AVAILABLE</Text>
-            <Text style={styles.statValue}>{availableCount}</Text>
-            <Text style={styles.statSub}>leads live</Text>
+            <Text style={[styles.statValue, { color: Colors.foreground }]}>{availableCount}</Text>
+            <Text style={[styles.statSub, { color: Colors.muted }]}>leads live</Text>
           </View>
-          <View style={styles.statCard}>
+          <View style={[styles.statCard, { backgroundColor: Colors.panel }]}>
             <Text style={styles.statLabel}>AVG PRICE</Text>
-            <Text style={styles.statValue}>${Math.round(avgPrice / 100)}</Text>
-            <Text style={styles.statSub}>in your areas</Text>
+            <Text style={[styles.statValue, { color: Colors.foreground }]}>${Math.round(avgPrice / 100)}</Text>
+            <Text style={[styles.statSub, { color: Colors.muted }]}>in your areas</Text>
           </View>
-          <View style={styles.statCard}>
+          <View style={[styles.statCard, { backgroundColor: Colors.panel }]}>
             <Text style={styles.statLabel}>NEWEST</Text>
-            <Text numberOfLines={1} style={[styles.statValue, { fontSize: FontSize.sm }]}>
+            <Text numberOfLines={1} style={[styles.statValue, { fontSize: FontSize.sm, color: Colors.foreground }]}>
               {newestLead?.service_category ?? '—'}
             </Text>
             <Text style={styles.statSub}>just posted</Text>
@@ -309,6 +304,18 @@ export function LiveFeedScreen() {
       />
 
     </ScreenShell>
+
+    {/* ── Unlock payment modal ──────────────────────────── */}
+    <UnlockModal
+      lead={modalLead}
+      visible={modalLead !== null}
+      onCancel={() => setModalLead(null)}
+      onConfirm={() => {
+        const lead = modalLead!;
+        setModalLead(null);
+        proceedUnlock(lead);
+      }}
+    />
   );
 }
 

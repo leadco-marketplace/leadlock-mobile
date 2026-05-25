@@ -186,13 +186,13 @@ export function AccountScreen() {
     <ScreenShell title="My Account" scrollable>
 
       {/* ── Profile card ──────────────────────────────────────── */}
-      <View style={styles.card}>
+      <View style={[styles.card, { backgroundColor: Colors.panel, borderColor: Colors.borderOrange }]}>
         <View style={styles.avatarRow}>
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>{(profile.email?.[0] ?? '?').toUpperCase()}</Text>
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.email}>{profile.email}</Text>
+            <Text style={[styles.email, { color: Colors.foreground }]}>{profile.email}</Text>
             <View style={styles.rolePill}>
               <Text style={styles.roleText}>{roleLabel}</Text>
             </View>
@@ -200,25 +200,25 @@ export function AccountScreen() {
         </View>
 
         {isBuyer && (
-          <View style={styles.creditsRow}>
-            <Text style={styles.creditsLabel}>Credit balance</Text>
-            <Text style={styles.creditsValue}>${((profile.credits_cents ?? 0) / 100).toFixed(2)}</Text>
+          <View style={[styles.creditsRow, { borderTopColor: Colors.border }]}>
+            <Text style={[styles.creditsLabel, { color: Colors.muted }]}>Credit balance</Text>
+            <Text style={[styles.creditsValue, { color: Colors.accent }]}>${((profile.credits_cents ?? 0) / 100).toFixed(2)}</Text>
           </View>
         )}
       </View>
 
       {/* ── Phone number ──────────────────────────────────────── */}
-      <View style={styles.card}>
-        <Text style={styles.sectionTitle}>📱  Phone Number</Text>
+      <View style={[styles.card, { backgroundColor: Colors.panel, borderColor: Colors.borderOrange }]}>
+        <Text style={[styles.sectionTitle, { color: Colors.foreground }]}>📱  Phone Number</Text>
 
         {phoneStep === 'done' ? (
           <Text style={styles.phoneSuccess}>✅ Phone verified successfully!</Text>
         ) : (
           <>
             <View style={styles.phoneRow}>
-              <Text style={styles.phoneLabel}>Current:</Text>
-              <Text style={styles.phoneValue}>
-                {profile.phone ? profile.phone : <Text style={styles.muted}>Not set</Text>}
+              <Text style={[styles.phoneLabel, { color: Colors.muted }]}>Current:</Text>
+              <Text style={[styles.phoneValue, { color: Colors.foreground }]}>
+                {profile.phone ? profile.phone : <Text style={[styles.muted, { color: Colors.muted }]}>Not set</Text>}
               </Text>
             </View>
 
@@ -237,7 +237,7 @@ export function AccountScreen() {
             {(phoneStep === 'entering' || phoneStep === 'sending') && (
               <>
                 <TextInput
-                  style={styles.phoneInput}
+                  style={[styles.phoneInput, { backgroundColor: Colors.panel2, borderColor: Colors.border2, color: Colors.foreground }]}
                   placeholder="+1 (555) 000-0000"
                   placeholderTextColor={Colors.muted}
                   value={phoneInput}
@@ -266,7 +266,7 @@ export function AccountScreen() {
                   Code sent to {pendingPhone}. Check your messages.
                 </Text>
                 <TextInput
-                  style={styles.phoneInput}
+                  style={[styles.phoneInput, { backgroundColor: Colors.panel2, borderColor: Colors.border2, color: Colors.foreground }]}
                   placeholder="6-digit code"
                   placeholderTextColor={Colors.muted}
                   value={codeInput}
@@ -295,9 +295,9 @@ export function AccountScreen() {
 
       {/* ── Add credits (buyers only) ─────────────────────────── */}
       {isBuyer && (
-        <View style={styles.creditCard}>
-          <Text style={styles.sectionTitle}>💰  Add Credits</Text>
-          <Text style={[styles.creditsHint, { marginTop: Spacing.xs }]}>
+        <View style={[styles.creditCard, { backgroundColor: Colors.panel, borderColor: Colors.borderOrange }]}>
+          <Text style={[styles.sectionTitle, { color: Colors.foreground }]}>💰  Add Credits</Text>
+          <Text style={[styles.creditsHint, { color: Colors.muted, marginTop: Spacing.xs }]}>
             Select an amount to top up your balance. You'll be taken to a secure checkout page.
           </Text>
           <View style={{ marginTop: Spacing.sm, gap: Spacing.sm }}>
@@ -318,7 +318,7 @@ export function AccountScreen() {
                     >
                       {loading
                         ? <ActivityIndicator size="small" color={Colors.foreground} />
-                        : <Text style={styles.creditBtnText}>{label}</Text>
+                        : <Text style={[styles.creditBtnText, { color: Colors.accent }]}>{label}</Text>
                       }
                     </TouchableOpacity>
                   );
@@ -332,28 +332,28 @@ export function AccountScreen() {
       {/* ── Account & billing (buyers only) ───────────────────── */}
       {isBuyer && (
         <TouchableOpacity
-          style={styles.linkCard}
+          style={[styles.linkCard, { backgroundColor: Colors.panel }]}
           onPress={() => Linking.openURL(`${WEB_APP}/account`)}
           activeOpacity={0.75}
         >
           <View>
-            <Text style={styles.linkCardTitle}>🧾  Manage Billing</Text>
-            <Text style={styles.linkCardSub}>View purchases · Manage payment methods</Text>
+            <Text style={[styles.linkCardTitle, { color: Colors.foreground }]}>🧾  Manage Billing</Text>
+            <Text style={[styles.linkCardSub, { color: Colors.muted }]}>View purchases · Manage payment methods</Text>
           </View>
-          <Text style={styles.linkArrow}>›</Text>
+          <Text style={[styles.linkArrow, { color: Colors.muted }]}>›</Text>
         </TouchableOpacity>
       )}
 
       {/* ── Notifications ──────────────────────────────────────── */}
-      <View style={styles.card}>
-        <Text style={styles.sectionTitle}>Notifications</Text>
+      <View style={[styles.card, { backgroundColor: Colors.panel, borderColor: Colors.borderOrange }]}>
+        <Text style={[styles.sectionTitle, { color: Colors.foreground }]}>Notifications</Text>
         {([
           ['notify_email', '✉️  Email alerts'],
           ['notify_sms',   '📱  SMS alerts'],
           ['notify_push',  '🔔  Push notifications'],
         ] as const).map(([key, label]) => (
           <View key={key} style={styles.toggleRow}>
-            <Text style={styles.toggleLabel}>{label}</Text>
+            <Text style={[styles.toggleLabel, { color: Colors.text }]}>{label}</Text>
             <Switch
               value={profile[key] ?? false}
               onValueChange={(v) => toggleNotif(key, v)}
@@ -366,8 +366,8 @@ export function AccountScreen() {
       </View>
 
       {/* ── Appearance ─────────────────────────────────────────── */}
-      <View style={styles.card}>
-        <Text style={styles.sectionTitle}>🎨  Appearance</Text>
+      <View style={[styles.card, { backgroundColor: Colors.panel, borderColor: Colors.borderOrange }]}>
+        <Text style={[styles.sectionTitle, { color: Colors.foreground }]}>🎨  Appearance</Text>
         <View style={styles.themeRow}>
           {([
             ['dark',        '🌙 Dark'],
@@ -376,11 +376,11 @@ export function AccountScreen() {
           ] as const).map(([m, label]) => (
             <TouchableOpacity
               key={m}
-              style={[styles.themeBtn, themeMode === m && styles.themeBtnActive]}
+              style={[styles.themeBtn, { borderColor: Colors.border, backgroundColor: Colors.panel2 }, themeMode === m && styles.themeBtnActive]}
               onPress={() => setThemeMode(m)}
               activeOpacity={0.75}
             >
-              <Text style={[styles.themeBtnText, themeMode === m && styles.themeBtnTextActive]}>
+              <Text style={[styles.themeBtnText, { color: Colors.muted }, themeMode === m && styles.themeBtnTextActive]}>
                 {label}
               </Text>
             </TouchableOpacity>

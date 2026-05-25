@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { Colors, Radius, FontSize, Spacing, Shadow } from '@/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 import { Lead } from '@/lib/api';
 
 interface LeadCardProps {
@@ -29,6 +30,7 @@ function timeAgo(dateStr: string) {
 }
 
 export function LeadCard({ lead, onUnlock, unlocking, purchased, highlighted }: LeadCardProps) {
+  useTheme(); // re-render when theme changes so inline Colors.* picks up new values
   const price = lead.buyer_price_cents ?? Math.round(lead.price_cents * 1.125);
 
   function handleUnlock() {
@@ -37,13 +39,13 @@ export function LeadCard({ lead, onUnlock, unlocking, purchased, highlighted }: 
   }
 
   return (
-    <View style={[styles.card, highlighted && styles.cardHighlighted]}>
+    <View style={[styles.card, { backgroundColor: Colors.panel, borderColor: Colors.borderOrange }, highlighted && styles.cardHighlighted]}>
       {/* Header row */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <Text style={styles.category}>{lead.service_category}</Text>
-          <Text style={styles.jobType}>{lead.job_type}</Text>
-          <Text style={styles.location}>
+          <Text style={[styles.category, { color: Colors.foreground }]}>{lead.service_category}</Text>
+          <Text style={[styles.jobType, { color: Colors.textSecondary }]}>{lead.job_type}</Text>
+          <Text style={[styles.location, { color: Colors.muted }]}>
             {lead.nationwide ? '🌐 Nationwide' : `${lead.city}, ${lead.state}`}
           </Text>
           {/* Distance badge — shown when buyer location is available */}
@@ -73,16 +75,16 @@ export function LeadCard({ lead, onUnlock, unlocking, purchased, highlighted }: 
 
       {/* Summary */}
       {lead.public_summary && (
-        <View style={styles.summaryBox}>
-          <Text style={styles.summaryText} numberOfLines={3}>{lead.public_summary}</Text>
+        <View style={[styles.summaryBox, { backgroundColor: Colors.panel2 }]}>
+          <Text style={[styles.summaryText, { color: Colors.textSecondary }]} numberOfLines={3}>{lead.public_summary}</Text>
         </View>
       )}
 
       {/* Footer */}
       <View style={styles.footer}>
         <View>
-          <Text style={styles.timeAgo}>{timeAgo(lead.published_at ?? lead.created_at)}</Text>
-          <Text style={styles.price}>{formatPrice(price)}</Text>
+          <Text style={[styles.timeAgo, { color: Colors.muted }]}>{timeAgo(lead.published_at ?? lead.created_at)}</Text>
+          <Text style={[styles.price, { color: Colors.foreground }]}>{formatPrice(price)}</Text>
         </View>
 
         {!purchased && onUnlock && (
