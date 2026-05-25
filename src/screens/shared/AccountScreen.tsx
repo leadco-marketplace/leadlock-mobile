@@ -5,6 +5,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { profileApi, phoneVerifyApi } from '@/lib/api';
 import { ScreenShell } from '@/components/ScreenShell';
 import { Button } from '@/components/Button';
@@ -18,6 +19,7 @@ type PhoneStep = 'idle' | 'entering' | 'sending' | 'verifying' | 'done';
 
 export function AccountScreen() {
   const { profile, signOut, signInAsGuest: _signInAsGuest, isGuest, refreshProfile } = useAuth();
+  const { mode: themeMode, setMode: setThemeMode } = useTheme();
   const [saving,        setSaving]        = useState(false);
   const [deleting,      setDeleting]      = useState(false);
   const [buyingCredits, setBuyingCredits] = useState<number | null>(null); // amountCents in flight
@@ -363,6 +365,29 @@ export function AccountScreen() {
         ))}
       </View>
 
+      {/* ── Appearance ─────────────────────────────────────────── */}
+      <View style={styles.card}>
+        <Text style={styles.sectionTitle}>🎨  Appearance</Text>
+        <View style={styles.themeRow}>
+          {([
+            ['dark',        '🌙 Dark'],
+            ['inner-light', '🌓 Inner Light'],
+            ['light',       '☀️ Light'],
+          ] as const).map(([m, label]) => (
+            <TouchableOpacity
+              key={m}
+              style={[styles.themeBtn, themeMode === m && styles.themeBtnActive]}
+              onPress={() => setThemeMode(m)}
+              activeOpacity={0.75}
+            >
+              <Text style={[styles.themeBtnText, themeMode === m && styles.themeBtnTextActive]}>
+                {label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+
       {/* ── Sign out ────────────────────────────────────────────── */}
       <Button label="Sign Out" onPress={handleSignOut} variant="danger" fullWidth />
 
@@ -521,6 +546,34 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: Colors.accent,
     fontVariant: ['tabular-nums'],
+  },
+
+  // ── Appearance ───────────────────────────────────────────────────────────
+  themeRow: {
+    flexDirection: 'row',
+    gap: Spacing.xs,
+  },
+  themeBtn: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.panel2,
+  },
+  themeBtnActive: {
+    borderColor: Colors.orange,
+    backgroundColor: 'rgba(249,115,22,0.12)',
+  },
+  themeBtnText: {
+    fontSize: FontSize.xs,
+    fontWeight: '600',
+    color: Colors.muted,
+  },
+  themeBtnTextActive: {
+    color: Colors.orange,
+    fontWeight: '700',
   },
 
   // ── Delete account ────────────────────────────────────────────────────────

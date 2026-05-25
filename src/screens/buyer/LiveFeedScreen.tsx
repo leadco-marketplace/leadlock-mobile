@@ -9,7 +9,7 @@ import { supabase } from '@/lib/supabase';
 import { leadsApi, Lead, BuyerLocation } from '@/lib/api';
 import { LeadCard }    from '@/components/LeadCard';
 import { ScreenShell } from '@/components/ScreenShell';
-import { Colors, FontSize, Spacing, Radius } from '@/theme';
+import { Colors, FontSize, Spacing, Radius, Shadow } from '@/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import Constants from 'expo-constants';
 
@@ -77,29 +77,43 @@ export function LiveFeedScreen() {
     return () => { supabase.removeChannel(channel); };
   }, []);
 
-  // ── Highlight + scroll when arriving from a push notification ─────────────
-  // route.params?.highlightLeadId is set when the user taps a notification.
-  // We wait until leads have loaded, then scroll to the target card and
-  // apply a glowing highlight for a few seconds.
+  // ── Force reload when arriving from a push notification ──────────────────
+  // When the user taps a notification, the app navigates here with
+  // highlightLeadId. The lead might not be in the feed yet (realtime may not
+  // have fired), so we force a fresh fetch any time the param changes.
   useEffect(() => {
     const targetId = route.params?.highlightLeadId;
-    if (!targetId || leads.length === 0) return;
+    if (!targetId) return;
+    load(false, buyerLocation ?? undefined);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [route.params?.highlightLeadId]);
+
+  // ── Scroll to + highlight the target lead once feed is loaded ─────────────
+  useEffect(() => {
+    const targetId = route.params?.highlightLeadId;
+    if (!targetId || leads.length === 0 || loading) return;
 
     const idx = leads.findIndex((l) => l.id === targetId);
-    if (idx < 0) return; // lead not in current feed (may be sold/expired)
+    if (idx < 0) {
+      // Lead not found — may have just been sold or not yet available.
+      // Show a brief error so the user knows we tried.
+      setError('The lead from your notification is no longer available in the feed.');
+      const t = setTimeout(() => setError(null), 4000);
+      return () => clearTimeout(t);
+    }
 
     setHighlightedId(targetId);
 
-    // Small delay so the FlatList has finished its first render pass
+    // Give the FlatList time to finish its first layout pass
     const scrollTimer = setTimeout(() => {
-      flatListRef.current?.scrollToIndex({ index: idx, animated: true, viewPosition: 0.25 });
-    }, 350);
+      flatListRef.current?.scrollToIndex({ index: idx, animated: true, viewPosition: 0.3 });
+    }, 400);
 
-    // Auto-clear the highlight after 4 seconds
-    const clearTimer = setTimeout(() => setHighlightedId(null), 4500);
+    // Auto-clear the highlight after 5 seconds
+    const clearTimer = setTimeout(() => setHighlightedId(null), 5000);
 
     return () => { clearTimeout(scrollTimer); clearTimeout(clearTimer); };
-  }, [leads, route.params?.highlightLeadId]);
+  }, [leads, loading, route.params?.highlightLeadId]);
 
   // ── Unlock handler ─────────────────────────────────────────────────────────
   async function handleUnlock(lead: Lead) {
@@ -184,6 +198,17 @@ export function LiveFeedScreen() {
     );
   }
 
+  // ── Stats derived from current feed ───────────────────────────────────────
+  const availableCount = leads.filter(l => l.status === 'available').length;
+  const avgPrice = leads.length > 0
+    ? leads.reduce((sum, l) => sum + (l.buyer_price_cents ?? Math.round(l.price_cents * 1.125)), 0) / leads.length
+    : 0;
+  const newestLead = leads.length > 0
+    ? leads.reduce((a, b) =>
+        new Date(a.published_at ?? a.created_at) > new Date(b.published_at ?? b.created_at) ? a : b
+      )
+    : null;
+
   return (
     <ScreenShell
       title="Live Feed"
@@ -196,6 +221,29 @@ export function LiveFeedScreen() {
         </View>
       }
     >
+      {/* ── Stats bar ──────────────────────────────────────────────── */}
+      {leads.length > 0 && (
+        <View style={styles.statsRow}>
+          <View style={styles.statCard}>
+            <Text style={styles.statLabel}>AVAILABLE</Text>
+            <Text style={styles.statValue}>{availableCount}</Text>
+            <Text style={styles.statSub}>leads live</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={styles.statLabel}>AVG PRICE</Text>
+            <Text style={styles.statValue}>${Math.round(avgPrice / 100)}</Text>
+            <Text style={styles.statSub}>in your areas</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={styles.statLabel}>NEWEST</Text>
+            <Text numberOfLines={1} style={[styles.statValue, { fontSize: FontSize.sm }]}>
+              {newestLead?.service_category ?? '—'}
+            </Text>
+            <Text style={styles.statSub}>just posted</Text>
+          </View>
+        </View>
+      )}
+
       {/* ── Guest banner ───────────────────────────────────────────── */}
       {isGuest && (
         <TouchableOpacity
@@ -254,6 +302,40 @@ export function LiveFeedScreen() {
 const styles = StyleSheet.create({
   centered:   { flex: 1, alignItems: 'center', justifyContent: 'center' },
   liveDot:    { flexDirection: 'row', alignItems: 'center', gap: 5 },
+
+  // Stats bar
+  statsRow: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+    marginBottom: Spacing.xs,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: Colors.panel,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: Colors.borderOrange,
+    padding: Spacing.sm + 2,
+    gap: 2,
+    alignItems: 'center',
+  },
+  statLabel: {
+    fontSize: FontSize.xs - 2,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+    color: Colors.orange,
+    textTransform: 'uppercase',
+  },
+  statValue: {
+    fontSize: FontSize.lg,
+    fontWeight: '700',
+    color: Colors.foreground,
+    fontVariant: ['tabular-nums'],
+  },
+  statSub: {
+    fontSize: FontSize.xs - 2,
+    color: Colors.muted,
+  },
   dot: {
     width: 7, height: 7, borderRadius: 99,
     backgroundColor: Colors.accent2,

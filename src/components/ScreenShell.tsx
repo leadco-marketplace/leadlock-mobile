@@ -1,21 +1,40 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, RefreshControl, ViewStyle, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, RefreshControl, ViewStyle, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors, FontSize, Spacing } from '@/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 
-// Diagonal line pattern (base64 PNG, 16×16 tile matching web app design)
-const PATTERN_B64 = 'iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAS0lEQVR42mP4WSzGC8IM5AKYAeQYgqKHVEOwqifWELzqCBlClCW4FJHkTXTFZAU0cgyRHdVU0UyR86kSgFSJQqokIqokYwz1lOZGAIu0XYVVo0ceAAAAAElFTkSuQmCC';
+const { width: SW, height: SH } = Dimensions.get('screen');
+const SPACING = 20; // pixels between diagonal lines
+// Enough lines to cover screen diagonally even on largest devices
+const LINE_COUNT = Math.ceil((SW + SH) / SPACING) + 4;
 
+/**
+ * Diagonal line pattern rendered with pure View elements.
+ * Works on all platforms without react-native-svg or image tiling.
+ * Each line is a 1px-wide View rotated 45°, extending long enough
+ * to span the full screen at an angle.
+ */
 function DiagonalPattern() {
+  const lineLength = Math.sqrt(SW * SW + SH * SH) + 100;
   return (
-    <Image
-      source={{ uri: `data:image/png;base64,${PATTERN_B64}` }}
-      style={StyleSheet.absoluteFill}
-      resizeMode="repeat"
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore — pointerEvents on Image is valid in RN
-      pointerEvents="none"
-    />
+    <View style={[StyleSheet.absoluteFill, { overflow: 'hidden' }]} pointerEvents="none">
+      {Array.from({ length: LINE_COUNT }, (_, i) => (
+        <View
+          key={i}
+          style={{
+            position: 'absolute',
+            width: 1,
+            height: lineLength,
+            backgroundColor: Colors.patternLine,
+            top: -(lineLength / 2),
+            left: i * SPACING - SH,
+            transform: [{ rotate: '45deg' }],
+            transformOrigin: 'top center',
+          }}
+        />
+      ))}
+    </View>
   );
 }
 
@@ -40,6 +59,10 @@ export function ScreenShell({
   contentStyle,
   rightElement,
 }: ScreenShellProps) {
+  // Calling useTheme() ensures this component re-renders when theme changes,
+  // which lets the inline backgroundColor below pick up the updated Colors.bg.
+  useTheme();
+
   const content = (
     <View style={[styles.content, contentStyle]}>
       {(title || subtitle) && (
@@ -57,7 +80,7 @@ export function ScreenShell({
 
   if (!scrollable) {
     return (
-      <SafeAreaView style={styles.safe} edges={['top']}>
+      <SafeAreaView style={[styles.safe, { backgroundColor: Colors.bg }]} edges={['top']}>
         <DiagonalPattern />
         {content}
       </SafeAreaView>
@@ -65,7 +88,7 @@ export function ScreenShell({
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: Colors.bg }]} edges={['top']}>
       <DiagonalPattern />
       <ScrollView
         style={styles.scroll}
