@@ -1,7 +1,23 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, RefreshControl, ViewStyle } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, RefreshControl, ViewStyle, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors, FontSize, Spacing } from '@/theme';
+
+// Diagonal line pattern (base64 PNG, 16×16 tile matching web app design)
+const PATTERN_B64 = 'iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAS0lEQVR42mP4WSzGC8IM5AKYAeQYgqKHVEOwqifWELzqCBlClCW4FJHkTXTFZAU0cgyRHdVU0UyR86kSgFSJQqokIqokYwz1lOZGAIu0XYVVo0ceAAAAAElFTkSuQmCC';
+
+function DiagonalPattern() {
+  return (
+    <Image
+      source={{ uri: `data:image/png;base64,${PATTERN_B64}` }}
+      style={StyleSheet.absoluteFill}
+      resizeMode="repeat"
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore — pointerEvents on Image is valid in RN
+      pointerEvents="none"
+    />
+  );
+}
 
 interface ScreenShellProps {
   title?: string;
@@ -42,6 +58,7 @@ export function ScreenShell({
   if (!scrollable) {
     return (
       <SafeAreaView style={styles.safe} edges={['top']}>
+        <DiagonalPattern />
         {content}
       </SafeAreaView>
     );
@@ -49,6 +66,7 @@ export function ScreenShell({
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
+      <DiagonalPattern />
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={{ paddingBottom: Spacing.xxl }}
