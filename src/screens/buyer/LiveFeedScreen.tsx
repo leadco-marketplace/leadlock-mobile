@@ -218,6 +218,7 @@ export function LiveFeedScreen() {
     : null;
 
   return (
+    <>
     <ScreenShell
       title="Live Feed"
       subtitle="New leads in real time"
@@ -316,6 +317,7 @@ export function LiveFeedScreen() {
         proceedUnlock(lead);
       }}
     />
+    </>
   );
 }
 

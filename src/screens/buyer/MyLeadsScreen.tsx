@@ -296,7 +296,7 @@ export function MyLeadsScreen() {
             <Text style={{ fontSize: FontSize.md, fontWeight: '600', color: Colors.foreground, textAlign: 'center' }}>
               No unlocked leads yet
             </Text>
-            <Text style={{ fontSize: FontSize.sm, color: Colors.muted }}
+            <Text style={{ fontSize: FontSize.sm, color: Colors.muted }}>
               Go to Live Feed to unlock your first lead.
             </Text>
           </View>
