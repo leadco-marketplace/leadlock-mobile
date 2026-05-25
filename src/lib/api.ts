@@ -67,6 +67,34 @@ export const leadsApi = {
   unlock: (id: string)                 => request<{ success: boolean }>(`/api/leads/${id}/unlock`, { method: 'POST' }),
 };
 
+// ── Lead Rating ───────────────────────────────────────────────────────────────
+export type RatingThumb = 'up' | 'down';
+
+export const THUMBS_DOWN_REASONS = [
+  { code: 'disconnected',    label: 'Number disconnected or out of service' },
+  { code: 'no_answer',       label: "Customer didn't answer after multiple attempts" },
+  { code: 'never_requested', label: 'Customer said they never requested a quote' },
+  { code: 'already_hired',   label: 'Customer already hired someone else' },
+  { code: 'wrong_service',   label: 'Wrong service — lead was mislabeled' },
+  { code: 'duplicate',       label: 'Duplicate — I already have this customer' },
+  { code: 'wrong_location',  label: 'Address or location was wrong' },
+  { code: 'incomplete_info', label: 'Lead info was incomplete or fake-looking' },
+] as const;
+
+export const THUMBS_UP_REASONS = [
+  { code: 'booked',     label: 'Booked the job' },
+  { code: 'interested', label: 'Customer answered and was genuinely interested' },
+  { code: 'great_lead', label: 'Great lead — will buy from this provider again' },
+] as const;
+
+export const rateApi = {
+  submit: (data: { leadId: string; thumb: RatingThumb; reasonCode: string; notes?: string }) =>
+    request<{ ok: boolean }>('/api/leads/rate', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+};
+
 // ── Provider leads ─────────────────────────────────────────────────────────
 export type ProviderLead = {
   id: string;

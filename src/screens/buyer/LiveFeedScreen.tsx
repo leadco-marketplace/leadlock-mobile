@@ -116,7 +116,21 @@ export function LiveFeedScreen() {
   }, [leads, loading, route.params?.highlightLeadId]);
 
   // ── Unlock handler ─────────────────────────────────────────────────────────
-  async function handleUnlock(lead: Lead) {
+  function formatPrice(cents: number) { return `$${(cents / 100).toFixed(2)}`; }
+
+  function handleUnlock(lead: Lead) {
+    const price = lead.buyer_price_cents ?? Math.round(lead.price_cents * 1.125);
+    Alert.alert(
+      '🔓 Unlock This Lead',
+      `${lead.service_category}${lead.job_type ? `\n${lead.job_type}` : ''}\n\nCost: ${formatPrice(price)}\n\nThis will be charged to your credit balance.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: `Unlock for ${formatPrice(price)}`, onPress: () => proceedUnlock(lead) },
+      ],
+    );
+  }
+
+  async function proceedUnlock(lead: Lead) {
     setUnlocking(lead.id);
     try {
       await leadsApi.unlock(lead.id);

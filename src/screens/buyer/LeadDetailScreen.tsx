@@ -4,7 +4,7 @@ import {
   TouchableOpacity, ScrollView,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { leadsApi, PurchasedLead } from '@/lib/api';
+import { leadsApi, rateApi, PurchasedLead, RatingThumb, THUMBS_UP_REASONS, THUMBS_DOWN_REASONS } from '@/lib/api';
 import { ScreenShell } from '@/components/ScreenShell';
 import { Colors, FontSize, Spacing, Radius, Shadow } from '@/theme';
 import Constants from 'expo-constants';
@@ -197,6 +197,208 @@ const callStyles = StyleSheet.create({
   retryText: { fontSize: FontSize.xs, color: Colors.accent, fontWeight: '600' },
 });
 
+// ── Rating panel ───────────────────────────────────────────────────────────
+
+function RatingPanel({ leadId }: { leadId: string }) {
+  const [thumb,      setThumb]      = useState<RatingThumb | null>(null);
+  const [reasonCode, setReasonCode] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted,  setSubmitted]  = useState(false);
+  const [error,      setError]      = useState<string | null>(null);
+
+  const reasons = thumb === 'up' ? THUMBS_UP_REASONS : thumb === 'down' ? THUMBS_DOWN_REASONS : [];
+
+  async function submitRating() {
+    if (!thumb || !reasonCode) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      await rateApi.submit({ leadId, thumb, reasonCode });
+      setSubmitted(true);
+    } catch (e: any) {
+      if (e.message === 'already_rated') {
+        setSubmitted(true);
+      } else {
+        setError(e.message ?? 'Could not submit rating. Try again.');
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  if (submitted) {
+    return (
+      <View style={ratingStyles.box}>
+        <Text style={ratingStyles.title}>⭐  Lead Rated</Text>
+        <Text style={ratingStyles.submitted}>Thanks for your feedback!</Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={ratingStyles.box}>
+      <Text style={ratingStyles.title}>Rate This Lead</Text>
+      <Text style={ratingStyles.subtitle}>How did it go?</Text>
+
+      {/* Thumbs row */}
+      <View style={ratingStyles.thumbRow}>
+        <TouchableOpacity
+          style={[ratingStyles.thumbBtn, thumb === 'up' && ratingStyles.thumbBtnActiveUp]}
+          onPress={() => { setThumb('up'); setReasonCode(null); }}
+          activeOpacity={0.8}
+        >
+          <Text style={ratingStyles.thumbEmoji}>👍</Text>
+          <Text style={[ratingStyles.thumbLabel, thumb === 'up' && ratingStyles.thumbLabelActive]}>Good Lead</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[ratingStyles.thumbBtn, thumb === 'down' && ratingStyles.thumbBtnActiveDown]}
+          onPress={() => { setThumb('down'); setReasonCode(null); }}
+          activeOpacity={0.8}
+        >
+          <Text style={ratingStyles.thumbEmoji}>👎</Text>
+          <Text style={[ratingStyles.thumbLabel, thumb === 'down' && ratingStyles.thumbLabelActiveDown]}>Issue</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Reason codes */}
+      {thumb && (
+        <View style={ratingStyles.reasonsWrap}>
+          <Text style={ratingStyles.reasonTitle}>Select a reason:</Text>
+          {(reasons as readonly { code: string; label: string }[]).map((r) => (
+            <TouchableOpacity
+              key={r.code}
+              style={[ratingStyles.reasonRow, reasonCode === r.code && ratingStyles.reasonRowActive]}
+              onPress={() => setReasonCode(r.code)}
+              activeOpacity={0.75}
+            >
+              <View style={[ratingStyles.radioCircle, reasonCode === r.code && ratingStyles.radioCircleActive]} />
+              <Text style={[ratingStyles.reasonLabel, reasonCode === r.code && ratingStyles.reasonLabelActive]}>
+                {r.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
+
+      {error && <Text style={ratingStyles.errorText}>{error}</Text>}
+
+      {/* Submit */}
+      {thumb && reasonCode && (
+        <TouchableOpacity
+          style={[ratingStyles.submitBtn, submitting && { opacity: 0.6 }]}
+          onPress={submitRating}
+          disabled={submitting}
+          activeOpacity={0.8}
+        >
+          <Text style={ratingStyles.submitBtnText}>
+            {submitting ? 'Submitting…' : 'Submit Rating'}
+          </Text>
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+}
+
+const ratingStyles = StyleSheet.create({
+  box: {
+    backgroundColor: Colors.panel,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    padding: Spacing.md,
+    gap: Spacing.sm,
+    ...Shadow.card,
+  },
+  title: {
+    fontSize: FontSize.sm,
+    fontWeight: '700',
+    color: Colors.foreground,
+    letterSpacing: 0.3,
+  },
+  subtitle: {
+    fontSize: FontSize.xs,
+    color: Colors.muted,
+    marginTop: -4,
+  },
+  submitted: {
+    fontSize: FontSize.sm,
+    color: Colors.accent,
+    fontWeight: '600',
+  },
+  thumbRow: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+  },
+  thumbBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: Spacing.sm,
+    borderRadius: Radius.md,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    backgroundColor: Colors.panel2,
+  },
+  thumbBtnActiveUp: {
+    borderColor: '#4ade80',
+    backgroundColor: 'rgba(74,222,128,0.10)',
+  },
+  thumbBtnActiveDown: {
+    borderColor: Colors.danger,
+    backgroundColor: 'rgba(248,113,113,0.10)',
+  },
+  thumbEmoji: { fontSize: 20 },
+  thumbLabel: { fontSize: FontSize.sm, fontWeight: '600', color: Colors.muted },
+  thumbLabelActive: { color: '#4ade80' },
+  thumbLabelActiveDown: { color: Colors.danger },
+  reasonsWrap: { gap: 6 },
+  reasonTitle: {
+    fontSize: FontSize.xs,
+    fontWeight: '700',
+    color: Colors.muted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    marginBottom: 2,
+  },
+  reasonRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: Radius.sm,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  reasonRowActive: {
+    borderColor: Colors.accent,
+    backgroundColor: 'rgba(129,140,248,0.10)',
+  },
+  radioCircle: {
+    width: 16, height: 16,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: Colors.muted,
+  },
+  radioCircleActive: {
+    borderColor: Colors.accent,
+    backgroundColor: Colors.accent,
+  },
+  reasonLabel: { fontSize: FontSize.xs, color: Colors.textSecondary, flex: 1, lineHeight: 18 },
+  reasonLabelActive: { color: Colors.foreground, fontWeight: '600' },
+  errorText: { fontSize: FontSize.xs, color: Colors.danger },
+  submitBtn: {
+    backgroundColor: Colors.accent,
+    borderRadius: Radius.md,
+    paddingVertical: Spacing.sm + 2,
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  submitBtnText: { fontSize: FontSize.sm, fontWeight: '700', color: '#fff' },
+});
+
 // ── Main screen ────────────────────────────────────────────────────────────
 
 export function LeadDetailScreen() {
@@ -321,6 +523,9 @@ export function LeadDetailScreen() {
             <Text style={styles.description}>{lead.private_notes}</Text>
           </View>
         )}
+
+        {/* ── Rate this lead ───────────────────────────── */}
+        <RatingPanel leadId={lead.id} />
       </ScrollView>
     </ScreenShell>
   );
