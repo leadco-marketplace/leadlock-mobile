@@ -470,9 +470,16 @@ export function LeadDetailScreen() {
     );
   }
 
-  // Parse metadata fields
+  // Internal system fields that should never be shown to buyers
+  const INTERNAL_META_KEYS = new Set([
+    'area_id', 'area_ids', 'decay_enabled', 'nationwide',
+  ]);
+
+  // Parse metadata fields — skip nulls, blanks, and internal keys
   const metaEntries = lead.metadata
-    ? Object.entries(lead.metadata).filter(([, v]) => v !== null && v !== '' && v !== undefined)
+    ? Object.entries(lead.metadata).filter(
+        ([k, v]) => v !== null && v !== '' && v !== undefined && !INTERNAL_META_KEYS.has(k)
+      )
     : [];
 
   const price = lead.buyer_price_cents ?? Math.round(lead.price_cents * 1.125);
