@@ -1,9 +1,9 @@
 /**
  * LoginScreen — Dark Jewel animated background
  *
- * Pure jewel-tone gradient tiles (no icons, no text) scroll upward
- * continuously. Each tile is a LinearGradient in a rich gem colour —
- * amethyst, sapphire, topaz, emerald, ruby, aquamarine, amber, rose.
+ * Gem-tone gradient tiles scroll upward continuously. Each tile displays
+ * a lead category name (bold, white) spanning all industries — home services,
+ * insurance, legal, financial, and more.
  *
  * Seamless loop: duplicate the tile array so the second set starts exactly
  * where the first ends. Animate translateY: 0 → -SET_H, loop resets to 0.
@@ -33,14 +33,13 @@ import type { AuthStackParamList } from '@/navigation/AuthNavigator';
 
 // ── Grid constants ─────────────────────────────────────────────────────────
 const SW   = Dimensions.get('window').width;
-const GAP  = 4;   // black gap between tiles — matches the concept mockup
+const GAP  = 4;
 const COL  = 3;
 const TILE = Math.floor((SW - GAP * (COL - 1)) / COL);
 const ROWS = 8;
-const SET_H = ROWS * (TILE + GAP);  // height of one tile set (incl. trailing gap)
+const SET_H = ROWS * (TILE + GAP);
 
 // ── Jewel-tone gem colours ─────────────────────────────────────────────────
-// Each entry: [highlight, base, shadow] — diagonal gradient imitates gem facets.
 const GEMS: [string, string, string][] = [
   ['#d490ff', '#8030d0', '#2a0060'],  // amethyst
   ['#60a0ff', '#1e56e0', '#040e58'],  // sapphire
@@ -52,12 +51,47 @@ const GEMS: [string, string, string][] = [
   ['#ff70d8', '#d01898', '#5a0048'],  // rose
 ];
 
-// 24 tiles = 8 rows × 3 cols, cycling through the 8 gem colours
-const TILE_GEMS: [string, string, string][] = Array.from(
-  { length: 24 },
-  (_, i) => GEMS[i % GEMS.length]
-);
-const ALL_GEMS = [...TILE_GEMS, ...TILE_GEMS]; // duplicated for seamless loop
+// ── 24 categories spanning all industries ─────────────────────────────────
+const CATEGORIES = [
+  'Health Insurance',
+  'HVAC',
+  'Business Loans',
+  'Roofing',
+  'Personal Injury',
+  'Life Insurance',
+  'Garage Door',
+  'Solar Panels',
+  'Plumbing',
+  'Water Damage',
+  'Auto Insurance',
+  'Landscaping',
+  'Mortgage',
+  'Electrical',
+  'Windows & Doors',
+  'Pest Control',
+  'Moving Services',
+  'Debt Settlement',
+  'Security Systems',
+  'General Contractor',
+  'Tree Service',
+  'Home Insurance',
+  'Flooring',
+  'Concrete',
+];
+
+// Pair each category with a gem colour
+const TILE_DATA = CATEGORIES.map((category, i) => ({
+  colors: GEMS[i % GEMS.length] as [string, string, string],
+  category,
+}));
+const ALL_TILES = [...TILE_DATA, ...TILE_DATA]; // duplicated for seamless loop
+
+// ── Grid logo colours (3×3) ───────────────────────────────────────────────
+const GRID_CELLS = [
+  '#1e3a8a', '#3b82f6', '#818cf8',
+  '#6366f1', '#f97316', '#f97316',
+  '#7c3aed', '#ea580c', '#c2410c',
+];
 
 // ── Component ──────────────────────────────────────────────────────────────
 type Props = { navigation: NativeStackNavigationProp<AuthStackParamList, 'Login'> };
@@ -75,7 +109,7 @@ export function LoginScreen({ navigation }: Props) {
     const anim = Animated.loop(
       Animated.timing(scrollY, {
         toValue:         -SET_H,
-        duration:        20000,
+        duration:        50000,   // slow, cinematic scroll
         easing:          Easing.linear,
         useNativeDriver: true,
       })
@@ -102,14 +136,16 @@ export function LoginScreen({ navigation }: Props) {
         style={[s.tileWrapper, { transform: [{ translateY: scrollY }] }]}
       >
         <View style={s.tileGrid}>
-          {ALL_GEMS.map((colors, i) => (
+          {ALL_TILES.map((tile, i) => (
             <LinearGradient
               key={i}
-              colors={colors}
+              colors={tile.colors}
               start={{ x: 0.12, y: 0.12 }}
               end={{ x: 0.92, y: 0.92 }}
               style={s.tile}
-            />
+            >
+              <Text style={s.tileText}>{tile.category}</Text>
+            </LinearGradient>
           ))}
         </View>
       </Animated.View>
@@ -121,8 +157,7 @@ export function LoginScreen({ navigation }: Props) {
         style={s.topFade}
       />
 
-      {/* ── Bottom fade: tiles → solid dark behind the login section ──── */}
-      {/* Two-layer gradient for a smooth, deep fade */}
+      {/* ── Bottom fade ───────────────────────────────────────────────── */}
       <LinearGradient
         pointerEvents="none"
         colors={['transparent', 'rgba(4,4,14,0.4)', 'rgba(4,4,14,0.85)', '#04040e']}
@@ -130,29 +165,30 @@ export function LoginScreen({ navigation }: Props) {
         style={s.bottomFade}
       />
 
-      {/* ── Login UI ─────────────────────────────────────────────────── */}
+      {/* ── Login UI — centred on screen ─────────────────────────────── */}
       <KeyboardAvoidingView
         style={s.kav}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <View style={[s.loginArea, { paddingBottom: Math.max(insets.bottom + 8, 24) }]}>
 
-          {/* LeadCo logo — sits in the solid-dark zone above the card */}
-          <View style={s.logoRow}>
-            <View style={s.logoCircle}>
-              <Text style={s.logoBolt}>⚡</Text>
-            </View>
-            <View>
+          {/* Glass login card */}
+          <View style={s.card}>
+
+            {/* ── Grid logo inside card ── */}
+            <View style={s.logoWrap}>
+              <View style={s.gridLogo}>
+                {GRID_CELLS.map((color, i) => (
+                  <View key={i} style={[s.gridCell, { backgroundColor: color }]} />
+                ))}
+              </View>
               <Text style={s.logoWordmark}>
                 <Text style={{ color: '#4E6BDE' }}>Lead</Text>
                 <Text style={{ color: '#f97316' }}>Co</Text>
               </Text>
               <Text style={s.logoSub}>MARKETPLACE</Text>
             </View>
-          </View>
 
-          {/* Glass login card */}
-          <View style={s.card}>
             <View>
               <Text style={s.heading}>Welcome back</Text>
               <Text style={s.subheading}>Sign in to your account</Text>
@@ -227,12 +263,26 @@ const s = StyleSheet.create({
     flexWrap:      'wrap',
     gap:           GAP,
     width:         SW,
-    backgroundColor: '#04040e', // shows as gap colour between tiles
+    backgroundColor: '#04040e',
   },
   tile: {
-    width:        TILE,
-    height:       TILE,
-    borderRadius: 10,
+    width:          TILE,
+    height:         TILE,
+    borderRadius:   10,
+    alignItems:     'center',
+    justifyContent: 'center',
+    padding:        10,
+  },
+  tileText: {
+    color:         'rgba(255,255,255,0.93)',
+    fontSize:      13,
+    fontWeight:    '800',
+    textAlign:     'center',
+    lineHeight:    17,
+    letterSpacing: 0.1,
+    textShadowColor:  'rgba(0,0,0,0.45)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
 
   // Gradient overlays
@@ -248,45 +298,41 @@ const s = StyleSheet.create({
     bottom:   0,
     left:     0,
     right:    0,
-    height:   460,  // tall enough to cover logo + card + footer
+    height:   520,
   },
 
-  // Login area
+  // Login area — centred
   kav: {
     flex:           1,
-    justifyContent: 'flex-end',
+    justifyContent: 'center',
   },
   loginArea: {
     paddingHorizontal: Spacing.lg,
     gap:               14,
   },
 
-  // Logo
-  logoRow: {
-    flexDirection: 'row',
+  // Grid logo
+  logoWrap: {
     alignItems:    'center',
-    gap:           10,
-    paddingLeft:   2,
+    gap:           6,
+    paddingBottom: 2,
   },
-  logoCircle: {
-    width:           40,
-    height:          40,
-    borderRadius:    20,
-    borderWidth:     2,
-    borderColor:     '#4E6BDE',
-    backgroundColor: 'rgba(78,107,222,0.20)',
-    alignItems:      'center',
-    justifyContent:  'center',
+  gridLogo: {
+    flexDirection: 'row',
+    flexWrap:      'wrap',
+    width:         50,   // 3 × 14px + 2 × 4px gap
+    gap:           4,
   },
-  logoBolt: {
-    fontSize:   18,
-    lineHeight: 22,
+  gridCell: {
+    width:        14,
+    height:       14,
+    borderRadius: 3,
   },
   logoWordmark: {
-    fontSize:      28,
+    fontSize:      26,
     fontWeight:    '800',
     letterSpacing: -0.5,
-    lineHeight:    30,
+    lineHeight:    28,
   },
   logoSub: {
     fontSize:      8,
