@@ -118,6 +118,27 @@ function AdminLeadsScreen() {
 
 /** The four-tab admin bottom bar */
 function AdminTabs() {
+  const [pendingCount, setPendingCount] = useState<number>(0);
+
+  // Poll for pending review count every 30 seconds
+  useEffect(() => {
+    let cancelled = false;
+
+    async function fetchPending() {
+      try {
+        const data = await adminApi.getOverview() as Record<string, unknown>;
+        if (!cancelled) {
+          const count = typeof data?.pendingLeads === 'number' ? data.pendingLeads : 0;
+          setPendingCount(count);
+        }
+      } catch { /* silently ignore */ }
+    }
+
+    fetchPending();
+    const interval = setInterval(fetchPending, 30_000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, []);
+
   return (
     <Tab.Navigator
       screenOptions={{
@@ -148,7 +169,11 @@ function AdminTabs() {
       <Tab.Screen
         name="Review"
         component={AdminLeadsScreen}
-        options={{ tabBarIcon: ({ focused }) => <TabIcon emoji="🔍" focused={focused} /> }}
+        options={{
+          tabBarIcon: ({ focused }) => <TabIcon emoji="🔍" focused={focused} />,
+          tabBarBadge: pendingCount > 0 ? pendingCount : undefined,
+          tabBarBadgeStyle: { backgroundColor: '#ef4444', fontSize: 10, minWidth: 18, height: 18 },
+        }}
       />
       <Tab.Screen
         name="LiveFeed"
