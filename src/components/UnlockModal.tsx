@@ -275,11 +275,11 @@ const styles = StyleSheet.create({
     flex: 2,
     paddingVertical: Spacing.sm + 4,
     borderRadius: Radius.lg,
-    backgroundColor: '#f97316',
+    backgroundColor: '#1d4ed8',
     alignItems: 'center',
   },
   payBtnDisabled: {
-    backgroundColor: 'rgba(249,115,22,0.35)',
+    backgroundColor: 'rgba(59,130,246,0.35)',
   },
   payBtnText: {
     fontSize: FontSize.base,

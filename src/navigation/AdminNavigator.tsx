@@ -1,13 +1,17 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Text, View, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
 import { useEffect, useState } from 'react';
 import { adminApi } from '@/lib/api';
 import { ScreenShell } from '@/components/ScreenShell';
 import { AccountScreen } from '@/screens/shared/AccountScreen';
+import { LiveFeedScreen }   from '@/screens/buyer/LiveFeedScreen';
+import { LeadDetailScreen } from '@/screens/buyer/LeadDetailScreen';
 import { Colors, FontSize, Spacing, Radius, Shadow } from '@/theme';
 
-const Tab = createBottomTabNavigator();
+const Tab   = createBottomTabNavigator();
+const Stack = createNativeStackNavigator();
 
 function TabIcon({ emoji, focused }: { emoji: string; focused: boolean }) {
   return <Text style={{ fontSize: 22, opacity: focused ? 1 : 0.5 }}>{emoji}</Text>;
@@ -112,21 +116,28 @@ function AdminLeadsScreen() {
   );
 }
 
-export function AdminNavigator() {
+/** The four-tab admin bottom bar */
+function AdminTabs() {
   return (
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
           backgroundColor:  Colors.panel,
-          borderTopColor:   'rgba(249,115,22,0.28)',
-          borderTopWidth:   1,
+          borderTopColor:   'rgba(59,130,246,0.35)',
+          borderTopWidth:   1.5,
           paddingBottom:    8,
-          height:           62,
+          paddingTop:       4,
+          height:           66,
+          shadowColor:      '#000',
+          shadowOffset:     { width: 0, height: -4 },
+          shadowOpacity:    0.25,
+          shadowRadius:     12,
+          elevation:        12,
         },
         tabBarActiveTintColor:   Colors.orange,
         tabBarInactiveTintColor: Colors.tabInactive,
-        tabBarLabelStyle: { fontSize: FontSize.xs - 1, fontWeight: '600', marginTop: -2 },
+        tabBarLabelStyle: { fontSize: FontSize.xs, fontWeight: '700', marginTop: -2, letterSpacing: 0.2 },
       }}
     >
       <Tab.Screen
@@ -140,11 +151,30 @@ export function AdminNavigator() {
         options={{ tabBarIcon: ({ focused }) => <TabIcon emoji="🔍" focused={focused} /> }}
       />
       <Tab.Screen
+        name="LiveFeed"
+        component={LiveFeedScreen}
+        options={{ title: 'Feed', tabBarIcon: ({ focused }) => <TabIcon emoji="⚡" focused={focused} /> }}
+      />
+      <Tab.Screen
         name="AdminAccount"
         component={AccountScreen}
         options={{ title: 'Account', tabBarIcon: ({ focused }) => <TabIcon emoji="👤" focused={focused} /> }}
       />
     </Tab.Navigator>
+  );
+}
+
+/**
+ * AdminNavigator = Stack wrapping the tab bar + LeadDetail.
+ * The same pattern as BuyerNavigator — lets the detail screen push on top
+ * of the tabs so admin can view and unlock leads from the Feed tab.
+ */
+export function AdminNavigator() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="AdminTabs"  component={AdminTabs} />
+      <Stack.Screen name="LeadDetail" component={LeadDetailScreen} />
+    </Stack.Navigator>
   );
 }
 
