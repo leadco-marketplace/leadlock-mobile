@@ -334,7 +334,7 @@ const s = StyleSheet.create({
   // Footer
   footer: { flexDirection: 'row', justifyContent: 'center', flexWrap: 'wrap' },
   footerText:   { fontSize: FontSize.sm, color: '#607898' },
-  footerSignup: { fontSize: FontSize.sm, color: '#f97316', fontWeight: '600' },
+  footerSignup: { fontSize: FontSize.sm, color: '#60a5fa', fontWeight: '600' },
   guestBtn:     { alignItems: 'center', paddingVertical: 6 },
   guestText:    {
     fontSize:           FontSize.sm,

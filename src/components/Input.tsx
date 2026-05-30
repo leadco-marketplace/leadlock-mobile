@@ -51,7 +51,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
   },
   inputNormal: {
-    borderColor: 'rgba(249,115,22,0.25)',
+    borderColor: 'rgba(59,130,246,0.28)',
   },
   inputError: {
     borderColor: Colors.danger,

@@ -90,7 +90,7 @@ export function LeadCard({ lead, onUnlock, unlocking, purchased, highlighted }: 
         {!purchased && onUnlock && (
           <TouchableOpacity onPress={handleUnlock} disabled={unlocking} activeOpacity={0.85}>
             <LinearGradient
-              colors={['#f97316', '#fbbf24']}
+              colors={['#1d4ed8', '#3b82f6']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={[styles.unlockBtn, unlocking && { opacity: 0.6 }]}
@@ -204,7 +204,7 @@ const styles = StyleSheet.create({
     borderRadius:    Radius.md,
     padding:         Spacing.sm + 2,
     borderWidth:     1,
-    borderColor:     'rgba(249,115,22,0.15)',
+    borderColor:     'rgba(59,130,246,0.18)',
   },
   summaryText: {
     fontSize:    FontSize.xs,
@@ -234,7 +234,7 @@ const styles = StyleSheet.create({
   unlockText: {
     fontSize:   FontSize.sm,
     fontWeight: '700',
-    color:      Colors.bg,
+    color:      '#ffffff',
   },
   purchasedBadge: {
     paddingHorizontal: 12,

@@ -31,7 +31,7 @@ export function ProviderNavigator() {
         headerShown: false,
         tabBarStyle: {
           backgroundColor: Colors.panel,
-          borderTopColor:  'rgba(249,115,22,0.28)',
+          borderTopColor:  'rgba(59,130,246,0.30)',
           borderTopWidth:  1,
           paddingBottom:   8,
           height:          62,

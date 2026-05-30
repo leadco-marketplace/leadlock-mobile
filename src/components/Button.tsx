@@ -43,13 +43,13 @@ export function Button({
         style={[fullWidth && { width: '100%' }, isDisabled && { opacity: 0.45 }]}
       >
         <LinearGradient
-          colors={['#f97316', '#fbbf24']}
+          colors={['#1d4ed8', '#3b82f6']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
-          style={[styles.base, Shadow.orange, fullWidth && { width: '100%' }, style]}
+          style={[styles.base, Shadow.sapphire, fullWidth && { width: '100%' }, style]}
         >
           {loading
-            ? <ActivityIndicator color={Colors.bg} size="small" />
+            ? <ActivityIndicator color="#ffffff" size="small" />
             : <Text style={[styles.primaryText, textStyle]}>{label}</Text>
           }
         </LinearGradient>
@@ -66,13 +66,13 @@ export function Button({
         style={[fullWidth && { width: '100%' }, isDisabled && { opacity: 0.45 }]}
       >
         <LinearGradient
-          colors={['#818cf8', '#22d3ee']}
+          colors={['#3b82f6', '#22d3ee']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
           style={[styles.base, fullWidth && { width: '100%' }, style]}
         >
           {loading
-            ? <ActivityIndicator color={Colors.bg} size="small" />
+            ? <ActivityIndicator color="#ffffff" size="small" />
             : <Text style={[styles.primaryText, textStyle]}>{label}</Text>
           }
         </LinearGradient>
@@ -130,6 +130,6 @@ const styles = StyleSheet.create({
   primaryText: {
     fontSize:   FontSize.sm,
     fontWeight: '700',
-    color:      Colors.bg,
+    color:      '#ffffff',
   },
 });

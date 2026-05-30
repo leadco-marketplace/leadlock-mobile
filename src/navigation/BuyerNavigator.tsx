@@ -32,7 +32,7 @@ function BuyerTabs() {
         headerShown: false,
         tabBarStyle: {
           backgroundColor: Colors.panel,
-          borderTopColor:  'rgba(249,115,22,0.35)',
+          borderTopColor:  'rgba(59,130,246,0.35)',
           borderTopWidth:  1.5,
           paddingBottom:   8,
           paddingTop:      4,

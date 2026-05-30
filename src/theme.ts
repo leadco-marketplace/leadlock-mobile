@@ -2,35 +2,36 @@
 
 export type ThemeMode = 'dark' | 'light' | 'inner-light';
 
-// ── Dark theme (default) — Level 3 brightness ─────────────────────────────
+// ── Deep Sapphire dark theme — premium high-tech ───────────────────────────
+// Near-black navy backgrounds, sapphire blue as the primary action color.
+// Inspired by Wolt's clean premium dark UI.
 const DarkColors = {
-  bg:      '#1e3058',
-  panel:   '#28406e',
-  panel2:  '#2d4878',
-  panel3:  '#334f88',
-  border:  '#305880',
-  border2: '#3a6898',
-  borderOrange: 'rgba(249,115,22,0.44)',
-  accent:  '#818cf8',
-  accent2: '#22d3ee',
-  orange:  '#f97316',
-  orange2: '#fbbf24',
+  bg:      '#040c1e',   // deepest navy — almost black with a blue soul
+  panel:   '#081630',   // deep sapphire card surface
+  panel2:  '#0d1d3a',   // inner card / nested surface
+  panel3:  '#122248',   // subtle tertiary surface
+  border:  '#182e52',   // quiet border
+  border2: '#1f3a68',   // visible border
+  borderOrange: 'rgba(59,130,246,0.42)',  // sapphire-tinted accent border
+  accent:  '#3b82f6',   // sapphire blue — primary accent
+  accent2: '#22d3ee',   // cyan secondary accent
+  orange:  '#3b82f6',   // primary CTA = sapphire (replaces orange)
+  orange2: '#60a5fa',   // lighter sapphire (replaces amber)
   foreground:    '#e8f4ff',
-  text:          '#c8ddf5',
-  textSecondary: '#7090b8',
-  muted:         '#587898',
-  placeholder:   '#3e5a80',
+  text:          '#bdd5f8',
+  textSecondary: '#6080a8',
+  muted:         '#4a6082',
+  placeholder:   '#32506e',
   danger: '#F87171',
   warn:   '#FBBF24',
-  good:   '#818cf8',
-  tabActive:   '#f97316',
-  tabInactive: '#5878a0',
-  // Pattern line color
-  patternLine: 'rgba(249, 115, 22, 0.07)',
+  good:   '#34d399',
+  tabActive:   '#3b82f6',   // sapphire active tab
+  tabInactive: '#3e5472',
+  // Pattern line color — subtle sapphire diagonal lines
+  patternLine: 'rgba(59, 130, 246, 0.05)',
 };
 
-// ── Inner-Light theme — dark bg + white inner cards ───────────────────────
-// Same as web app's html.dark.inner-light mode
+// ── Inner-Light theme — deep navy bg + white inner cards ───────────────────
 const InnerLightColors = {
   ...DarkColors,
   // Inner surfaces go white/light
@@ -39,15 +40,15 @@ const InnerLightColors = {
   panel3:  '#f1f5f9',
   border:  '#e2e8f0',
   border2: '#cbd5e1',
-  borderOrange: 'rgba(249,115,22,0.30)',
+  borderOrange: 'rgba(59,130,246,0.30)',
   // Text goes dark inside cards
   foreground:    '#0f172a',
   text:          '#1e293b',
   textSecondary: '#475569',
   muted:         '#94a3b8',
   placeholder:   '#94a3b8',
-  // Keep bg dark
-  bg: '#1e3058',
+  // Keep bg deep navy
+  bg: '#040c1e',
 };
 
 // ── Light theme — warm peach (matches web light mode) ─────────────────────
@@ -129,10 +130,18 @@ export const Shadow = {
     elevation: 8,
   },
   orange: {
-    shadowColor: '#f97316',
+    // Now used for sapphire primary buttons (name kept for backward compat)
+    shadowColor: '#3b82f6',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.40,
-    shadowRadius: 12,
+    shadowOpacity: 0.45,
+    shadowRadius: 14,
+    elevation: 6,
+  },
+  sapphire: {
+    shadowColor: '#3b82f6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.45,
+    shadowRadius: 14,
     elevation: 6,
   },
 };
