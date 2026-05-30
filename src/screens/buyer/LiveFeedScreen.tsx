@@ -4,7 +4,7 @@ import {
   TouchableOpacity, Linking, Alert,
 } from 'react-native';
 import * as Location from 'expo-location';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
 import { supabase } from '@/lib/supabase';
 import { leadsApi, Lead, BuyerLocation } from '@/lib/api';
 import { LeadCard }      from '@/components/LeadCard';
@@ -72,6 +72,14 @@ export function LiveFeedScreen() {
   useEffect(() => {
     load(false, buyerLocation ?? undefined);
   }, [buyerLocation]);
+
+  // Refresh feed whenever the tab comes into focus (catches leads sold while away)
+  useFocusEffect(
+    React.useCallback(() => {
+      load(true, buyerLocation ?? undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [buyerLocation])
+  );
 
   // Realtime lead feed updates
   useEffect(() => {
@@ -279,7 +287,7 @@ export function LiveFeedScreen() {
         renderItem={({ item }) => (
           <LeadCard
             lead={item}
-            onUnlock={isGuest ? undefined : () => handleUnlock(item)}
+            onUnlock={isGuest || profile?.role === 'admin' ? undefined : () => handleUnlock(item)}
             unlocking={unlocking === item.id}
             highlighted={highlightedId === item.id}
           />
