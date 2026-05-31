@@ -106,7 +106,7 @@ export function LiveFeedScreen() {
     const targetId = route.params?.highlightLeadId;
     if (!targetId || leads.length === 0 || loading) return;
 
-    const idx = leads.findIndex((l) => l.id === targetId);
+    const idx = sortedLeads.findIndex((l) => l.id === targetId);
     if (idx < 0) {
       // Lead not found — may have just been sold or not yet available.
       // Show a brief error so the user knows we tried.
@@ -136,11 +136,12 @@ export function LiveFeedScreen() {
   async function proceedUnlock(lead: Lead) {
     setUnlocking(lead.id);
     try {
-      await leadsApi.unlock(lead.id);
+      const { purchase_id } = await leadsApi.unlock(lead.id);
       await refreshProfile();   // update credit balance
-      // Navigate directly to the full lead detail so the buyer immediately sees
-      // the description, category fields, call panel, and notes.
-      navigation.navigate('LeadDetail', { leadId: lead.id });
+      // Pass purchase_id so LeadDetailScreen can look up the specific purchase
+      // directly rather than scanning all purchases — avoids the 6-second polling
+      // race that showed "not unlocked" when the DB write was briefly invisible.
+      navigation.navigate('LeadDetail', { leadId: lead.id, purchaseId: purchase_id });
     } catch (e: any) {
       if (e.message === 'insufficient_credits') {
         // Not enough credits — create a Stripe checkout for this specific lead

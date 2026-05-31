@@ -65,6 +65,9 @@ export const leadsApi = {
     return request<Lead[]>(`/api/leads${params}`);
   },
   getPurchased: ()                     => request<PurchasedLead[]>('/api/my-leads'),
+  /** Fetch the single purchase for a specific lead after unlock (uses purchase_id for direct lookup) */
+  getPurchaseByPurchaseId: (purchaseId: string) =>
+    request<PurchasedLead[]>(`/api/my-leads?purchase_id=${encodeURIComponent(purchaseId)}`),
   unlock: (id: string)                 => request<{ success: boolean; purchase_id: string }>(`/api/leads/${id}/unlock`, { method: 'POST' }),
 };
 

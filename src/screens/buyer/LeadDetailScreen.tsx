@@ -14,7 +14,7 @@ import { Linking, Alert } from 'react-native';
 
 const BASE = (Constants.expoConfig?.extra?.apiBaseUrl as string) ?? 'https://leadcomarketplace.com';
 
-type LeadDetailRouteParams = { leadId: string };
+type LeadDetailRouteParams = { leadId: string; purchaseId?: string };
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -408,44 +408,69 @@ export function LeadDetailScreen() {
   useTheme(); // re-render on theme change so inline Colors.* picks up new values
   const navigation = useNavigation<any>();
   const route = useRoute<RouteProp<{ LeadDetail: LeadDetailRouteParams }, 'LeadDetail'>>();
-  const { leadId } = route.params;
+  const { leadId, purchaseId } = route.params;
 
   const [lead,    setLead]    = useState<PurchasedLead | null>(null);
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState<string | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    const MAX_ATTEMPTS = 6;   // up to ~3 s of retries (6 × 500 ms)
-    const RETRY_MS     = 500;
-
-    async function fetchWithRetry(attempt: number) {
-      try {
-        const leads = await leadsApi.getPurchased();
-        if (cancelled) return;
-        const found = leads.find((l) => l.id === leadId);
+  async function loadLead() {
+    setLoading(true);
+    setError(null);
+    try {
+      if (purchaseId) {
+        // Direct lookup using the purchase_id returned by the unlock API — no polling needed.
+        const results = await leadsApi.getPurchaseByPurchaseId(purchaseId);
+        const found = results[0] ?? null;
         if (found) {
           setLead(found);
           setLoading(false);
           return;
         }
-        if (attempt < MAX_ATTEMPTS) {
-          // Purchase may not be visible yet — brief pause then retry
-          setTimeout(() => { if (!cancelled) fetchWithRetry(attempt + 1); }, RETRY_MS);
-        } else {
-          setError('This lead could not be found in your unlocked leads.');
+        // If not found immediately, fall through to the scan-all retry approach below.
+      }
+
+      // Fallback: scan all purchases (used when navigating from My Leads, or if
+      // purchaseId lookup returned empty on a very fast device before DB propagation).
+      const MAX_ATTEMPTS = 8;   // up to ~4 s of retries (8 × 500 ms)
+      const RETRY_MS     = 500;
+      let cancelled = false;
+
+      async function fetchWithRetry(attempt: number) {
+        try {
+          const leads = await leadsApi.getPurchased();
+          if (cancelled) return;
+          const found = leads.find((l) => l.id === leadId);
+          if (found) {
+            setLead(found);
+            setLoading(false);
+            return;
+          }
+          if (attempt < MAX_ATTEMPTS) {
+            setTimeout(() => { if (!cancelled) fetchWithRetry(attempt + 1); }, RETRY_MS);
+          } else {
+            setError('unlock_not_found');
+            setLoading(false);
+          }
+        } catch (e: any) {
+          if (cancelled) return;
+          setError(e.message ?? 'Failed to load lead');
           setLoading(false);
         }
-      } catch (e: any) {
-        if (cancelled) return;
-        setError(e.message ?? 'Failed to load lead');
-        setLoading(false);
       }
-    }
 
-    fetchWithRetry(0);
-    return () => { cancelled = true; };
-  }, [leadId]);
+      fetchWithRetry(0);
+      // Note: cancelled cleanup is local to this closure; component unmount is fine.
+    } catch (e: any) {
+      setError(e.message ?? 'Failed to load lead');
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadLead();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leadId, purchaseId]);
 
   if (loading) {
     return (
@@ -458,12 +483,29 @@ export function LeadDetailScreen() {
   }
 
   if (error || !lead) {
+    const isNotFound = error === 'unlock_not_found';
     return (
       <ScreenShell scrollable={false}>
         <View style={styles.centered}>
-          <Text style={styles.errorText}>{error ?? 'Lead not found.'}</Text>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-            <Text style={styles.backBtnText}>← Go Back</Text>
+          <Text style={styles.errorText}>
+            {isNotFound
+              ? "Could not load lead details.\nTap Retry — it usually loads in a moment."
+              : (error ?? 'Lead not found.')}
+          </Text>
+          {/* Retry button — most failures are transient DB propagation delays */}
+          <TouchableOpacity onPress={loadLead} style={styles.retryBtn} activeOpacity={0.8}>
+            <Text style={styles.retryBtnText}>↻ Retry</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => isNotFound
+              ? navigation.navigate('LiveFeed' as never)
+              : navigation.goBack()
+            }
+            style={styles.backBtn}
+          >
+            <Text style={styles.backBtnText}>
+              {isNotFound ? '→ Go to Live Feed' : '← Go Back'}
+            </Text>
           </TouchableOpacity>
         </View>
       </ScreenShell>
@@ -563,7 +605,12 @@ export function LeadDetailScreen() {
 
 const styles = StyleSheet.create({
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.md },
-  errorText: { fontSize: FontSize.base, color: Colors.danger, textAlign: 'center' },
+  errorText: { fontSize: FontSize.base, color: Colors.danger, textAlign: 'center', lineHeight: 22 },
+  retryBtn: {
+    paddingVertical: 10, paddingHorizontal: 28,
+    borderRadius: Radius.md, backgroundColor: Colors.orange,
+  },
+  retryBtnText: { fontSize: FontSize.sm, color: '#fff', fontWeight: '700' },
   backBtn: {
     paddingVertical: 8, paddingHorizontal: 20,
     borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.accent,
