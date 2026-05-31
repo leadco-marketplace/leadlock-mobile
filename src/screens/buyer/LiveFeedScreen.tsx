@@ -178,8 +178,15 @@ export function LiveFeedScreen() {
               ]
             );
           } else if (body.error === 'already_sold') {
-            setError('This lead was just purchased by someone else.');
-            await load(true);
+            setLeads(prev => prev.map(l =>
+              l.id === lead.id ? { ...l, status: 'sold', sold_at: new Date().toISOString() } : l
+            ));
+            Alert.alert(
+              '🔒 Lead Just Sold',
+              'Another buyer purchased this lead a moment before you.',
+              [{ text: 'OK' }]
+            );
+            load(true);
           } else {
             Alert.alert(
               '⚠️ Checkout Error',
@@ -193,8 +200,15 @@ export function LiveFeedScreen() {
           );
         }
       } else if (e.message === 'already_sold') {
-        setError('This lead was just sold. Refreshing the feed…');
-        await load(true);
+        setLeads(prev => prev.map(l =>
+          l.id === lead.id ? { ...l, status: 'sold', sold_at: new Date().toISOString() } : l
+        ));
+        Alert.alert(
+          '🔒 Lead Just Sold',
+          'Another buyer purchased this lead a moment before you.',
+          [{ text: 'OK' }]
+        );
+        load(true);
       } else {
         Alert.alert('⚠️ Unlock Error', e.message ?? 'Something went wrong. Please try again.');
         setError(e.message);
@@ -213,6 +227,13 @@ export function LiveFeedScreen() {
       </ScreenShell>
     );
   }
+
+  // ── Sort: available/reserved first, recently sold sinks to bottom ─────────
+  const sortedLeads = [...leads].sort((a, b) => {
+    const aSold = a.status === 'sold' ? 1 : 0;
+    const bSold = b.status === 'sold' ? 1 : 0;
+    return aSold - bSold;
+  });
 
   // ── Stats derived from current feed ───────────────────────────────────────
   const availableCount = leads.filter(l => l.status === 'available').length;
@@ -282,12 +303,12 @@ export function LiveFeedScreen() {
 
       <FlatList
         ref={flatListRef}
-        data={leads}
+        data={sortedLeads}
         keyExtractor={(l) => l.id}
         renderItem={({ item }) => (
           <LeadCard
             lead={item}
-            onUnlock={isGuest || profile?.role === 'admin' ? undefined : () => handleUnlock(item)}
+            onUnlock={isGuest || profile?.role === 'admin' || item.status === 'sold' ? undefined : () => handleUnlock(item)}
             unlocking={unlocking === item.id}
             highlighted={highlightedId === item.id}
           />

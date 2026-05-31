@@ -34,6 +34,7 @@ export type Lead = {
   public_summary: string | null;
   created_at: string;
   published_at: string | null;
+  sold_at: string | null;
   quality_score?: number | null;
   metadata?: Record<string, unknown> | null;
   // Proximity fields — present when buyer location was sent to the API
@@ -64,7 +65,7 @@ export const leadsApi = {
     return request<Lead[]>(`/api/leads${params}`);
   },
   getPurchased: ()                     => request<PurchasedLead[]>('/api/my-leads'),
-  unlock: (id: string)                 => request<{ success: boolean }>(`/api/leads/${id}/unlock`, { method: 'POST' }),
+  unlock: (id: string)                 => request<{ success: boolean; purchase_id: string }>(`/api/leads/${id}/unlock`, { method: 'POST' }),
 };
 
 // ── Lead Rating ───────────────────────────────────────────────────────────────

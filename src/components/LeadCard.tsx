@@ -38,8 +38,10 @@ export function LeadCard({ lead, onUnlock, unlocking, purchased, highlighted }: 
     onUnlock?.();
   }
 
+  const isSold = lead.status === 'sold';
+
   return (
-    <View style={[styles.card, { backgroundColor: Colors.panel, borderColor: Colors.borderOrange }, highlighted && styles.cardHighlighted]}>
+    <View style={[styles.card, { backgroundColor: Colors.panel, borderColor: Colors.borderOrange }, highlighted && styles.cardHighlighted, isSold && styles.cardSold]}>
       {/* Header row */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
@@ -108,6 +110,20 @@ export function LeadCard({ lead, onUnlock, unlocking, purchased, highlighted }: 
           </View>
         )}
       </View>
+
+      {/* ── SOLD stamp — shown when lead.status === 'sold' ─────────────── */}
+      {isSold && (
+        <>
+          {/* Dark dimming layer */}
+          <View style={[StyleSheet.absoluteFillObject, styles.soldDim]} pointerEvents="none" />
+          {/* Diagonal SOLD banner */}
+          <View style={[StyleSheet.absoluteFillObject, styles.soldContainer]} pointerEvents="none">
+            <View style={styles.soldBanner}>
+              <Text style={styles.soldBannerText}>SOLD</Text>
+            </View>
+          </View>
+        </>
+      )}
     </View>
   );
 }
@@ -121,7 +137,11 @@ const styles = StyleSheet.create({
     padding:         Spacing.md,
     marginBottom:    Spacing.sm + 4,
     gap:             Spacing.sm,
+    overflow:        'hidden',   // clips the diagonal SOLD banner to card bounds
     ...Shadow.card,
+  },
+  cardSold: {
+    borderColor: 'rgba(185,28,28,0.45)',
   },
   cardHighlighted: {
     borderColor:  '#22d3ee',
@@ -248,5 +268,38 @@ const styles = StyleSheet.create({
     fontSize:   FontSize.sm,
     fontWeight: '600',
     color:      Colors.accent,
+  },
+
+  // ── SOLD stamp ────────────────────────────────────────────────────────────
+  soldDim: {
+    backgroundColor: 'rgba(0,0,0,0.32)',
+  },
+  soldContainer: {
+    alignItems:     'center',
+    justifyContent: 'center',
+  },
+  soldBanner: {
+    width:           420,        // wider than any card — clipped by overflow:hidden
+    paddingVertical: 11,
+    backgroundColor: 'rgba(185,28,28,0.88)',
+    alignItems:      'center',
+    transform:       [{ rotate: '-18deg' }],
+    borderTopWidth:  1.5,
+    borderBottomWidth: 1.5,
+    borderColor:     'rgba(255,130,130,0.35)',
+    shadowColor:     '#000',
+    shadowOffset:    { width: 0, height: 3 },
+    shadowOpacity:   0.55,
+    shadowRadius:    8,
+    elevation:       8,
+  },
+  soldBannerText: {
+    color:          '#ffffff',
+    fontSize:       32,
+    fontWeight:     '900',
+    letterSpacing:  12,
+    textShadowColor:  'rgba(0,0,0,0.45)',
+    textShadowOffset: { width: 1, height: 2 },
+    textShadowRadius: 4,
   },
 });
