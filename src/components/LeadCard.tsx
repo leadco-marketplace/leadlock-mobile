@@ -279,8 +279,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   soldBanner: {
-    width:           420,        // wider than any card — clipped by overflow:hidden
-    paddingVertical: 11,
+    width:           260,        // compact stamp — doesn't reach card edges
+    paddingVertical: 5,
     backgroundColor: 'rgba(185,28,28,0.88)',
     alignItems:      'center',
     transform:       [{ rotate: '-18deg' }],
@@ -295,9 +295,9 @@ const styles = StyleSheet.create({
   },
   soldBannerText: {
     color:          '#ffffff',
-    fontSize:       32,
+    fontSize:       22,
     fontWeight:     '900',
-    letterSpacing:  12,
+    letterSpacing:  9,
     textShadowColor:  'rgba(0,0,0,0.45)',
     textShadowOffset: { width: 1, height: 2 },
     textShadowRadius: 4,
