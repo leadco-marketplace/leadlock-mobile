@@ -417,52 +417,58 @@ export function LeadDetailScreen() {
   async function loadLead() {
     setLoading(true);
     setError(null);
+
     try {
       if (purchaseId) {
-        // Direct lookup using the purchase_id returned by the unlock API — no polling needed.
-        const results = await leadsApi.getPurchaseByPurchaseId(purchaseId);
-        // Always match by leadId — not results[0] — so we get the right lead even if
-        // the server returns unfiltered results (e.g. Supabase join id ambiguity).
-        const found = results.find((r) => r.id === leadId) ?? null;
-        if (found) {
-          setLead(found);
-          setLoading(false);
-          return;
+        // Retry direct lookup — the purchase row may not be visible on the DB
+        // replica immediately after the unlock transaction commits.
+        const MAX_DIRECT = 8;   // up to ~3.5 s (first attempt instant, then 7 × 500 ms)
+        const DIRECT_MS  = 500;
+
+        for (let i = 0; i < MAX_DIRECT; i++) {
+          if (i > 0) await new Promise<void>((res) => setTimeout(res, DIRECT_MS));
+          const results = await leadsApi.getPurchaseByPurchaseId(purchaseId);
+          if (results.length > 0) {
+            // Prefer exact leadId match. Fall back to results[0] if ids somehow
+            // diverge — the purchaseId filter already validated this is the right
+            // record (correct buyer, paid status, correct purchase).
+            const found = results.find((r) => r.id === leadId) ?? results[0];
+            setLead(found);
+            setLoading(false);
+            return;
+          }
+          // Empty results → purchase not yet visible on replica, keep retrying.
         }
-        // If not found immediately, fall through to the scan-all retry approach below.
+        // Direct lookup exhausted — fall through to scan-all below.
       }
 
-      // Fallback: scan all purchases (used when navigating from My Leads, or if
-      // purchaseId lookup returned empty on a very fast device before DB propagation).
-      const MAX_ATTEMPTS = 8;   // up to ~4 s of retries (8 × 500 ms)
-      const RETRY_MS     = 500;
-      let cancelled = false;
+      // Fallback: scan all purchased leads.
+      // Used from My Leads tab (no purchaseId), or extreme DB propagation delay.
+      const MAX_SCAN = 10;
+      const SCAN_MS  = 500;
 
       async function fetchWithRetry(attempt: number) {
         try {
           const leads = await leadsApi.getPurchased();
-          if (cancelled) return;
           const found = leads.find((l) => l.id === leadId);
           if (found) {
             setLead(found);
             setLoading(false);
             return;
           }
-          if (attempt < MAX_ATTEMPTS) {
-            setTimeout(() => { if (!cancelled) fetchWithRetry(attempt + 1); }, RETRY_MS);
+          if (attempt < MAX_SCAN) {
+            setTimeout(() => fetchWithRetry(attempt + 1), SCAN_MS);
           } else {
             setError('unlock_not_found');
             setLoading(false);
           }
         } catch (e: any) {
-          if (cancelled) return;
           setError(e.message ?? 'Failed to load lead');
           setLoading(false);
         }
       }
 
       fetchWithRetry(0);
-      // Note: cancelled cleanup is local to this closure; component unmount is fine.
     } catch (e: any) {
       setError(e.message ?? 'Failed to load lead');
       setLoading(false);
