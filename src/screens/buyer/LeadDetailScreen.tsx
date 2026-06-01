@@ -421,7 +421,9 @@ export function LeadDetailScreen() {
       if (purchaseId) {
         // Direct lookup using the purchase_id returned by the unlock API — no polling needed.
         const results = await leadsApi.getPurchaseByPurchaseId(purchaseId);
-        const found = results[0] ?? null;
+        // Always match by leadId — not results[0] — so we get the right lead even if
+        // the server returns unfiltered results (e.g. Supabase join id ambiguity).
+        const found = results.find((r) => r.id === leadId) ?? null;
         if (found) {
           setLead(found);
           setLoading(false);
