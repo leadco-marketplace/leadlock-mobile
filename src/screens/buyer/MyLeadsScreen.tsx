@@ -226,7 +226,7 @@ function PurchasedCard({ lead }: { lead: PurchasedLead }) {
   return (
     <TouchableOpacity
       style={[styles.card, { backgroundColor: Colors.panel }]}
-      onPress={() => navigation.navigate('LeadDetail', { leadId: lead.id })}
+      onPress={() => navigation.navigate('LeadDetail', { leadId: lead.id, purchaseId: lead.purchase_id })}
       activeOpacity={0.85}
     >
       <View style={styles.cardHeader}>

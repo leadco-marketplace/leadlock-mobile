@@ -37,6 +37,8 @@ export function LiveFeedScreen() {
   const [modalLead,     setModalLead]    = useState<Lead | null>(null);
 
   const flatListRef = useRef<FlatList<Lead>>(null);
+  // Always holds the latest `load` so the realtime subscription isn't stale
+  const loadRef = useRef(load);
 
   // ── Location permission ────────────────────────────────────────────────────
   useEffect(() => {
@@ -81,13 +83,17 @@ export function LiveFeedScreen() {
     }, [buyerLocation])
   );
 
-  // Realtime lead feed updates
+  // Keep loadRef current so the realtime callback never captures a stale closure
+  useEffect(() => { loadRef.current = load; });
+
+  // Realtime lead feed updates — uses loadRef so it always calls the latest load
   useEffect(() => {
     const channel = supabase
       .channel('leads-feed')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'leads' }, () => load(true))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'leads' }, () => loadRef.current(true))
       .subscribe();
     return () => { supabase.removeChannel(channel); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ── Force reload when arriving from a push notification ──────────────────
@@ -141,7 +147,9 @@ export function LiveFeedScreen() {
       // Pass purchase_id so LeadDetailScreen can look up the specific purchase
       // directly rather than scanning all purchases — avoids the 6-second polling
       // race that showed "not unlocked" when the DB write was briefly invisible.
-      navigation.navigate('LeadDetail', { leadId: lead.id, purchaseId: purchase_id });
+      // push (not navigate) forces a new screen instance — avoids deduplication
+      // that could land us on a stale existing LeadDetail for a different lead.
+      navigation.push('LeadDetail', { leadId: lead.id, purchaseId: purchase_id });
     } catch (e: any) {
       if (e.message === 'insufficient_credits') {
         // Not enough credits — create a Stripe checkout for this specific lead
