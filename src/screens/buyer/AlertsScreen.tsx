@@ -1,8 +1,9 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, Switch,
   ScrollView, ActivityIndicator, Alert, TextInput,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   areasApi, categoriesApi, preferencesApi,
   ServiceArea, ServiceCategory, Preference,
@@ -197,7 +198,9 @@ export function AlertsScreen() {
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  // Reload every time the tab comes into focus so data is always fresh
+  // (handles login/logout session switches and returning from other tabs)
+  useFocusEffect(useCallback(() => { load(); }, [load]));
 
   function toggleArea(id: string) {
     setSelAreaIds(prev => {
@@ -266,7 +269,8 @@ export function AlertsScreen() {
           setDeletingId(id);
           try {
             await preferencesApi.delete(id);
-            setPrefs(p => p.filter(x => x.id !== id));
+            // Reload from server to confirm deletion actually persisted
+            await load();
           } catch (e: any) {
             Alert.alert('Error', e.message);
           } finally {

@@ -44,8 +44,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
-      if (session) loadProfile();
-      else         setProfile(null);
+      if (session) {
+        setProfile(null); // Clear stale profile immediately before fetching the new one
+        loadProfile();
+      } else {
+        setProfile(null);
+      }
     });
 
     return () => subscription.unsubscribe();
