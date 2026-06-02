@@ -484,6 +484,29 @@ export function LeadDetailScreen() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [leadId, purchaseId]);
 
+  // When this screen was opened after a fresh purchase (purchaseId is set),
+  // intercept ANY back navigation — including iOS swipe-back gesture — and
+  // navigate explicitly to My Leads with a refreshToken.  Without this, a
+  // swipe-back would call goBack() internally (returning to LiveFeed), and if
+  // the user then taps the My Leads tab, the tab was already focused so React
+  // Navigation won't fire useFocusEffect, meaning the tab won't reload.
+  useEffect(() => {
+    if (!purchaseId) return; // only needed for fresh purchases
+    const unsub = navigation.addListener('beforeRemove', (_e: any) => {
+      // Allow the default back action to proceed (we don't prevent it)
+      // but also navigate to My Leads so it reloads with the new purchase.
+      // We schedule this after the current action completes so navigation
+      // state is consistent.
+      setTimeout(() => {
+        navigation.navigate('BuyerTabs' as never, {
+          screen: 'MyLeads',
+          params: { refreshToken: Date.now() },
+        } as never);
+      }, 50);
+    });
+    return unsub;
+  }, [navigation, purchaseId]);
+
   if (loading) {
     return (
       <ScreenShell scrollable={false}>

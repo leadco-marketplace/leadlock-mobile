@@ -1,7 +1,7 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, FlatList, StyleSheet, ActivityIndicator,
-  TouchableOpacity, RefreshControl,
+  TouchableOpacity, RefreshControl, AppState,
 } from 'react-native';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { StackActions } from '@react-navigation/native';
@@ -47,6 +47,7 @@ function PurchasedCard({ lead }: { lead: PurchasedLead }) {
 export function MyLeadsScreen() {
   useTheme(); // re-render on theme change
   const route = useRoute<any>();
+  const loadRef = useRef<((silent?: boolean) => Promise<void>) | null>(null);
 
   const [leads,      setLeads]      = useState<PurchasedLead[]>([]);
   const [loading,    setLoading]    = useState(true);
@@ -68,8 +69,26 @@ export function MyLeadsScreen() {
     }
   }, []); // empty deps — state setters never change
 
-  // Reload on every tab focus (handles normal tab switching and session changes)
-  useFocusEffect(useCallback(() => { load(false); }, [load]));
+  // Keep a ref so the AppState listener can always call the latest load()
+  loadRef.current = load;
+
+  // Reload on every tab focus + 2 s retry to handle any DB propagation lag
+  // after a fresh purchase (the purchase row may not be visible on the read
+  // replica yet by the time the first load fires).
+  useFocusEffect(useCallback(() => {
+    load(false);
+    const retry = setTimeout(() => loadRef.current?.(true), 2000);
+    return () => clearTimeout(retry);
+  }, [load]));
+
+  // Reload when the app comes back to the foreground — covers the case where
+  // the user went through a Stripe checkout in Safari and returned via deep link.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') loadRef.current?.(true);
+    });
+    return () => sub.remove();
+  }, []);
 
   // LeadDetailScreen passes a refreshToken param after a fresh purchase so that
   // My Leads reloads even when it was already the active tab (focus event would
