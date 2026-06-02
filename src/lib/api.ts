@@ -23,6 +23,7 @@ async function request<T>(path: string, opts?: RequestInit): Promise<T> {
 // ── Leads ─────────────────────────────────────────────────────────────────
 export type Lead = {
   id: string;
+  lead_code?: string | null;
   service_category: string;
   job_type: string;
   city: string;

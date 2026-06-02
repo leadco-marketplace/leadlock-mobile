@@ -98,8 +98,8 @@ export function LiveFeedScreen() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'leads' }, () => loadRef.current(true))
       .subscribe();
 
-    // Polling fallback: refresh every 30 s in case realtime events are blocked
-    const poll = setInterval(() => loadRef.current(true), 30_000);
+    // Polling fallback: refresh every 10 s in case realtime events are blocked
+    const poll = setInterval(() => loadRef.current(true), 10_000);
 
     return () => {
       supabase.removeChannel(channel);

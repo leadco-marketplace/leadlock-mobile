@@ -87,6 +87,9 @@ export function LeadCard({ lead, onUnlock, unlocking, purchased, highlighted }: 
         <View>
           <Text style={[styles.timeAgo, { color: Colors.muted }]}>{timeAgo(lead.published_at ?? lead.created_at)}</Text>
           <Text style={[styles.price, { color: Colors.foreground }]}>{formatPrice(price)}</Text>
+          {lead.lead_code && (
+            <Text style={[styles.leadCode, { color: Colors.muted }]}>#{lead.lead_code}</Text>
+          )}
         </View>
 
         {!purchased && onUnlock && (
@@ -239,6 +242,13 @@ const styles = StyleSheet.create({
   timeAgo: {
     fontSize: FontSize.xs,
     color:    Colors.muted,
+  },
+  leadCode: {
+    fontSize:   FontSize.xs - 1,
+    color:      Colors.muted,
+    fontFamily: 'Courier',
+    marginTop:  1,
+    letterSpacing: 0.5,
   },
   price: {
     fontSize:   FontSize.md,

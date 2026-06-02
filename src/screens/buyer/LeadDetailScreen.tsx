@@ -568,11 +568,16 @@ export function LeadDetailScreen() {
 
           <View style={styles.unlockedBadge}>
             <Text style={[styles.unlockedText, { color: Colors.accent }]}>✓ Lead Unlocked</Text>
-            <Text style={[styles.purchasedDate, { color: Colors.muted }]}>
-              {new Date(lead.purchased_at).toLocaleDateString('en-US', {
-                month: 'short', day: 'numeric', year: 'numeric',
-              })}
-            </Text>
+            <View style={{ alignItems: 'flex-end', gap: 2 }}>
+              {lead.lead_code && (
+                <Text style={[styles.leadCodeBadge, { color: Colors.orange }]}>#{lead.lead_code}</Text>
+              )}
+              <Text style={[styles.purchasedDate, { color: Colors.muted }]}>
+                {new Date(lead.purchased_at).toLocaleDateString('en-US', {
+                  month: 'short', day: 'numeric', year: 'numeric',
+                })}
+              </Text>
+            </View>
           </View>
         </View>
 
@@ -667,6 +672,7 @@ const styles = StyleSheet.create({
     borderTopColor: 'rgba(129,140,248,0.18)',
   },
   unlockedText:  { fontSize: FontSize.sm, color: Colors.accent, fontWeight: '600' },
+  leadCodeBadge: { fontSize: FontSize.xs, fontWeight: '700', fontFamily: 'Courier', letterSpacing: 1 },
   purchasedDate: { fontSize: FontSize.xs, color: Colors.muted },
 
   section: {
