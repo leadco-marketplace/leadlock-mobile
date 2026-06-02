@@ -1,9 +1,9 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, Switch,
-  ScrollView, ActivityIndicator, Alert, TextInput,
+  ActivityIndicator, Alert, TextInput,
 } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import {
   areasApi, categoriesApi, preferencesApi,
   ServiceArea, ServiceCategory, Preference,
@@ -12,172 +12,38 @@ import { ScreenShell } from '@/components/ScreenShell';
 import { Button } from '@/components/Button';
 import { Colors, FontSize, Spacing, Radius, Shadow } from '@/theme';
 
-// ── Radius options (max 35 miles) ─────────────────────────────────────────
-const RADIUS_OPTIONS = [
-  { label: '10 mi', value: 10 },
-  { label: '25 mi', value: 25 },
-  { label: '35 mi', value: 35 },
-];
 const DEFAULT_RADIUS = 25;
 
-// ── AreaPicker ────────────────────────────────────────────────────────────
-// Search bar + collapsible state sections
-function AreaPicker({
-  areas,
-  selected,
-  onToggle,
-}: {
-  areas: ServiceArea[];
-  selected: Set<string>;
-  onToggle: (id: string) => void;
-}) {
-  const [query,         setQuery]         = useState('');
-  const [expandedState, setExpandedState] = useState<string | null>(null);
-
-  // All unique states, sorted
-  const states = useMemo(
-    () => [...new Set(areas.map(a => a.state || 'Other'))].sort(),
-    [areas],
-  );
-
-  // Filtered areas when searching
-  const filtered = useMemo(() => {
-    if (!query.trim()) return null;
-    const q = query.toLowerCase();
-    return areas.filter(
-      a =>
-        a.name.toLowerCase().includes(q) ||
-        (a.city ?? '').toLowerCase().includes(q) ||
-        (a.state ?? '').toLowerCase().includes(q),
-    );
-  }, [areas, query]);
-
-  function areasForState(state: string) {
-    return areas.filter(a => (a.state || 'Other') === state);
-  }
-
-  function toggleState(state: string) {
-    setExpandedState(prev => (prev === state ? null : state));
-  }
-
-  return (
-    <View>
-      {/* Search bar */}
-      <View style={styles.searchRow}>
-        <Text style={styles.searchIcon}>🔍</Text>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search city or state…"
-          placeholderTextColor={Colors.muted}
-          value={query}
-          onChangeText={setQuery}
-          autoCorrect={false}
-          autoCapitalize="none"
-          clearButtonMode="while-editing"
-        />
-      </View>
-
-      {/* Search results (flat list) */}
-      {filtered !== null ? (
-        filtered.length === 0 ? (
-          <Text style={styles.noAreasText}>No areas match "{query}"</Text>
-        ) : (
-          <View style={styles.flatList}>
-            {filtered.map(area => {
-              const sel = selected.has(area.id);
-              return (
-                <TouchableOpacity
-                  key={area.id}
-                  style={[styles.areaRow, sel && styles.areaRowSelected]}
-                  onPress={() => onToggle(area.id)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[styles.areaRowText, sel && styles.areaRowTextSelected]}>
-                    {area.name}, {area.state}
-                  </Text>
-                  {sel && <Text style={styles.checkmark}>✓</Text>}
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        )
-      ) : (
-        /* State accordion */
-        <View>
-          {states.map(state => {
-            const stateAreas  = areasForState(state);
-            const expanded    = expandedState === state;
-            const selCount    = stateAreas.filter(a => selected.has(a.id)).length;
-
-            return (
-              <View key={state} style={styles.stateSection}>
-                <TouchableOpacity
-                  style={styles.stateHeader}
-                  onPress={() => toggleState(state)}
-                  activeOpacity={0.75}
-                >
-                  <View style={styles.stateHeaderLeft}>
-                    <Text style={styles.stateName}>{state}</Text>
-                    <Text style={styles.stateCount}>
-                      {stateAreas.length} area{stateAreas.length !== 1 ? 's' : ''}
-                    </Text>
-                  </View>
-                  <View style={styles.stateHeaderRight}>
-                    {selCount > 0 && (
-                      <View style={styles.selBadge}>
-                        <Text style={styles.selBadgeText}>{selCount} selected</Text>
-                      </View>
-                    )}
-                    <Text style={styles.chevron}>{expanded ? '▲' : '▼'}</Text>
-                  </View>
-                </TouchableOpacity>
-
-                {expanded && (
-                  <View style={styles.stateBody}>
-                    {stateAreas.map(area => {
-                      const sel = selected.has(area.id);
-                      return (
-                        <TouchableOpacity
-                          key={area.id}
-                          style={[styles.areaRow, sel && styles.areaRowSelected]}
-                          onPress={() => onToggle(area.id)}
-                          activeOpacity={0.7}
-                        >
-                          <Text style={[styles.areaRowText, sel && styles.areaRowTextSelected]}>
-                            {area.name}
-                          </Text>
-                          {sel && <Text style={styles.checkmark}>✓</Text>}
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-                )}
-              </View>
-            );
-          })}
-        </View>
-      )}
-    </View>
-  );
-}
+// US state code → name (for display in chips)
+const STATE_NAMES: Record<string, string> = {
+  AL: 'Alabama',     AK: 'Alaska',      AZ: 'Arizona',     AR: 'Arkansas',
+  CA: 'California',  CO: 'Colorado',    CT: 'Connecticut',  DE: 'Delaware',
+  FL: 'Florida',     GA: 'Georgia',     HI: 'Hawaii',       ID: 'Idaho',
+  IL: 'Illinois',    IN: 'Indiana',     IA: 'Iowa',         KS: 'Kansas',
+  KY: 'Kentucky',    LA: 'Louisiana',   ME: 'Maine',        MD: 'Maryland',
+  MA: 'Massachusetts', MI: 'Michigan',  MN: 'Minnesota',    MS: 'Mississippi',
+  MO: 'Missouri',    MT: 'Montana',     NE: 'Nebraska',     NV: 'Nevada',
+  NH: 'New Hampshire', NJ: 'New Jersey', NM: 'New Mexico',  NY: 'New York',
+  NC: 'North Carolina', ND: 'North Dakota', OH: 'Ohio',     OK: 'Oklahoma',
+  OR: 'Oregon',      PA: 'Pennsylvania', RI: 'Rhode Island', SC: 'South Carolina',
+  SD: 'South Dakota', TN: 'Tennessee',  TX: 'Texas',        UT: 'Utah',
+  VT: 'Vermont',     VA: 'Virginia',    WA: 'Washington',   WV: 'West Virginia',
+  WI: 'Wisconsin',   WY: 'Wyoming',
+};
 
 // ── Main screen ───────────────────────────────────────────────────────────
 export function AlertsScreen() {
+  const navigation = useNavigation<any>();
+
   const [areas,       setAreas]       = useState<ServiceArea[]>([]);
   const [categories,  setCategories]  = useState<ServiceCategory[]>([]);
   const [prefs,       setPrefs]       = useState<Preference[]>([]);
   const [loading,     setLoading]     = useState(true);
-  const [saving,      setSaving]      = useState(false);
   const [deletingId,  setDeletingId]  = useState<string | null>(null);
 
-  // Form state (used for both create + edit)
-  const [editingPref, setEditingPref] = useState<Preference | null>(null); // null = creating new
-  const [selCategory, setSelCategory] = useState<string | null>(null);
-  const [selAreaIds,  setSelAreaIds]  = useState<Set<string>>(new Set());
-  const [selRadius,   setSelRadius]   = useState<number>(DEFAULT_RADIUS);
-  const [selEmail,    setSelEmail]    = useState(true);
-  const [selPush,     setSelPush]     = useState(true);
+  // "New Alert" mini-form state (category picker only)
   const [showForm,    setShowForm]    = useState(false);
+  const [selCategory, setSelCategory] = useState<string | null>(null);
   const [catSearch,   setCatSearch]   = useState('');
 
   const load = useCallback(async () => {
@@ -198,66 +64,54 @@ export function AlertsScreen() {
     }
   }, []);
 
-  // Reload every time the tab comes into focus so data is always fresh
-  // (handles login/logout session switches and returning from other tabs)
+  // Reload every time the tab comes into focus
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
-  function toggleArea(id: string) {
-    setSelAreaIds(prev => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
-  }
-
-  function openEdit(pref: Preference) {
-    setEditingPref(pref);
-    setSelCategory(pref.service_category);
-    setSelAreaIds(new Set(pref.area_ids));
-    setSelRadius(pref.radius_miles ?? DEFAULT_RADIUS);
-    setSelEmail(pref.notify_email ?? true);
-    setSelPush(pref.notify_push  ?? true);
-    setCatSearch('');
-    setShowForm(true);
-  }
-
   function resetForm() {
-    setEditingPref(null);
     setSelCategory(null);
-    setSelAreaIds(new Set());
-    setSelRadius(DEFAULT_RADIUS);
-    setSelEmail(true);
-    setSelPush(true);
     setCatSearch('');
     setShowForm(false);
   }
 
-  async function handleSave() {
+  // Navigate to AreaPickerScreen to edit areas for an existing pref
+  function openEditAreas(pref: Preference) {
+    navigation.navigate('AreaPicker', {
+      prefId:            pref.id,
+      serviceCategory:   pref.service_category,
+      initialAreaIds:    pref.area_ids     ?? [],
+      initialStateCodes: pref.state_codes  ?? [],
+      initialRadius:     pref.radius_miles ?? DEFAULT_RADIUS,
+      notifyEmail:       pref.notify_email ?? true,
+      notifyPush:        pref.notify_push  ?? true,
+    });
+    resetForm();
+  }
+
+  // Navigate to AreaPickerScreen to create a new pref (category already chosen)
+  function openNewPrefAreas() {
     if (!selCategory) {
-      Alert.alert('Choose a category', 'Pick a category for this alert.');
+      Alert.alert('Choose a category', 'Pick a category first.');
       return;
     }
-    setSaving(true);
-    try {
-      const payload = {
-        service_category: selCategory,
-        area_ids:         Array.from(selAreaIds),
-        radius_miles:     selAreaIds.size > 0 ? selRadius : DEFAULT_RADIUS,
-        notify_email:     selEmail,
-        notify_push:      selPush,
-      };
-      if (editingPref) {
-        await preferencesApi.update(editingPref.id, payload);
-      } else {
-        await preferencesApi.save(payload);
-      }
-      resetForm();
-      await load();
-    } catch (e: any) {
-      Alert.alert('Error', e.message ?? 'Could not save alert');
-    } finally {
-      setSaving(false);
+    // Check if pref for this category already exists
+    const existing = prefs.find(p => p.service_category === selCategory);
+    if (existing) {
+      Alert.alert(
+        'Alert exists',
+        `You already have an alert for "${selCategory}". Tap "Edit Areas" on the existing card to update it.`,
+      );
+      return;
     }
+    navigation.navigate('AreaPicker', {
+      prefId:            null,
+      serviceCategory:   selCategory,
+      initialAreaIds:    [],
+      initialStateCodes: [],
+      initialRadius:     DEFAULT_RADIUS,
+      notifyEmail:       true,
+      notifyPush:        true,
+    });
+    resetForm();
   }
 
   async function handleDelete(id: string) {
@@ -269,7 +123,6 @@ export function AlertsScreen() {
           setDeletingId(id);
           try {
             await preferencesApi.delete(id);
-            // Reload from server to confirm deletion actually persisted
             await load();
           } catch (e: any) {
             Alert.alert('Error', e.message);
@@ -286,14 +139,13 @@ export function AlertsScreen() {
     return a ? `${a.name}, ${a.state}` : id;
   }
 
-  // Filtered categories for the picker
+  // Filtered + grouped categories for the picker
   const filteredCats = useMemo(() => {
     if (!catSearch.trim()) return categories;
     const q = catSearch.toLowerCase();
     return categories.filter(c => c.name.toLowerCase().includes(q));
   }, [categories, catSearch]);
 
-  // Group filtered categories by group_name
   const catGroups = useMemo(() => {
     const map: Record<string, ServiceCategory[]> = {};
     for (const cat of filteredCats) {
@@ -320,63 +172,86 @@ export function AlertsScreen() {
           </Text>
         </View>
       ) : (
-        prefs.map(pref => (
-          <View key={pref.id} style={styles.prefCard}>
-            <View style={styles.prefHeader}>
-              <View style={styles.categoryBadge}>
-                <Text style={styles.categoryBadgeText}>{pref.service_category}</Text>
+        prefs.map(pref => {
+          const stateCodes = pref.state_codes ?? [];
+          const areaIds    = pref.area_ids    ?? [];
+          const hasAny     = stateCodes.length > 0 || areaIds.length > 0;
+
+          return (
+            <View key={pref.id} style={styles.prefCard}>
+              {/* Header row: category badge + delete */}
+              <View style={styles.prefHeader}>
+                <View style={styles.categoryBadge}>
+                  <Text style={styles.categoryBadgeText}>{pref.service_category}</Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => handleDelete(pref.id)}
+                  disabled={deletingId === pref.id}
+                  style={styles.deleteBtn}
+                >
+                  {deletingId === pref.id
+                    ? <ActivityIndicator size="small" color={Colors.danger} />
+                    : <Text style={styles.deleteBtnText}>✕</Text>
+                  }
+                </TouchableOpacity>
               </View>
-              <TouchableOpacity
-                onPress={() => handleDelete(pref.id)}
-                disabled={deletingId === pref.id}
-                style={styles.deleteBtn}
-              >
-                {deletingId === pref.id
-                  ? <ActivityIndicator size="small" color={Colors.danger} />
-                  : <Text style={styles.deleteBtnText}>✕</Text>
+
+              {/* Area chips */}
+              {!hasAny ? (
+                <Text style={styles.prefAreaText}>📍 All areas (nationwide)</Text>
+              ) : (
+                <View style={styles.prefChips}>
+                  {/* State chips (blue) */}
+                  {stateCodes.map(code => (
+                    <View key={code} style={styles.stateChip}>
+                      <Text style={styles.stateChipText}>
+                        🗺  {STATE_NAMES[code] ?? code}
+                      </Text>
+                    </View>
+                  ))}
+                  {/* City chips (green) */}
+                  {areaIds.map(id => (
+                    <View key={id} style={styles.cityChip}>
+                      <Text style={styles.cityChipText}>📍  {areaName(id)}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              {/* Radius badge — only shown when city areas exist */}
+              {areaIds.length > 0 && (
+                <View style={styles.radiusBadgeRow}>
+                  <View style={styles.radiusBadge}>
+                    <Text style={styles.radiusBadgeText}>
+                      📡 {pref.radius_miles ?? DEFAULT_RADIUS} mi radius
+                    </Text>
+                  </View>
+                </View>
+              )}
+
+              {/* Notification badges */}
+              <View style={styles.notifRow}>
+                {pref.notify_email
+                  ? <View style={styles.notifOn}><Text style={styles.notifOnText}>📧 Email on</Text></View>
+                  : <View style={styles.notifOff}><Text style={styles.notifOffText}>📧 Email off</Text></View>
                 }
+                {pref.notify_push
+                  ? <View style={styles.notifOn}><Text style={styles.notifOnText}>📱 Push on</Text></View>
+                  : <View style={styles.notifOff}><Text style={styles.notifOffText}>📱 Push off</Text></View>
+                }
+              </View>
+
+              {/* Edit button → navigates to AreaPickerScreen */}
+              <TouchableOpacity
+                style={styles.editBtn}
+                onPress={() => openEditAreas(pref)}
+                activeOpacity={0.75}
+              >
+                <Text style={styles.editBtnText}>✏️  Edit Areas & Notifications</Text>
               </TouchableOpacity>
             </View>
-
-            {pref.area_ids.length === 0 ? (
-              <Text style={styles.prefAreaText}>📍 All areas (nationwide)</Text>
-            ) : (
-              <View style={styles.prefAreas}>
-                {pref.area_ids.map(id => (
-                  <View key={id} style={styles.areaTag}>
-                    <Text style={styles.areaTagText}>{areaName(id)}</Text>
-                  </View>
-                ))}
-              </View>
-            )}
-
-            {pref.area_ids.length > 0 && (
-              <View style={styles.radiusBadgeRow}>
-                <View style={styles.radiusBadge}>
-                  <Text style={styles.radiusBadgeText}>
-                    📡 {pref.radius_miles ?? DEFAULT_RADIUS} mi radius
-                  </Text>
-                </View>
-              </View>
-            )}
-
-            <View style={styles.notifRow}>
-              {pref.notify_email
-                ? <View style={styles.notifBadgeOn}><Text style={styles.notifBadgeOnText}>📧 Email on</Text></View>
-                : <View style={styles.notifBadgeOff}><Text style={styles.notifBadgeOffText}>📧 Email off</Text></View>
-              }
-              {pref.notify_push
-                ? <View style={styles.notifBadgeOn}><Text style={styles.notifBadgeOnText}>📱 Push on</Text></View>
-                : <View style={styles.notifBadgeOff}><Text style={styles.notifBadgeOffText}>📱 Push off</Text></View>
-              }
-            </View>
-
-            {/* Edit button */}
-            <TouchableOpacity style={styles.editBtn} onPress={() => openEdit(pref)} activeOpacity={0.75}>
-              <Text style={styles.editBtnText}>✏️  Edit Alert</Text>
-            </TouchableOpacity>
-          </View>
-        ))
+          );
+        })
       )}
 
       {/* ── Add new alert ─────────────────────────────────────────────── */}
@@ -386,14 +261,12 @@ export function AlertsScreen() {
         </TouchableOpacity>
       ) : (
         <View style={styles.formCard}>
-          <Text style={styles.formTitle}>{editingPref ? '✏️  Edit Alert' : 'New Alert'}</Text>
+          <Text style={styles.formTitle}>New Alert</Text>
 
-          {/* ── Category picker ── */}
+          {/* Category search */}
           <Text style={styles.fieldLabel}>
             Category <Text style={styles.required}>*</Text>
           </Text>
-
-          {/* Category search */}
           <View style={[styles.searchRow, { marginBottom: Spacing.xs }]}>
             <Text style={styles.searchIcon}>🔍</Text>
             <TextInput
@@ -409,11 +282,11 @@ export function AlertsScreen() {
           </View>
 
           {catGroups.length === 0 ? (
-            <Text style={styles.noAreasText}>No categories match "{catSearch}"</Text>
+            <Text style={styles.noText}>No categories match "{catSearch}"</Text>
           ) : (
             catGroups.map(([group, cats]) => (
               <View key={group} style={{ marginBottom: Spacing.xs }}>
-                <Text style={styles.stateLabel}>{group}</Text>
+                <Text style={styles.groupLabel}>{group}</Text>
                 <View style={styles.chipRow}>
                   {cats.map(cat => {
                     const sel = selCategory === cat.name;
@@ -435,89 +308,10 @@ export function AlertsScreen() {
             ))
           )}
 
-          {/* ── Area picker ── */}
-          <Text style={[styles.fieldLabel, { marginTop: Spacing.md }]}>
-            Areas{' '}
-            <Text style={styles.fieldHint}>(optional — leave empty for all areas)</Text>
-          </Text>
-
-          {areas.length === 0 ? (
-            <Text style={styles.noAreasText}>No service areas configured yet.</Text>
-          ) : (
-            <AreaPicker
-              areas={areas}
-              selected={selAreaIds}
-              onToggle={toggleArea}
-            />
-          )}
-
-          {/* ── Radius picker ── */}
-          {selAreaIds.size > 0 && (
-            <View style={{ marginTop: Spacing.md }}>
-              <Text style={styles.fieldLabel}>
-                Radius <Text style={styles.fieldHint}>(max 35 miles)</Text>
-              </Text>
-              <View style={styles.radiusRow}>
-                {RADIUS_OPTIONS.map(opt => (
-                  <TouchableOpacity
-                    key={opt.value}
-                    style={[styles.radiusBtn, selRadius === opt.value && styles.radiusBtnSelected]}
-                    onPress={() => setSelRadius(opt.value)}
-                    activeOpacity={0.75}
-                  >
-                    <Text style={[styles.radiusBtnText, selRadius === opt.value && styles.radiusBtnTextSelected]}>
-                      {opt.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-              <Text style={styles.radiusHint}>
-                Notify me for leads within {selRadius} mile{selRadius > 1 ? 's' : ''} of my selected area{selAreaIds.size > 1 ? 's' : ''}.
-              </Text>
-            </View>
-          )}
-
-          {/* Summary */}
-          {(selCategory || selAreaIds.size > 0) && (
-            <View style={styles.summaryBox}>
-              <Text style={styles.summaryText}>
-                {selCategory ? `📂 ${selCategory}` : '📂 No category selected'}
-                {'  ·  '}
-                {selAreaIds.size === 0
-                  ? '📍 All areas'
-                  : `📍 ${selAreaIds.size} area${selAreaIds.size > 1 ? 's' : ''} · 📡 ${selRadius} mi`
-                }
-              </Text>
-            </View>
-          )}
-
-          {/* Notification toggles */}
-          <View style={[styles.notifToggles, { marginTop: Spacing.md }]}>
-            <Text style={styles.fieldLabel}>Notifications</Text>
-            <View style={styles.toggleRow}>
-              <Text style={styles.toggleLabel}>📧  Email alerts</Text>
-              <Switch
-                value={selEmail}
-                onValueChange={setSelEmail}
-                trackColor={{ false: Colors.panel2, true: Colors.orange }}
-                thumbColor={Colors.foreground}
-              />
-            </View>
-            <View style={styles.toggleRow}>
-              <Text style={styles.toggleLabel}>📱  Push notifications</Text>
-              <Switch
-                value={selPush}
-                onValueChange={setSelPush}
-                trackColor={{ false: Colors.panel2, true: Colors.orange }}
-                thumbColor={Colors.foreground}
-              />
-            </View>
-          </View>
-
           {/* Actions */}
           <View style={styles.formActions}>
-            <Button variant="ghost" label="Cancel" onPress={resetForm} />
-            <Button variant="primary" label="Save Alert" loading={saving} onPress={handleSave} />
+            <Button variant="ghost"   label="Cancel"          onPress={resetForm} />
+            <Button variant="primary" label="Next: Choose Areas →" onPress={openNewPrefAreas} />
           </View>
         </View>
       )}
@@ -551,6 +345,7 @@ const styles = StyleSheet.create({
   emptyTitle: { fontSize: FontSize.md, fontWeight: '700', color: Colors.foreground, marginBottom: Spacing.xs },
   emptyText:  { fontSize: FontSize.sm, color: Colors.textSecondary, textAlign: 'center', lineHeight: 20 },
 
+  // Pref cards
   prefCard: {
     backgroundColor: Colors.panel,
     borderRadius:    Radius.lg,
@@ -583,17 +378,32 @@ const styles = StyleSheet.create({
   },
   deleteBtnText: { fontSize: 13, color: Colors.danger, fontWeight: '700' },
 
-  prefAreas:    { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: Spacing.xs },
   prefAreaText: { fontSize: FontSize.sm, color: Colors.textSecondary, marginBottom: Spacing.xs },
-  areaTag: {
-    backgroundColor:   Colors.panel2,
+
+  prefChips: {
+    flexDirection: 'row',
+    flexWrap:      'wrap',
+    gap:           6,
+    marginBottom:  Spacing.xs,
+  },
+  stateChip: {
+    backgroundColor:   'rgba(59,130,246,0.12)',
     borderRadius:      Radius.full,
     borderWidth:       1,
-    borderColor:       Colors.border2,
+    borderColor:       'rgba(59,130,246,0.35)',
     paddingHorizontal: 8,
     paddingVertical:   3,
   },
-  areaTagText: { fontSize: FontSize.xs, color: Colors.text },
+  stateChipText: { fontSize: FontSize.xs, color: '#60a5fa', fontWeight: '700' },
+  cityChip: {
+    backgroundColor:   'rgba(34,197,94,0.10)',
+    borderRadius:      Radius.full,
+    borderWidth:       1,
+    borderColor:       'rgba(34,197,94,0.30)',
+    paddingHorizontal: 8,
+    paddingVertical:   3,
+  },
+  cityChipText: { fontSize: FontSize.xs, color: '#4ade80', fontWeight: '700' },
 
   radiusBadgeRow: { flexDirection: 'row', marginBottom: Spacing.xs },
   radiusBadge: {
@@ -607,34 +417,31 @@ const styles = StyleSheet.create({
   radiusBadgeText: { fontSize: FontSize.xs, color: Colors.accent, fontWeight: '600' },
 
   notifRow: { flexDirection: 'row', gap: 6, marginTop: Spacing.xs, flexWrap: 'wrap' },
-  notifBadgeOn: {
+  notifOn: {
     backgroundColor: 'rgba(34,197,94,0.12)',
     borderRadius: Radius.full, borderWidth: 1, borderColor: 'rgba(34,197,94,0.30)',
     paddingHorizontal: 8, paddingVertical: 2,
   },
-  notifBadgeOnText: { fontSize: FontSize.xs, color: '#22c55e', fontWeight: '600' },
-  notifBadgeOff: {
+  notifOnText:  { fontSize: FontSize.xs, color: '#22c55e', fontWeight: '600' },
+  notifOff: {
     backgroundColor: Colors.panel2,
     borderRadius: Radius.full, borderWidth: 1, borderColor: Colors.border2,
     paddingHorizontal: 8, paddingVertical: 2,
   },
-  notifBadgeOffText: { fontSize: FontSize.xs, color: Colors.muted },
+  notifOffText: { fontSize: FontSize.xs, color: Colors.muted },
 
   editBtn: {
     marginTop: Spacing.sm,
     borderWidth: 1,
     borderColor: Colors.accent,
     borderRadius: Radius.md,
-    paddingVertical: 7,
+    paddingVertical: 8,
     alignItems: 'center',
     backgroundColor: 'rgba(129,140,248,0.08)',
   },
   editBtnText: { fontSize: FontSize.xs, color: Colors.accent, fontWeight: '700' },
 
-  notifToggles: { gap: 4 },
-  toggleRow:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 4 },
-  toggleLabel:  { fontSize: FontSize.sm, color: Colors.text },
-
+  // Add / form
   addBtn: {
     borderWidth:  1.5,
     borderColor:  Colors.borderOrange,
@@ -658,80 +465,37 @@ const styles = StyleSheet.create({
   formTitle: { fontSize: FontSize.md, fontWeight: '700', color: Colors.foreground, marginBottom: Spacing.md },
 
   fieldLabel: { fontSize: FontSize.sm, fontWeight: '700', color: Colors.text, marginBottom: Spacing.xs },
-  fieldHint:  { fontWeight: '400', color: Colors.muted },
   required:   { color: Colors.orange },
 
-  // Search bar
   searchRow: {
-    flexDirection:   'row',
-    alignItems:      'center',
-    backgroundColor: Colors.panel2,
-    borderRadius:    Radius.md,
-    borderWidth:     1,
-    borderColor:     Colors.border2,
+    flexDirection:     'row',
+    alignItems:        'center',
+    backgroundColor:   Colors.panel2,
+    borderRadius:      Radius.md,
+    borderWidth:       1,
+    borderColor:       Colors.border2,
     paddingHorizontal: Spacing.sm,
-    marginBottom:    Spacing.sm,
+    marginBottom:      Spacing.sm,
   },
   searchIcon:  { fontSize: 14, marginRight: 6 },
   searchInput: {
-    flex:      1,
-    height:    38,
-    fontSize:  FontSize.sm,
-    color:     Colors.foreground,
+    flex:     1,
+    height:   38,
+    fontSize: FontSize.sm,
+    color:    Colors.foreground,
   },
 
-  // Flat search results
-  flatList: { marginBottom: Spacing.xs },
+  noText: { fontSize: FontSize.sm, color: Colors.muted, marginBottom: Spacing.md },
 
-  // Area rows (in search results and state body)
-  areaRow: {
-    flexDirection:     'row',
-    alignItems:        'center',
-    justifyContent:    'space-between',
-    paddingVertical:   10,
-    paddingHorizontal: Spacing.sm,
-    borderRadius:      Radius.md,
-    marginBottom:      3,
-    backgroundColor:   Colors.panel2,
-    borderWidth:       1,
-    borderColor:       Colors.border2,
+  groupLabel: {
+    fontSize:      FontSize.xs,
+    fontWeight:    '700',
+    color:         Colors.accent,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    marginBottom:  4,
+    marginTop:     Spacing.xs,
   },
-  areaRowSelected: {
-    borderColor:     Colors.orange,
-    backgroundColor: 'rgba(249,115,22,0.10)',
-  },
-  areaRowText:         { fontSize: FontSize.sm, color: Colors.text },
-  areaRowTextSelected: { color: Colors.orange, fontWeight: '600' },
-  checkmark:           { fontSize: 14, color: Colors.orange, fontWeight: '700' },
-
-  // State accordion
-  stateSection: { marginBottom: 6 },
-  stateHeader: {
-    flexDirection:     'row',
-    alignItems:        'center',
-    justifyContent:    'space-between',
-    paddingVertical:   10,
-    paddingHorizontal: Spacing.sm,
-    backgroundColor:   Colors.panel2,
-    borderRadius:      Radius.md,
-    borderWidth:       1,
-    borderColor:       Colors.border2,
-  },
-  stateHeaderLeft:  { flex: 1 },
-  stateHeaderRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  stateName: { fontSize: FontSize.sm, fontWeight: '700', color: Colors.foreground },
-  stateCount: { fontSize: FontSize.xs, color: Colors.muted, marginTop: 1 },
-  chevron:    { fontSize: 10, color: Colors.muted },
-  selBadge: {
-    backgroundColor:   'rgba(249,115,22,0.15)',
-    borderRadius:      Radius.full,
-    paddingHorizontal: 7,
-    paddingVertical:   2,
-  },
-  selBadgeText: { fontSize: FontSize.xs, color: Colors.orange, fontWeight: '700' },
-  stateBody: { paddingLeft: Spacing.sm, marginTop: 3 },
-
-  // Category chips
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: Spacing.xs },
   chip: {
     paddingHorizontal: 10,
@@ -744,43 +508,6 @@ const styles = StyleSheet.create({
   chipSelected:     { borderColor: Colors.orange, backgroundColor: 'rgba(249,115,22,0.15)' },
   chipText:         { fontSize: FontSize.xs, color: Colors.textSecondary, fontWeight: '600' },
   chipTextSelected: { color: Colors.orange },
-
-  stateLabel: {
-    fontSize:      FontSize.xs,
-    fontWeight:    '700',
-    color:         Colors.accent,
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-    marginBottom:  4,
-    marginTop:     Spacing.xs,
-  },
-
-  noAreasText: { fontSize: FontSize.sm, color: Colors.muted, marginBottom: Spacing.md },
-
-  // Radius selector
-  radiusRow: { flexDirection: 'row', gap: Spacing.sm, marginBottom: 4 },
-  radiusBtn: {
-    flex:            1,
-    paddingVertical: Spacing.sm,
-    borderRadius:    Radius.md,
-    borderWidth:     1,
-    borderColor:     Colors.border2,
-    backgroundColor: Colors.panel2,
-    alignItems:      'center',
-  },
-  radiusBtnSelected:     { borderColor: Colors.accent, backgroundColor: 'rgba(129,140,248,0.15)' },
-  radiusBtnText:         { fontSize: FontSize.sm, fontWeight: '700', color: Colors.textSecondary },
-  radiusBtnTextSelected: { color: Colors.accent },
-  radiusHint: { fontSize: FontSize.xs, color: Colors.muted, lineHeight: 17, marginBottom: Spacing.xs },
-
-  summaryBox: {
-    backgroundColor: Colors.panel2,
-    borderRadius:    Radius.md,
-    padding:         Spacing.sm,
-    marginTop:       Spacing.sm,
-    marginBottom:    Spacing.xs,
-  },
-  summaryText: { fontSize: FontSize.sm, color: Colors.accent, textAlign: 'center' },
 
   formActions: {
     flexDirection:  'row',

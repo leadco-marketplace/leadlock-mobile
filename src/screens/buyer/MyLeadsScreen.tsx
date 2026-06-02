@@ -1,9 +1,9 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View, Text, FlatList, StyleSheet, ActivityIndicator,
   TouchableOpacity, RefreshControl,
 } from 'react-native';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { StackActions } from '@react-navigation/native';
 import { leadsApi, PurchasedLead } from '@/lib/api';
 import { ScreenShell } from '@/components/ScreenShell';
@@ -46,12 +46,15 @@ function PurchasedCard({ lead }: { lead: PurchasedLead }) {
 
 export function MyLeadsScreen() {
   useTheme(); // re-render on theme change
+  const route = useRoute<any>();
+
   const [leads,      setLeads]      = useState<PurchasedLead[]>([]);
   const [loading,    setLoading]    = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error,      setError]      = useState<string | null>(null);
 
-  async function load(silent = false) {
+  // Stable load function — only uses state setters (always-stable references)
+  const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     setError(null);
     try {
@@ -63,11 +66,18 @@ export function MyLeadsScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }
+  }, []); // empty deps — state setters never change
 
-  // Always do a full (non-silent) reload on focus so newly-purchased leads
-  // appear immediately when the tab is tapped.
-  useFocusEffect(useCallback(() => { load(false); }, []));
+  // Reload on every tab focus (handles normal tab switching and session changes)
+  useFocusEffect(useCallback(() => { load(false); }, [load]));
+
+  // LeadDetailScreen passes a refreshToken param after a fresh purchase so that
+  // My Leads reloads even when it was already the active tab (focus event would
+  // not fire in that case because the screen never lost focus).
+  const refreshToken = route.params?.refreshToken;
+  useEffect(() => {
+    if (refreshToken != null) load(false);
+  }, [refreshToken, load]);
 
   if (loading) {
     return (

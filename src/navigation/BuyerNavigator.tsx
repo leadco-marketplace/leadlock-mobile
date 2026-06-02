@@ -7,6 +7,7 @@ import { MyLeadsScreen }     from '@/screens/buyer/MyLeadsScreen';
 import { AlertsScreen }      from '@/screens/buyer/AlertsScreen';
 import { AccountScreen }     from '@/screens/shared/AccountScreen';
 import { LeadDetailScreen }  from '@/screens/buyer/LeadDetailScreen';
+import { AreaPickerScreen }  from '@/screens/buyer/AreaPickerScreen';
 import { Colors, FontSize }  from '@/theme';
 
 const Tab   = createBottomTabNavigator();
@@ -98,6 +99,7 @@ export function BuyerNavigator() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="BuyerTabs"   component={BuyerTabs} />
       <Stack.Screen name="LeadDetail"  component={LeadDetailScreen} />
+      <Stack.Screen name="AreaPicker"  component={AreaPickerScreen} />
     </Stack.Navigator>
   );
 }

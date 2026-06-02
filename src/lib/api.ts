@@ -14,7 +14,17 @@ async function authHeaders(): Promise<Record<string, string>> {
 
 async function request<T>(path: string, opts?: RequestInit): Promise<T> {
   const headers = await authHeaders();
-  const res = await fetch(`${BASE}${path}`, { ...opts, headers: { ...headers, ...opts?.headers } });
+  // Force a network trip on every call — prevents iOS NSURLSession from
+  // serving a stale cached response (e.g. old My Leads list right after a purchase).
+  const res = await fetch(`${BASE}${path}`, {
+    ...opts,
+    headers: {
+      ...headers,
+      ...opts?.headers,
+      'Cache-Control': 'no-cache',
+      Pragma:          'no-cache',
+    },
+  });
   const body = await res.json();
   if (!res.ok) throw new Error(body?.error ?? `HTTP ${res.status}`);
   return body as T;
@@ -149,10 +159,12 @@ export type Preference = {
   id: string;
   service_category: string;
   area_ids: string[];
-  radius_miles: number;        // 1–35 miles radius around each selected area center
+  state_codes: string[];       // whole-state selections (e.g. ['FL', 'MA']); no radius applies
+  radius_miles: number;        // 1–35 miles radius around each selected city/area center
   max_price_cents: number | null;
   notify_email: boolean;
   notify_push: boolean;
+  notify_sms?: boolean;
 };
 
 export const preferencesApi = {

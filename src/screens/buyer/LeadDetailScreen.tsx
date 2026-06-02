@@ -538,12 +538,30 @@ export function LeadDetailScreen() {
 
   const price = lead.buyer_price_cents ?? Math.round(lead.price_cents * 1.125);
 
+  // When this screen was opened after a fresh purchase (purchaseId is set),
+  // pressing back should navigate explicitly to the My Leads tab rather than
+  // just calling goBack().  goBack() returns focus to whichever tab was last
+  // active which may already be My Leads — if it is, React Navigation won't
+  // fire a new focus event and useFocusEffect silently skips the reload.
+  // Navigating to MyLeads with a new refreshToken param guarantees the tab
+  // reloads whether or not it was already focused.
+  function handleBack() {
+    if (purchaseId) {
+      navigation.navigate('BuyerTabs', {
+        screen: 'MyLeads',
+        params: { refreshToken: Date.now() },
+      });
+    } else {
+      navigation.goBack();
+    }
+  }
+
   return (
     <ScreenShell scrollable={false}>
       {/* ── Back button ─────────────────────────────────── */}
-      <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backRow} activeOpacity={0.7}>
+      <TouchableOpacity onPress={handleBack} style={styles.backRow} activeOpacity={0.7}>
         <Text style={styles.backArrow}>←</Text>
-        <Text style={styles.backLabel}>Back</Text>
+        <Text style={styles.backLabel}>{purchaseId ? 'My Leads' : 'Back'}</Text>
       </TouchableOpacity>
 
       <ScrollView
