@@ -95,6 +95,9 @@ export function AreaPickerScreen({ route, navigation }: any) {
   // Tab
   const [activeTab, setActiveTab] = useState<'state' | 'city'>('state');
 
+  // State dropdown open/closed
+  const [stateDropdownOpen, setStateDropdownOpen] = useState(false);
+
   // Search
   const [stateSearch, setStateSearch] = useState('');
   const [citySearch,  setCitySearch]  = useState('');
@@ -268,43 +271,80 @@ export function AreaPickerScreen({ route, navigation }: any) {
             Select a whole state — any lead with an address in that state will match this alert. No radius needed.
           </Text>
 
-          {/* State search */}
-          <View style={styles.searchRow}>
-            <Text style={styles.searchIcon}>🔍</Text>
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search states…"
-              placeholderTextColor={Colors.muted}
-              value={stateSearch}
-              onChangeText={setStateSearch}
-              autoCorrect={false}
-              autoCapitalize="none"
-              clearButtonMode="while-editing"
-            />
-          </View>
+          {/* Dropdown trigger */}
+          <TouchableOpacity
+            style={styles.dropdownTrigger}
+            onPress={() => {
+              setStateDropdownOpen(o => !o);
+              if (stateDropdownOpen) setStateSearch('');
+            }}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.dropdownTriggerText}>Add a state…</Text>
+            <Text style={styles.dropdownChevron}>{stateDropdownOpen ? '▲' : '▼'}</Text>
+          </TouchableOpacity>
 
-          {filteredStates.length === 0 ? (
-            <Text style={styles.noResultText}>No states match "{stateSearch}"</Text>
-          ) : (
-            filteredStates.map(s => {
-              const sel = selStateCodes.includes(s.code);
-              return (
-                <TouchableOpacity
-                  key={s.code}
-                  style={[styles.listRow, sel && styles.listRowSelected]}
-                  onPress={() => toggleState(s.code)}
-                  activeOpacity={0.75}
-                >
-                  <View>
-                    <Text style={[styles.listRowTitle, sel && styles.listRowTitleSelected]}>
-                      {s.name}
-                    </Text>
-                    <Text style={styles.listRowSub}>{s.code}</Text>
-                  </View>
-                  {sel && <Text style={styles.checkmark}>✓</Text>}
-                </TouchableOpacity>
-              );
-            })
+          {/* Dropdown panel */}
+          {stateDropdownOpen && (
+            <View style={styles.dropdownPanel}>
+              {/* Search inside dropdown */}
+              <View style={styles.dropdownSearchRow}>
+                <Text style={styles.searchIcon}>🔍</Text>
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Search states…"
+                  placeholderTextColor={Colors.muted}
+                  value={stateSearch}
+                  onChangeText={setStateSearch}
+                  autoCorrect={false}
+                  autoCapitalize="none"
+                  clearButtonMode="while-editing"
+                />
+              </View>
+
+              {/* Scrollable state list — capped height so it doesn't take over screen */}
+              <ScrollView
+                style={styles.dropdownList}
+                nestedScrollEnabled
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+              >
+                {filteredStates.length === 0 ? (
+                  <Text style={[styles.noResultText, { paddingHorizontal: Spacing.sm }]}>
+                    No states match "{stateSearch}"
+                  </Text>
+                ) : (
+                  filteredStates.map(s => {
+                    const sel = selStateCodes.includes(s.code);
+                    return (
+                      <TouchableOpacity
+                        key={s.code}
+                        style={[styles.dropdownRow, sel && styles.dropdownRowSelected]}
+                        onPress={() => toggleState(s.code)}
+                        activeOpacity={0.75}
+                      >
+                        <View>
+                          <Text style={[styles.dropdownRowTitle, sel && styles.listRowTitleSelected]}>
+                            {s.name}
+                          </Text>
+                          <Text style={styles.listRowSub}>{s.code}</Text>
+                        </View>
+                        {sel && <Text style={styles.checkmark}>✓</Text>}
+                      </TouchableOpacity>
+                    );
+                  })
+                )}
+              </ScrollView>
+
+              {/* Done button */}
+              <TouchableOpacity
+                style={styles.dropdownDone}
+                onPress={() => { setStateDropdownOpen(false); setStateSearch(''); }}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.dropdownDoneText}>Done</Text>
+              </TouchableOpacity>
+            </View>
           )}
         </View>
       )}
@@ -508,6 +548,76 @@ const styles = StyleSheet.create({
     color:        Colors.muted,
     lineHeight:   18,
     marginBottom: Spacing.sm,
+  },
+
+  // State dropdown
+  dropdownTrigger: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    justifyContent:    'space-between',
+    backgroundColor:   Colors.panel2,
+    borderRadius:      Radius.md,
+    borderWidth:       1,
+    borderColor:       Colors.border2,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical:   13,
+  },
+  dropdownTriggerText: {
+    fontSize: FontSize.sm,
+    color:    Colors.textSecondary,
+  },
+  dropdownChevron: {
+    fontSize: 11,
+    color:    Colors.accent,
+  },
+  dropdownPanel: {
+    backgroundColor: Colors.panel,
+    borderRadius:    Radius.lg,
+    borderWidth:     1,
+    borderColor:     Colors.border,
+    marginTop:       4,
+    overflow:        'hidden',
+    ...Shadow.card,
+  },
+  dropdownSearchRow: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border2,
+    paddingHorizontal: Spacing.sm,
+    backgroundColor:   Colors.panel2,
+  },
+  dropdownList: {
+    maxHeight: 260,
+  },
+  dropdownRow: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    justifyContent:    'space-between',
+    paddingVertical:   11,
+    paddingHorizontal: Spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border2,
+  },
+  dropdownRowSelected: {
+    backgroundColor: 'rgba(59,130,246,0.10)',
+  },
+  dropdownRowTitle: {
+    fontSize:   FontSize.sm,
+    color:      Colors.text,
+    fontWeight: '600',
+  },
+  dropdownDone: {
+    paddingVertical: 11,
+    alignItems:      'center',
+    borderTopWidth:  1,
+    borderTopColor:  Colors.border2,
+    backgroundColor: Colors.panel2,
+  },
+  dropdownDoneText: {
+    fontSize:   FontSize.sm,
+    color:      Colors.accent,
+    fontWeight: '700',
   },
 
   // Search bar
