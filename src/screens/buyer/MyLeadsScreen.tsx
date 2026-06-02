@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import {
   View, Text, FlatList, StyleSheet, ActivityIndicator,
-  TouchableOpacity,
+  TouchableOpacity, RefreshControl,
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { StackActions } from '@react-navigation/native';
@@ -49,13 +49,25 @@ export function MyLeadsScreen() {
   const [leads,      setLeads]      = useState<PurchasedLead[]>([]);
   const [loading,    setLoading]    = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error,      setError]      = useState<string | null>(null);
 
-  async function load() {
-    try { setLeads(await leadsApi.getPurchased()); } catch {}
-    finally { setLoading(false); setRefreshing(false); }
+  async function load(silent = false) {
+    if (!silent) setLoading(true);
+    setError(null);
+    try {
+      const data = await leadsApi.getPurchased();
+      setLeads(data);
+    } catch (e: any) {
+      setError(e?.message ?? 'Could not load leads. Pull down to retry.');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   }
 
-  useFocusEffect(useCallback(() => { load(); }, []));
+  // Always do a full (non-silent) reload on focus so newly-purchased leads
+  // appear immediately when the tab is tapped.
+  useFocusEffect(useCallback(() => { load(false); }, []));
 
   if (loading) {
     return (
@@ -73,12 +85,25 @@ export function MyLeadsScreen() {
       subtitle={`${leads.length} lead${leads.length !== 1 ? 's' : ''} unlocked`}
       scrollable={false}
     >
+      {error && (
+        <View style={styles.errorBanner}>
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity onPress={() => load(false)} style={styles.errorRetry}>
+            <Text style={styles.errorRetryText}>↻ Retry</Text>
+          </TouchableOpacity>
+        </View>
+      )}
       <FlatList
         data={leads}
         keyExtractor={(l) => l.purchase_id}
         renderItem={({ item }) => <PurchasedCard lead={item} />}
-        onRefresh={() => { setRefreshing(true); load(); }}
-        refreshing={refreshing}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => { setRefreshing(true); load(true); }}
+            tintColor={Colors.orange}
+          />
+        }
         showsVerticalScrollIndicator={false}
         contentContainerStyle={
           leads.length === 0 ? { flex: 1 } : { paddingBottom: Spacing.xxl }
@@ -132,4 +157,34 @@ const styles = StyleSheet.create({
   notesLabel:   { fontSize: FontSize.xs - 2, fontWeight: '700', letterSpacing: 1, color: Colors.muted, textTransform: 'uppercase' },
   notesText:    { fontSize: FontSize.xs, color: Colors.textSecondary, lineHeight: 18 },
   purchasedAt:  { fontSize: FontSize.xs, color: Colors.muted },
+
+  errorBanner: {
+    backgroundColor: 'rgba(248,113,113,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(248,113,113,0.30)',
+    borderRadius: Radius.md,
+    padding: Spacing.sm,
+    marginBottom: Spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  errorText: {
+    flex: 1,
+    fontSize: FontSize.xs,
+    color: Colors.danger,
+    lineHeight: 17,
+  },
+  errorRetry: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: Radius.sm,
+    borderWidth: 1,
+    borderColor: Colors.danger,
+  },
+  errorRetryText: {
+    fontSize: FontSize.xs,
+    color: Colors.danger,
+    fontWeight: '700',
+  },
 });
