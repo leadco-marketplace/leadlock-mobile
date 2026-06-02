@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import * as Location from 'expo-location';
 import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
+import { StackActions } from '@react-navigation/native';
 import { supabase } from '@/lib/supabase';
 import { leadsApi, Lead, BuyerLocation } from '@/lib/api';
 import { LeadCard }      from '@/components/LeadCard';
@@ -86,13 +87,24 @@ export function LiveFeedScreen() {
   // Keep loadRef current so the realtime callback never captures a stale closure
   useEffect(() => { loadRef.current = load; });
 
-  // Realtime lead feed updates — uses loadRef so it always calls the latest load
+  // Realtime lead feed updates — uses loadRef so it always calls the latest load.
+  // The postgres_changes subscription requires the `leads` table to be in
+  // Supabase's realtime publication and the buyer to have SELECT access.
+  // If those conditions aren't met events are silently dropped, so we also
+  // run a 30-second polling fallback to guarantee the feed stays current.
   useEffect(() => {
     const channel = supabase
       .channel('leads-feed')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'leads' }, () => loadRef.current(true))
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+
+    // Polling fallback: refresh every 30 s in case realtime events are blocked
+    const poll = setInterval(() => loadRef.current(true), 30_000);
+
+    return () => {
+      supabase.removeChannel(channel);
+      clearInterval(poll);
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -147,9 +159,12 @@ export function LiveFeedScreen() {
       // Pass purchase_id so LeadDetailScreen can look up the specific purchase
       // directly rather than scanning all purchases — avoids the 6-second polling
       // race that showed "not unlocked" when the DB write was briefly invisible.
-      // push (not navigate) forces a new screen instance — avoids deduplication
-      // that could land us on a stale existing LeadDetail for a different lead.
-      navigation.push('LeadDetail', { leadId: lead.id, purchaseId: purchase_id });
+      // StackActions.push always creates a fresh screen instance in the parent
+      // Stack navigator regardless of the current Tab context. navigation.push()
+      // alone is a Stack-only method and is not available on Tab navigation
+      // objects — calling it from here would fail silently and fall back to the
+      // deduplicating navigate(), which is exactly the bug we're fixing.
+      navigation.dispatch(StackActions.push('LeadDetail', { leadId: lead.id, purchaseId: purchase_id }));
     } catch (e: any) {
       if (e.message === 'insufficient_credits') {
         // Not enough credits — create a Stripe checkout for this specific lead

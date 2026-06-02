@@ -428,16 +428,20 @@ export function LeadDetailScreen() {
         for (let i = 0; i < MAX_DIRECT; i++) {
           if (i > 0) await new Promise<void>((res) => setTimeout(res, DIRECT_MS));
           const results = await leadsApi.getPurchaseByPurchaseId(purchaseId);
-          if (results.length > 0) {
-            // Prefer exact leadId match. Fall back to results[0] if ids somehow
-            // diverge — the purchaseId filter already validated this is the right
-            // record (correct buyer, paid status, correct purchase).
-            const found = results.find((r) => r.id === leadId) ?? results[0];
+          // Match by leadId first; fall back to purchaseId as a bulletproof
+          // secondary check. Never use results[0] without validation — if the
+          // server filter is bypassed and returns all purchases, results[0] would
+          // be a different (wrong) lead.
+          const found =
+            results.find((r) => r.id === leadId) ??
+            results.find((r) => r.purchase_id === purchaseId) ??
+            null;
+          if (found) {
             setLead(found);
             setLoading(false);
             return;
           }
-          // Empty results → purchase not yet visible on replica, keep retrying.
+          // No validated match — purchase not yet visible, keep retrying.
         }
         // Direct lookup exhausted — fall through to scan-all below.
       }
