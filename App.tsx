@@ -122,7 +122,13 @@ function PushResponseHandler() {
         // (e.g. cold-start where JS bundle just loaded)
         const tryNavigate = () => {
           if (navigationRef.current?.isReady()) {
-            navigationRef.current.navigate('LiveFeed' as never, { highlightLeadId: leadId } as never);
+            // LiveFeed lives inside BuyerTabs (Tab) inside the BuyerNavigator (Stack).
+            // navigate('LiveFeed') alone won't work from the root — we must navigate
+            // to the parent Tab first and pass the target screen + params as nested config.
+            navigationRef.current.navigate('BuyerTabs' as never, {
+              screen: 'LiveFeed',
+              params: { highlightLeadId: leadId },
+            } as never);
           } else {
             setTimeout(tryNavigate, 200);
           }

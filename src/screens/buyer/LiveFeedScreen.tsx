@@ -277,9 +277,18 @@ export function LiveFeedScreen() {
       subtitle="New leads in real time"
       scrollable={false}
       rightElement={
-        <View style={styles.liveDot}>
-          <View style={styles.dot} />
-          <Text style={styles.liveText}>LIVE</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm }}>
+          {profile && (
+            <View style={styles.creditPill}>
+              <Text style={styles.creditText}>
+                💳 ${((profile.credits_cents ?? 0) / 100).toFixed(2)}
+              </Text>
+            </View>
+          )}
+          <View style={styles.liveDot}>
+            <View style={styles.dot} />
+            <Text style={styles.liveText}>LIVE</Text>
+          </View>
         </View>
       }
     >
@@ -417,6 +426,20 @@ const styles = StyleSheet.create({
     shadowColor: Colors.accent2, shadowRadius: 4, shadowOpacity: 0.8, elevation: 3,
   },
   liveText:   { fontSize: FontSize.xs, fontWeight: '700', color: Colors.accent2, letterSpacing: 1 },
+  creditPill: {
+    backgroundColor: 'rgba(129,140,248,0.15)',
+    borderRadius: Radius.xxl,
+    borderWidth: 1,
+    borderColor: 'rgba(129,140,248,0.35)',
+    paddingVertical: 3,
+    paddingHorizontal: Spacing.sm,
+  },
+  creditText: {
+    fontSize: FontSize.xs,
+    fontWeight: '700',
+    color: Colors.accent,
+    fontVariant: ['tabular-nums'],
+  },
   errorBanner: {
     backgroundColor: 'rgba(248,113,113,0.12)',
     borderWidth: 1,

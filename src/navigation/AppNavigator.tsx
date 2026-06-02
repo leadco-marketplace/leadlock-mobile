@@ -42,11 +42,17 @@ const linking: LinkingOptions<any> = {
   prefixes: ['leadco://'],
   config: {
     screens: {
-      // These map to the tab screen NAMES defined in BuyerNavigator
-      LiveFeed: 'live-feed',
-      MyLeads:  'my-leads',
-      Alerts:   'alerts',
-      Account:  'account',
+      // BuyerNavigator is a Stack → BuyerTabs (Tab) → individual screens.
+      // The nested path must mirror the actual navigator hierarchy so that
+      // leadco://my-leads correctly reaches the MyLeads Tab screen.
+      BuyerTabs: {
+        screens: {
+          LiveFeed: 'live-feed',
+          MyLeads:  'my-leads',
+          Alerts:   'alerts',
+          Account:  'account',
+        },
+      },
     },
   },
 };
