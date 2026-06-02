@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { Platform, Alert } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { Platform, AppState } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as SplashScreen from 'expo-splash-screen';
@@ -60,18 +60,29 @@ async function registerForPushNotifications(userId: string): Promise<void> {
     return;
   }
 
-  let expoToken: string;
-  try {
-    const result = await Notifications.getExpoPushTokenAsync({ projectId });
-    expoToken = result.data;
-    console.log('[push] Got token:', expoToken.slice(0, 40) + '…');
-  } catch (e: any) {
-    console.error('[push] Failed to get Expo push token:', e);
-    // Show visible alert so we can diagnose the exact error
-    Alert.alert(
-      '⚠️ Push Token Error',
-      `Could not get push token.\n\nError: ${e?.message ?? String(e)}\n\nProjectId: ${projectId}`,
-    );
+  // Retry up to 3 times with exponential backoff — Expo's token service can
+  // be temporarily unreachable at startup (503/timeout) if the network isn't
+  // fully ready yet.  We log silently and retry rather than alarming the user.
+  let expoToken: string | null = null;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const result = await Notifications.getExpoPushTokenAsync({ projectId });
+      expoToken = result.data;
+      console.log('[push] Got token:', expoToken.slice(0, 40) + '…');
+      break;
+    } catch (e: any) {
+      console.warn(`[push] Token fetch attempt ${attempt}/3 failed:`, e?.message ?? String(e));
+      if (attempt < 3) {
+        // Wait 3s then 6s before retrying
+        await new Promise(r => setTimeout(r, attempt * 3_000));
+      }
+    }
+  }
+
+  if (!expoToken) {
+    // All retries exhausted — token will be re-attempted next time the user
+    // opens the app (AppState foreground listener in PushRegistrar).
+    console.error('[push] Could not get Expo push token after 3 attempts — will retry on next app open');
     return;
   }
 
@@ -94,11 +105,24 @@ async function registerForPushNotifications(userId: string): Promise<void> {
 function PushRegistrar() {
   const { session } = useAuth();
   const userId = session?.user?.id;
+  const userIdRef = useRef(userId);
+  userIdRef.current = userId;
 
   useEffect(() => {
-    if (userId) {
-      registerForPushNotifications(userId);
-    }
+    if (!userId) return;
+
+    // Initial registration attempt
+    registerForPushNotifications(userId);
+
+    // Re-attempt whenever the app comes back to the foreground — this handles
+    // the case where the first attempt failed (e.g. network not ready at startup)
+    // and the user hasn't logged out since.
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active' && userIdRef.current) {
+        registerForPushNotifications(userIdRef.current);
+      }
+    });
+    return () => sub.remove();
   }, [userId]);
 
   return null;
