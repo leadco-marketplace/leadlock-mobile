@@ -40,6 +40,9 @@ export function LiveFeedScreen() {
   const flatListRef = useRef<FlatList<Lead>>(null);
   // Always holds the latest `load` so the realtime subscription isn't stale
   const loadRef = useRef(load);
+  // Tracks whether we've already scrolled to a given notification lead so the
+  // scroll doesn't repeat every time the 10-second feed poll refreshes `leads`.
+  const highlightScrolledRef = useRef<string | null>(null);
 
   // ── Location permission ────────────────────────────────────────────────────
   useEffect(() => {
@@ -108,42 +111,44 @@ export function LiveFeedScreen() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Force reload when arriving from a push notification ──────────────────
-  // When the user taps a notification, the app navigates here with
-  // highlightLeadId. The lead might not be in the feed yet (realtime may not
-  // have fired), so we force a fresh fetch any time the param changes.
+  // ── Highlight + reload on notification tap ────────────────────────────────
+  // Effect 1: Fires once per notification (only depends on the lead ID param).
+  // Sets the highlight immediately and holds it for 5 minutes so it doesn't
+  // disappear while the buyer is deciding whether to unlock.
+  // Also forces a fresh feed fetch so the lead is guaranteed to appear.
   useEffect(() => {
     const targetId = route.params?.highlightLeadId;
     if (!targetId) return;
+    setHighlightedId(targetId);
+    highlightScrolledRef.current = null; // reset scroll tracker for this notification
     load(false, buyerLocation ?? undefined);
+    const clearTimer = setTimeout(() => setHighlightedId(null), 5 * 60 * 1000); // 5 minutes
+    return () => clearTimeout(clearTimer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [route.params?.highlightLeadId]);
 
-  // ── Scroll to + highlight the target lead once feed is loaded ─────────────
+  // ── Scroll to highlighted lead once (does NOT reset the highlight) ────────
+  // Effect 2: Re-runs whenever leads update (needed to find the index) but
+  // scrolls only ONCE per notification via highlightScrolledRef — so the
+  // 10-second feed poll never triggers a duplicate scroll or highlight reset.
   useEffect(() => {
     const targetId = route.params?.highlightLeadId;
     if (!targetId || leads.length === 0 || loading) return;
+    if (highlightScrolledRef.current === targetId) return; // already scrolled
 
     const idx = sortedLeads.findIndex((l) => l.id === targetId);
     if (idx < 0) {
-      // Lead not found — may have just been sold or not yet available.
-      // Show a brief error so the user knows we tried.
       setError('The lead from your notification is no longer available in the feed.');
       const t = setTimeout(() => setError(null), 4000);
       return () => clearTimeout(t);
     }
 
-    setHighlightedId(targetId);
+    highlightScrolledRef.current = targetId; // mark as done so we don't scroll again
 
-    // Give the FlatList time to finish its first layout pass
     const scrollTimer = setTimeout(() => {
       flatListRef.current?.scrollToIndex({ index: idx, animated: true, viewPosition: 0.3 });
     }, 400);
-
-    // Auto-clear the highlight after 5 seconds
-    const clearTimer = setTimeout(() => setHighlightedId(null), 5000);
-
-    return () => { clearTimeout(scrollTimer); clearTimeout(clearTimer); };
+    return () => clearTimeout(scrollTimer);
   }, [leads, loading, route.params?.highlightLeadId]);
 
   // ── Unlock handler ─────────────────────────────────────────────────────────

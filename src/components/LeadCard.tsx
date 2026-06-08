@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Animated, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { Colors, Radius, FontSize, Spacing, Shadow } from '@/theme';
@@ -53,15 +53,15 @@ export function LeadCard({ lead, onUnlock, unlocking, purchased, highlighted }: 
 
   const animBorderColor = pulseAnim.interpolate({
     inputRange:  [0, 1],
-    outputRange: ['#ff9333', '#ffb566'],
+    outputRange: ['#ff9333', '#ff5500'],
   });
   const animShadowOpacity = pulseAnim.interpolate({
     inputRange:  [0, 1],
-    outputRange: [0.35, 0.72],
+    outputRange: [0.3, 0.78],
   });
   const animShadowRadius = pulseAnim.interpolate({
     inputRange:  [0, 1],
-    outputRange: [8, 20],
+    outputRange: [10, 28],
   });
 
   function handleUnlock() {
@@ -72,17 +72,23 @@ export function LeadCard({ lead, onUnlock, unlocking, purchased, highlighted }: 
   const isSold = lead.status === 'sold';
 
   return (
+    // Outer wrapper carries the animated shadow/glow — no overflow:hidden so
+    // the glow is not clipped. Inner card keeps overflow:hidden for the SOLD stamp.
+    <Animated.View style={[
+      styles.glowWrap,
+      highlighted && {
+        shadowColor:   '#ff9333',
+        shadowOpacity: animShadowOpacity,
+        shadowRadius:  animShadowRadius,
+        shadowOffset:  { width: 0, height: 0 },
+        elevation:     10,
+      },
+    ]}>
     <Animated.View style={[
       styles.card,
-      { backgroundColor: Colors.panel, borderColor: Colors.borderOrange },
-      highlighted && {
-        borderColor:    animBorderColor,
-        borderWidth:    2.5,
-        shadowColor:    '#ff9333',
-        shadowOpacity:  animShadowOpacity,
-        shadowRadius:   animShadowRadius,
-        elevation:      8,
-      },
+      { backgroundColor: Colors.panel },
+      { borderColor: highlighted ? animBorderColor : Colors.borderOrange },
+      highlighted && { borderWidth: 2.5 },
       isSold && styles.cardSold,
     ]}>
       {/* 🔥 Your Lead banner — shown when arriving from a push / SMS notification */}
@@ -178,17 +184,24 @@ export function LeadCard({ lead, onUnlock, unlocking, purchased, highlighted }: 
         </>
       )}
     </Animated.View>
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
+  // Outer shell — carries the animated glow shadow. No overflow:hidden so the
+  // shadow/glow radiates freely beyond the card edges.
+  glowWrap: {
+    borderRadius: Radius.xl,
+    marginBottom: Spacing.sm + 4,
+  },
   card: {
     backgroundColor: Colors.panel,
     borderRadius:    Radius.xl,
     borderWidth:     1,
     borderColor:     Colors.borderOrange,
     padding:         Spacing.md,
-    marginBottom:    Spacing.sm + 4,
+    // marginBottom lives on glowWrap now
     gap:             Spacing.sm,
     overflow:        'hidden',   // clips the diagonal SOLD banner to card bounds
     ...Shadow.card,
@@ -202,16 +215,21 @@ const styles = StyleSheet.create({
     marginTop:        -Spacing.md,
     marginHorizontal: -Spacing.md,
     marginBottom:     Spacing.sm + 2,
-    paddingVertical:  8,
+    paddingVertical:  10,
     alignItems:       'center',
     justifyContent:   'center',
     borderRadius:     0,
   },
   highlightBannerText: {
     color:         '#ffffff',
-    fontSize:      FontSize.sm,
-    fontWeight:    '800',
-    letterSpacing: 0.8,
+    fontSize:      20,
+    // AvenirNextCondensed-Heavy is a premium built-in iOS font with the same
+    // condensed bold character as Barlow Condensed. Android falls back to the
+    // system condensed variant.
+    fontFamily:    Platform.OS === 'ios' ? 'AvenirNextCondensed-Heavy' : 'sans-serif-condensed',
+    fontWeight:    '900',
+    letterSpacing: 2,
+    textTransform: 'uppercase',
   },
   header: {
     flexDirection:  'row',
