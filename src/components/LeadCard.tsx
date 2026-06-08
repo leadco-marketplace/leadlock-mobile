@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { Colors, Radius, FontSize, Spacing, Shadow } from '@/theme';
@@ -33,6 +33,37 @@ export function LeadCard({ lead, onUnlock, unlocking, purchased, highlighted }: 
   useTheme(); // re-render when theme changes so inline Colors.* picks up new values
   const price = lead.buyer_price_cents ?? Math.round(lead.price_cents * 1.125);
 
+  // ── Pulse animation for notification-highlighted card ─────────────────────
+  const pulseAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (!highlighted) {
+      pulseAnim.setValue(0);
+      return;
+    }
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1, duration: 1000, useNativeDriver: false }),
+        Animated.timing(pulseAnim, { toValue: 0, duration: 1000, useNativeDriver: false }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [highlighted, pulseAnim]);
+
+  const animBorderColor = pulseAnim.interpolate({
+    inputRange:  [0, 1],
+    outputRange: ['#ff9333', '#ffb566'],
+  });
+  const animShadowOpacity = pulseAnim.interpolate({
+    inputRange:  [0, 1],
+    outputRange: [0.35, 0.72],
+  });
+  const animShadowRadius = pulseAnim.interpolate({
+    inputRange:  [0, 1],
+    outputRange: [8, 20],
+  });
+
   function handleUnlock() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     onUnlock?.();
@@ -41,7 +72,26 @@ export function LeadCard({ lead, onUnlock, unlocking, purchased, highlighted }: 
   const isSold = lead.status === 'sold';
 
   return (
-    <View style={[styles.card, { backgroundColor: Colors.panel, borderColor: Colors.borderOrange }, highlighted && styles.cardHighlighted, isSold && styles.cardSold]}>
+    <Animated.View style={[
+      styles.card,
+      { backgroundColor: Colors.panel, borderColor: Colors.borderOrange },
+      highlighted && {
+        borderColor:    animBorderColor,
+        borderWidth:    2.5,
+        shadowColor:    '#ff9333',
+        shadowOpacity:  animShadowOpacity,
+        shadowRadius:   animShadowRadius,
+        elevation:      8,
+      },
+      isSold && styles.cardSold,
+    ]}>
+      {/* 🔥 Your Lead banner — shown when arriving from a push / SMS notification */}
+      {highlighted && (
+        <View style={styles.highlightBanner}>
+          <Text style={styles.highlightBannerText}>🔥  Your Lead</Text>
+        </View>
+      )}
+
       {/* Header row */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
@@ -127,7 +177,7 @@ export function LeadCard({ lead, onUnlock, unlocking, purchased, highlighted }: 
           </View>
         </>
       )}
-    </View>
+    </Animated.View>
   );
 }
 
@@ -146,13 +196,22 @@ const styles = StyleSheet.create({
   cardSold: {
     borderColor: 'rgba(185,28,28,0.45)',
   },
-  cardHighlighted: {
-    borderColor:  '#22d3ee',
-    borderWidth:  2,
-    shadowColor:  '#22d3ee',
-    shadowRadius: 10,
-    shadowOpacity: 0.45,
-    elevation:    8,
+  // "🔥 Your Lead" banner — spans full card width via negative margins
+  highlightBanner: {
+    backgroundColor:  '#ff9333',
+    marginTop:        -Spacing.md,
+    marginHorizontal: -Spacing.md,
+    marginBottom:     Spacing.sm + 2,
+    paddingVertical:  8,
+    alignItems:       'center',
+    justifyContent:   'center',
+    borderRadius:     0,
+  },
+  highlightBannerText: {
+    color:         '#ffffff',
+    fontSize:      FontSize.sm,
+    fontWeight:    '800',
+    letterSpacing: 0.8,
   },
   header: {
     flexDirection:  'row',
