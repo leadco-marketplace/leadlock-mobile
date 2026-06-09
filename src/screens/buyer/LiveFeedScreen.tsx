@@ -137,7 +137,16 @@ export function LiveFeedScreen() {
   // and the screen is already mounted — avoids the React Navigation param
   // update problem where navigate() to an already-active tab is a silent no-op.
   useEffect(() => {
-    return notificationEvents.subscribe((leadId) => applyHighlightRef.current(leadId));
+    return notificationEvents.subscribe((leadId) => {
+      // ── DEBUG (remove after confirming highlight works) ───────────────
+      Alert.alert(
+        '📍 LiveFeed received event',
+        `leadId: ${leadId}\nhighlightedId will be set`,
+        [{ text: 'OK' }]
+      );
+      // ─────────────────────────────────────────────────────────────────
+      applyHighlightRef.current(leadId);
+    });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
