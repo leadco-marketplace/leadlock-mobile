@@ -10,6 +10,7 @@ import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { AppNavigator, navigationRef } from '@/navigation/AppNavigator';
 import { supabase } from '@/lib/supabase';
+import { notificationEvents } from '@/lib/notificationEvents';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -142,16 +143,19 @@ function PushResponseHandler() {
         const leadId = data?.leadId as string | undefined;
         if (!leadId) return;
 
+        // Emit the event immediately — LiveFeedScreen subscribes to this directly.
+        // This is more reliable than route params, which are not updated when the
+        // LiveFeed tab is already active (React Navigation silently no-ops the navigate).
+        notificationEvents.emit(leadId);
+
+        // Also navigate to ensure the LiveFeed tab is visible.
         // Wait briefly in case the navigator hasn't finished mounting yet
-        // (e.g. cold-start where JS bundle just loaded)
+        // (e.g. cold-start where JS bundle just loaded).
         const tryNavigate = () => {
           if (navigationRef.current?.isReady()) {
-            // LiveFeed lives inside BuyerTabs (Tab) inside the BuyerNavigator (Stack).
-            // navigate('LiveFeed') alone won't work from the root — we must navigate
-            // to the parent Tab first and pass the target screen + params as nested config.
+            // LiveFeed lives inside BuyerTabs (Tab) inside BuyerNavigator (Stack).
             navigationRef.current.navigate('BuyerTabs' as never, {
               screen: 'LiveFeed',
-              params: { highlightLeadId: leadId },
             } as never);
           } else {
             setTimeout(tryNavigate, 200);
