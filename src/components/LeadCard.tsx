@@ -51,7 +51,11 @@ export function LeadCard({ lead, onUnlock, unlocking, purchased, highlighted }: 
     return () => loop.stop();
   }, [highlighted, pulseAnim]);
 
-  // ── LIVE badge breathe animation ───────────────────────────────────────────
+  // ── LIVE badge fast-blink animation ──────────────────────────────────────
+  // Option C: 0.8 s per half-cycle (1.6 s total). Opacity swings 0.12→1.0 so
+  // the badge nearly disappears then snaps back — very noticeable without
+  // needing any shadow. useNativeDriver:true is safe here (opacity + transform
+  // only) and gives smoother 60 fps on device.
   const liveAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -61,18 +65,16 @@ export function LeadCard({ lead, onUnlock, unlocking, purchased, highlighted }: 
     }
     const loop = Animated.loop(
       Animated.sequence([
-        Animated.timing(liveAnim, { toValue: 1, duration: 1200, useNativeDriver: false }),
-        Animated.timing(liveAnim, { toValue: 0, duration: 1200, useNativeDriver: false }),
+        Animated.timing(liveAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
+        Animated.timing(liveAnim, { toValue: 0, duration: 800, useNativeDriver: true }),
       ])
     );
     loop.start();
     return () => loop.stop();
   }, [lead.status, liveAnim]);
 
-  const liveScale        = liveAnim.interpolate({ inputRange: [0, 1], outputRange: [0.97, 1.04] });
-  const liveOpacity      = liveAnim.interpolate({ inputRange: [0, 1], outputRange: [0.55, 1.0]  });
-  const liveShadowOp     = liveAnim.interpolate({ inputRange: [0, 1], outputRange: [0.3,  0.75] });
-  const liveShadowRadius = liveAnim.interpolate({ inputRange: [0, 1], outputRange: [10,   28]   });
+  const liveScale   = liveAnim.interpolate({ inputRange: [0, 1], outputRange: [0.95, 1.0] });
+  const liveOpacity = liveAnim.interpolate({ inputRange: [0, 1], outputRange: [0.12, 1.0] });
 
   const animBorderColor = pulseAnim.interpolate({
     inputRange:  [0, 1],
@@ -149,13 +151,8 @@ export function LeadCard({ lead, onUnlock, unlocking, purchased, highlighted }: 
               styles.badge,
               styles.badgeLive,
               {
-                opacity:       liveOpacity,
-                transform:     [{ scale: liveScale }],
-                shadowColor:   '#22d3ee',
-                shadowOpacity: liveShadowOp,
-                shadowRadius:  liveShadowRadius,
-                shadowOffset:  { width: 0, height: 0 },
-                elevation:     6,
+                opacity:   liveOpacity,
+                transform: [{ scale: liveScale }],
               },
             ]}>
               <View style={styles.liveDot} />
