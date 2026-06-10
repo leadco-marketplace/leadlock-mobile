@@ -57,11 +57,11 @@ export function LeadCard({ lead, onUnlock, unlocking, purchased, highlighted }: 
   });
   const animShadowOpacity = pulseAnim.interpolate({
     inputRange:  [0, 1],
-    outputRange: [0.3, 0.78],
+    outputRange: [0.25, 0.95],
   });
   const animShadowRadius = pulseAnim.interpolate({
     inputRange:  [0, 1],
-    outputRange: [10, 28],
+    outputRange: [6, 36],
   });
 
   function handleUnlock() {
@@ -94,7 +94,10 @@ export function LeadCard({ lead, onUnlock, unlocking, purchased, highlighted }: 
       {/* 🔥 Your Lead banner — shown when arriving from a push / SMS notification */}
       {highlighted && (
         <View style={styles.highlightBanner}>
-          <Text style={styles.highlightBannerText}>🔥  Your Lead</Text>
+          <View style={styles.highlightBannerRow}>
+            <Text style={styles.highlightBannerEmoji}>🔥</Text>
+            <Text style={styles.highlightBannerText}>Your Lead</Text>
+          </View>
         </View>
       )}
 
@@ -191,9 +194,12 @@ export function LeadCard({ lead, onUnlock, unlocking, purchased, highlighted }: 
 const styles = StyleSheet.create({
   // Outer shell — carries the animated glow shadow. No overflow:hidden so the
   // shadow/glow radiates freely beyond the card edges.
+  // backgroundColor is required on iOS for shadows to render — use the same
+  // color as the card so the two layers are visually indistinguishable.
   glowWrap: {
-    borderRadius: Radius.xl,
-    marginBottom: Spacing.sm + 4,
+    borderRadius:    Radius.xl,
+    marginBottom:    Spacing.sm + 4,
+    backgroundColor: Colors.panel,
   },
   card: {
     backgroundColor: Colors.panel,
@@ -220,9 +226,21 @@ const styles = StyleSheet.create({
     justifyContent:   'center',
     borderRadius:     0,
   },
+  // Row wrapper ensures emoji + text are optically centered as a unit
+  highlightBannerRow: {
+    flexDirection:  'row',
+    alignItems:     'center',
+    justifyContent: 'center',
+    gap:            6,
+  },
+  highlightBannerEmoji: {
+    fontSize:    20,
+    lineHeight:  24,
+  },
   highlightBannerText: {
     color:         '#ffffff',
     fontSize:      20,
+    lineHeight:    24,
     // AvenirNextCondensed-Heavy is a premium built-in iOS font with the same
     // condensed bold character as Barlow Condensed. Android falls back to the
     // system condensed variant.

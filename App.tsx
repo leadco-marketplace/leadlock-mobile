@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { Platform, AppState, Alert } from 'react-native';
+import { Platform, AppState } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as SplashScreen from 'expo-splash-screen';
@@ -149,14 +149,6 @@ function PushResponseHandler() {
       if (!response) return;
       const data = response.notification.request.content.data as Record<string, unknown>;
       const leadId = data?.leadId as string | undefined;
-
-      // ── DEBUG (remove after confirming highlight works) ───────────────
-      Alert.alert(
-        '🔔 Notification tapped',
-        `leadId: ${leadId ?? 'MISSING'}\nkeys: ${Object.keys(data ?? {}).join(', ')}`,
-        [{ text: 'OK' }]
-      );
-      // ─────────────────────────────────────────────────────────────────
 
       if (!leadId) return;
 
