@@ -90,13 +90,33 @@ export function MyLeadsScreen() {
     return () => sub.remove();
   }, []);
 
-  // LeadDetailScreen passes a refreshToken param after a fresh purchase so that
-  // My Leads reloads even when it was already the active tab (focus event would
-  // not fire in that case because the screen never lost focus).
-  const refreshToken = route.params?.refreshToken;
+  // LeadDetailScreen passes awaitPurchaseId after a fresh purchase.
+  // Instead of a one-shot load (which may miss the row if the Supabase read
+  // replica hasn't caught up yet), we silently poll every 500 ms until we see
+  // the specific purchase_id appear in the list — up to 10 tries (5 s total).
+  // No spinner is shown; the card simply appears as soon as the DB is ready.
+  const awaitPurchaseId = route.params?.awaitPurchaseId;
+  const awaitRef = useRef<string | null>(null);
+
   useEffect(() => {
-    if (refreshToken != null) load(false);
-  }, [refreshToken, load]);
+    if (!awaitPurchaseId || awaitPurchaseId === awaitRef.current) return;
+    awaitRef.current = awaitPurchaseId;
+    let cancelled = false;
+    let tries = 0;
+    const MAX = 10;
+    async function poll() {
+      if (cancelled) return;
+      try {
+        const data = await leadsApi.getPurchased();
+        if (cancelled) return;
+        setLeads(data);
+        const found = data.some((l) => l.purchase_id === awaitPurchaseId);
+        if (!found && tries < MAX) { tries++; setTimeout(poll, 500); }
+      } catch { /* swallow — useFocusEffect retries on next focus */ }
+    }
+    poll();
+    return () => { cancelled = true; };
+  }, [awaitPurchaseId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (loading) {
     return (

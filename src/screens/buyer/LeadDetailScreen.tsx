@@ -486,7 +486,7 @@ export function LeadDetailScreen() {
 
   // When this screen was opened after a fresh purchase (purchaseId is set),
   // intercept ANY back navigation — including iOS swipe-back gesture — and
-  // navigate explicitly to My Leads with a refreshToken.  Without this, a
+  // navigate explicitly to My Leads with awaitPurchaseId.  Without this, a
   // swipe-back would call goBack() internally (returning to LiveFeed), and if
   // the user then taps the My Leads tab, the tab was already focused so React
   // Navigation won't fire useFocusEffect, meaning the tab won't reload.
@@ -500,7 +500,7 @@ export function LeadDetailScreen() {
       setTimeout(() => {
         navigation.navigate('BuyerTabs' as never, {
           screen: 'MyLeads',
-          params: { refreshToken: Date.now() },
+          params: { awaitPurchaseId: purchaseId },
         } as never);
       }, 50);
     });
@@ -566,13 +566,13 @@ export function LeadDetailScreen() {
   // just calling goBack().  goBack() returns focus to whichever tab was last
   // active which may already be My Leads — if it is, React Navigation won't
   // fire a new focus event and useFocusEffect silently skips the reload.
-  // Navigating to MyLeads with a new refreshToken param guarantees the tab
-  // reloads whether or not it was already focused.
+  // Passing awaitPurchaseId triggers a silent polling loop in MyLeadsScreen
+  // that retries every 500 ms until the specific purchase row is visible.
   function handleBack() {
     if (purchaseId) {
       navigation.navigate('BuyerTabs', {
         screen: 'MyLeads',
-        params: { refreshToken: Date.now() },
+        params: { awaitPurchaseId: purchaseId },
       });
     } else {
       navigation.goBack();
