@@ -51,6 +51,29 @@ export function LeadCard({ lead, onUnlock, unlocking, purchased, highlighted }: 
     return () => loop.stop();
   }, [highlighted, pulseAnim]);
 
+  // ── LIVE badge breathe animation ───────────────────────────────────────────
+  const liveAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (lead.status !== 'available') {
+      liveAnim.setValue(0);
+      return;
+    }
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(liveAnim, { toValue: 1, duration: 1200, useNativeDriver: false }),
+        Animated.timing(liveAnim, { toValue: 0, duration: 1200, useNativeDriver: false }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [lead.status, liveAnim]);
+
+  const liveScale        = liveAnim.interpolate({ inputRange: [0, 1], outputRange: [0.97, 1.04] });
+  const liveOpacity      = liveAnim.interpolate({ inputRange: [0, 1], outputRange: [0.55, 1.0]  });
+  const liveShadowOp     = liveAnim.interpolate({ inputRange: [0, 1], outputRange: [0.3,  0.75] });
+  const liveShadowRadius = liveAnim.interpolate({ inputRange: [0, 1], outputRange: [10,   28]   });
+
   const animBorderColor = pulseAnim.interpolate({
     inputRange:  [0, 1],
     outputRange: ['#ff9333', '#ff5500'],
@@ -121,11 +144,30 @@ export function LeadCard({ lead, onUnlock, unlocking, purchased, highlighted }: 
           )}
         </View>
         <View style={styles.headerRight}>
-          <View style={[styles.badge, lead.status === 'available' ? styles.badgeLive : styles.badgeOther]}>
-            <Text style={[styles.badgeText, { color: lead.status === 'available' ? Colors.accent2 : Colors.muted }]}>
-              {lead.status === 'available' ? 'LIVE' : lead.status.toUpperCase()}
-            </Text>
-          </View>
+          {lead.status === 'available' ? (
+            <Animated.View style={[
+              styles.badge,
+              styles.badgeLive,
+              {
+                opacity:       liveOpacity,
+                transform:     [{ scale: liveScale }],
+                shadowColor:   '#22d3ee',
+                shadowOpacity: liveShadowOp,
+                shadowRadius:  liveShadowRadius,
+                shadowOffset:  { width: 0, height: 0 },
+                elevation:     6,
+              },
+            ]}>
+              <View style={styles.liveDot} />
+              <Text style={styles.badgeTextLive}>LIVE</Text>
+            </Animated.View>
+          ) : (
+            <View style={[styles.badge, styles.badgeOther]}>
+              <Text style={styles.badgeText}>
+                {lead.status.toUpperCase()}
+              </Text>
+            </View>
+          )}
           {lead.quality_score != null && (
             <View style={styles.qualityBadge}>
               <Text style={styles.qualityText}>★ {lead.quality_score}</Text>
@@ -277,17 +319,37 @@ const styles = StyleSheet.create({
     borderWidth:       1,
   },
   badgeLive: {
-    backgroundColor: 'rgba(34,211,238,0.10)',
-    borderColor:     'rgba(34,211,238,0.38)',
+    flexDirection:    'row',
+    alignItems:       'center',
+    gap:              5,
+    paddingHorizontal: 10,
+    paddingVertical:   5,
+    backgroundColor:  'rgba(34,211,238,0.10)',
+    borderColor:      'rgba(34,211,238,0.38)',
+    borderRadius:     Radius.sm,
+    borderWidth:      1,
+  },
+  liveDot: {
+    width:           6,
+    height:          6,
+    borderRadius:    3,
+    backgroundColor: '#22d3ee',
+  },
+  badgeTextLive: {
+    fontSize:      14,
+    fontWeight:    '700',
+    letterSpacing: 0.5,
+    color:         '#22d3ee',
   },
   badgeOther: {
     backgroundColor: Colors.panel2,
     borderColor:     Colors.border,
   },
   badgeText: {
-    fontSize:   FontSize.xs - 1,
-    fontWeight: '700',
+    fontSize:      FontSize.xs - 1,
+    fontWeight:    '700',
     letterSpacing: 0.5,
+    color:         Colors.muted,
   },
   qualityBadge: {
     paddingHorizontal: 6,
