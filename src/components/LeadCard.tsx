@@ -51,11 +51,11 @@ export function LeadCard({ lead, onUnlock, unlocking, purchased, highlighted }: 
     return () => loop.stop();
   }, [highlighted, pulseAnim]);
 
-  // ── LIVE badge fast-blink animation ──────────────────────────────────────
-  // Option C: 0.8 s per half-cycle (1.6 s total). Opacity swings 0.12→1.0 so
-  // the badge nearly disappears then snaps back — very noticeable without
-  // needing any shadow. useNativeDriver:true is safe here (opacity + transform
-  // only) and gives smoother 60 fps on device.
+  // ── LIVE badge orange glow blink ─────────────────────────────────────────
+  // 400 ms per half = 0.8 s full cycle. Opacity 0→1 + orange shadow glow
+  // 0→20 px pulse together so the badge snaps in with a halo.
+  // useNativeDriver:false required because shadow props can't run on the
+  // native thread.
   const liveAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -65,16 +65,18 @@ export function LeadCard({ lead, onUnlock, unlocking, purchased, highlighted }: 
     }
     const loop = Animated.loop(
       Animated.sequence([
-        Animated.timing(liveAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
-        Animated.timing(liveAnim, { toValue: 0, duration: 800, useNativeDriver: true }),
+        Animated.timing(liveAnim, { toValue: 1, duration: 400, useNativeDriver: false }),
+        Animated.timing(liveAnim, { toValue: 0, duration: 400, useNativeDriver: false }),
       ])
     );
     loop.start();
     return () => loop.stop();
   }, [lead.status, liveAnim]);
 
-  const liveScale   = liveAnim.interpolate({ inputRange: [0, 1], outputRange: [0.95, 1.0] });
-  const liveOpacity = liveAnim.interpolate({ inputRange: [0, 1], outputRange: [0.12, 1.0] });
+  const liveScale        = liveAnim.interpolate({ inputRange: [0, 1], outputRange: [0.95, 1.0]  });
+  const liveOpacity      = liveAnim.interpolate({ inputRange: [0, 1], outputRange: [0.0,  1.0]  });
+  const liveShadowOp     = liveAnim.interpolate({ inputRange: [0, 1], outputRange: [0.0,  0.8]  });
+  const liveShadowRadius = liveAnim.interpolate({ inputRange: [0, 1], outputRange: [0,    20]   });
 
   const animBorderColor = pulseAnim.interpolate({
     inputRange:  [0, 1],
@@ -151,8 +153,13 @@ export function LeadCard({ lead, onUnlock, unlocking, purchased, highlighted }: 
               styles.badge,
               styles.badgeLive,
               {
-                opacity:   liveOpacity,
-                transform: [{ scale: liveScale }],
+                opacity:       liveOpacity,
+                transform:     [{ scale: liveScale }],
+                shadowColor:   '#f97316',
+                shadowOpacity: liveShadowOp,
+                shadowRadius:  liveShadowRadius,
+                shadowOffset:  { width: 0, height: 0 },
+                elevation:     8,
               },
             ]}>
               <View style={styles.liveDot} />
@@ -321,8 +328,8 @@ const styles = StyleSheet.create({
     gap:              5,
     paddingHorizontal: 10,
     paddingVertical:   5,
-    backgroundColor:  'rgba(34,211,238,0.10)',
-    borderColor:      'rgba(34,211,238,0.38)',
+    backgroundColor:  'rgba(249,115,22,0.10)',
+    borderColor:      'rgba(249,115,22,0.40)',
     borderRadius:     Radius.sm,
     borderWidth:      1,
   },
@@ -330,13 +337,13 @@ const styles = StyleSheet.create({
     width:           6,
     height:          6,
     borderRadius:    3,
-    backgroundColor: '#22d3ee',
+    backgroundColor: '#f97316',
   },
   badgeTextLive: {
     fontSize:      14,
     fontWeight:    '700',
     letterSpacing: 0.5,
-    color:         '#22d3ee',
+    color:         '#f97316',
   },
   badgeOther: {
     backgroundColor: Colors.panel2,
