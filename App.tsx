@@ -130,49 +130,58 @@ function PushRegistrar() {
 }
 
 /**
- * Listens for the user tapping a push notification (from cold-start or
- * background). When the notification data contains a leadId we navigate
- * directly to the LiveFeed tab and pass the ID as a route param so the
- * screen can scroll to and highlight that specific lead.
+ * Listens for the user tapping a push notification.
+ *
+ * Two paths:
+ * 1. getLastNotificationResponseAsync() — catches the notification that
+ *    launched/foregrounded the app from background or cold-start. This must
+ *    be checked on mount because the response may have arrived before the
+ *    addNotificationResponseReceivedListener was registered.
+ * 2. addNotificationResponseReceivedListener — catches taps on banners that
+ *    appear while the app is already in the foreground.
+ *
+ * Both paths emit the leadId via notificationEvents so LiveFeedScreen can
+ * highlight the card without relying on React Navigation route params.
  */
 function PushResponseHandler() {
   useEffect(() => {
-    const subscription = Notifications.addNotificationResponseReceivedListener(
-      (response) => {
-        const data = response.notification.request.content.data as Record<string, unknown>;
-        const leadId = data?.leadId as string | undefined;
+    function handleResponse(response: Notifications.NotificationResponse | null) {
+      if (!response) return;
+      const data = response.notification.request.content.data as Record<string, unknown>;
+      const leadId = data?.leadId as string | undefined;
 
-        // ── DEBUG (remove after confirming highlight works) ───────────────
-        Alert.alert(
-          '🔔 Notification tapped',
-          `leadId: ${leadId ?? 'MISSING'}\ndata keys: ${Object.keys(data ?? {}).join(', ')}`,
-          [{ text: 'OK' }]
-        );
-        // ─────────────────────────────────────────────────────────────────
+      // ── DEBUG (remove after confirming highlight works) ───────────────
+      Alert.alert(
+        '🔔 Notification tapped',
+        `leadId: ${leadId ?? 'MISSING'}\nkeys: ${Object.keys(data ?? {}).join(', ')}`,
+        [{ text: 'OK' }]
+      );
+      // ─────────────────────────────────────────────────────────────────
 
-        if (!leadId) return;
+      if (!leadId) return;
 
-        // Emit the event immediately — LiveFeedScreen subscribes to this directly.
-        // This is more reliable than route params, which are not updated when the
-        // LiveFeed tab is already active (React Navigation silently no-ops the navigate).
-        notificationEvents.emit(leadId);
+      // Emit first — LiveFeedScreen subscription or useFocusEffect will pick it up.
+      notificationEvents.emit(leadId);
 
-        // Also navigate to ensure the LiveFeed tab is visible.
-        // Wait briefly in case the navigator hasn't finished mounting yet
-        // (e.g. cold-start where JS bundle just loaded).
-        const tryNavigate = () => {
-          if (navigationRef.current?.isReady()) {
-            // LiveFeed lives inside BuyerTabs (Tab) inside BuyerNavigator (Stack).
-            navigationRef.current.navigate('BuyerTabs' as never, {
-              screen: 'LiveFeed',
-            } as never);
-          } else {
-            setTimeout(tryNavigate, 200);
-          }
-        };
-        tryNavigate();
-      }
-    );
+      // Navigate to ensure the LiveFeed tab is visible.
+      const tryNavigate = () => {
+        if (navigationRef.current?.isReady()) {
+          navigationRef.current.navigate('BuyerTabs' as never, {
+            screen: 'LiveFeed',
+          } as never);
+        } else {
+          setTimeout(tryNavigate, 200);
+        }
+      };
+      tryNavigate();
+    }
+
+    // Path 1 — app opened/foregrounded BY tapping a notification (background / cold-start).
+    // This is the most common case: user is not in the app, taps the notification banner.
+    Notifications.getLastNotificationResponseAsync().then(handleResponse);
+
+    // Path 2 — notification banner tapped while app is already in the foreground.
+    const subscription = Notifications.addNotificationResponseReceivedListener(handleResponse);
     return () => subscription.remove();
   }, []);
 
