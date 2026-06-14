@@ -91,10 +91,19 @@ export function MyLeadsScreen() {
   }, []);
 
   // LeadDetailScreen passes awaitPurchaseId after a fresh purchase.
-  // Instead of a one-shot load (which may miss the row if the Supabase read
-  // replica hasn't caught up yet), we silently poll every 500 ms until we see
-  // the specific purchase_id appear in the list — up to 10 tries (5 s total).
-  // No spinner is shown; the card simply appears as soon as the DB is ready.
+  //
+  // Root-cause note: the broad /api/my-leads URL (no params) can be served
+  // from iOS NSURLSession's URL cache, returning the pre-unlock list even
+  // though getPurchased() now appends ?_t=Date.now() to defeat it.
+  //
+  // As a belt-and-suspenders strategy: we FIRST use the specific-purchase
+  // lookup (getPurchaseByPurchaseId) because it hits a unique URL with the
+  // purchase UUID in the query string — a URL that was never cached before.
+  // Once the specific lookup confirms the purchase is visible, we merge it
+  // into the list immediately so the card appears without any delay, then
+  // trigger a full background refresh to sync the complete sorted list.
+  //
+  // Poll every 500 ms, up to 20 tries (10 s), to handle DB replica lag.
   const awaitPurchaseId = route.params?.awaitPurchaseId;
   const awaitRef = useRef<string | null>(null);
 
@@ -103,15 +112,27 @@ export function MyLeadsScreen() {
     awaitRef.current = awaitPurchaseId;
     let cancelled = false;
     let tries = 0;
-    const MAX = 10;
+    const MAX = 20; // 10 s total
     async function poll() {
       if (cancelled) return;
       try {
-        const data = await leadsApi.getPurchased();
+        // Use the specific-purchase URL — this hits a unique URL that iOS
+        // has never cached, so it always returns the live server response.
+        const results = await leadsApi.getPurchaseByPurchaseId(awaitPurchaseId);
         if (cancelled) return;
-        setLeads(data);
-        const found = data.some((l) => l.purchase_id === awaitPurchaseId);
-        if (!found && tries < MAX) { tries++; setTimeout(poll, 500); }
+        const newLead = results.find((r) => r.purchase_id === awaitPurchaseId);
+        if (newLead) {
+          // Immediately surface the new lead in the list (optimistic merge)
+          setLeads((prev) => {
+            const exists = prev.some((l) => l.purchase_id === awaitPurchaseId);
+            if (exists) return prev;
+            return [newLead, ...prev];
+          });
+          // Then silently refresh the full list so ordering and data are fresh
+          loadRef.current?.(true);
+          return;
+        }
+        if (tries < MAX) { tries++; setTimeout(poll, 500); }
       } catch { /* swallow — useFocusEffect retries on next focus */ }
     }
     poll();

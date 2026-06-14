@@ -75,7 +75,11 @@ export const leadsApi = {
       : '';
     return request<Lead[]>(`/api/leads${params}`);
   },
-  getPurchased: ()                     => request<PurchasedLead[]>('/api/my-leads'),
+  // Append a cache-busting timestamp so iOS NSURLSession never serves a stale
+  // cached response for this URL.  Without this, the pre-unlock My Leads list
+  // is returned from cache even after a new purchase is created, causing the
+  // newly purchased lead to be invisible on the My Leads tab.
+  getPurchased: () => request<PurchasedLead[]>(`/api/my-leads?_t=${Date.now()}`),
   /** Fetch the single purchase for a specific lead after unlock (uses purchase_id for direct lookup) */
   getPurchaseByPurchaseId: (purchaseId: string) =>
     request<PurchasedLead[]>(`/api/my-leads?purchase_id=${encodeURIComponent(purchaseId)}`),
