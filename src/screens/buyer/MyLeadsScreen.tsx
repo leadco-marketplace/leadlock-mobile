@@ -47,7 +47,10 @@ function PurchasedCard({ lead }: { lead: PurchasedLead }) {
 export function MyLeadsScreen() {
   useTheme(); // re-render on theme change
   const route = useRoute<any>();
-  const loadRef = useRef<((silent?: boolean) => Promise<void>) | null>(null);
+  const loadRef    = useRef<((silent?: boolean) => Promise<void>) | null>(null);
+  // Anchor lead: after a fresh purchase is found via polling, keep it in the
+  // list even if the first full-refresh returns a stale response (DB replica lag).
+  const anchorLead = useRef<PurchasedLead | null>(null);
 
   const [leads,      setLeads]      = useState<PurchasedLead[]>([]);
   const [loading,    setLoading]    = useState(true);
@@ -60,7 +63,16 @@ export function MyLeadsScreen() {
     setError(null);
     try {
       const data = await leadsApi.getPurchased();
-      setLeads(data);
+      // If the server response doesn't yet include a recently-purchased lead
+      // (DB replica lag), keep it visible by prepending the cached copy.
+      // Clear the anchor once the server confirms the lead is in the response.
+      const anchor = anchorLead.current;
+      if (anchor && !data.some((l: PurchasedLead) => l.purchase_id === anchor.purchase_id)) {
+        setLeads([anchor, ...data]);
+      } else {
+        if (anchor) anchorLead.current = null; // server has it — no longer needed
+        setLeads(data);
+      }
     } catch (e: any) {
       setError(e?.message ?? 'Could not load leads. Pull down to retry.');
     } finally {
@@ -122,13 +134,16 @@ export function MyLeadsScreen() {
         if (cancelled) return;
         const newLead = results.find((r) => r.purchase_id === awaitPurchaseId);
         if (newLead) {
-          // Immediately surface the new lead in the list (optimistic merge)
+          // Pin this lead so that even if the next full-refresh returns a stale
+          // list (DB replica lag), the newly-purchased lead stays visible.
+          anchorLead.current = newLead;
+          // Immediately surface in the list
           setLeads((prev) => {
             const exists = prev.some((l) => l.purchase_id === awaitPurchaseId);
             if (exists) return prev;
             return [newLead, ...prev];
           });
-          // Then silently refresh the full list so ordering and data are fresh
+          // Silently refresh — load() will respect anchorLead if needed
           loadRef.current?.(true);
           return;
         }
