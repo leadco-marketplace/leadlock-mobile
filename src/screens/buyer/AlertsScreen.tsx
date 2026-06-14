@@ -11,6 +11,7 @@ import {
 import { ScreenShell } from '@/components/ScreenShell';
 import { Button } from '@/components/Button';
 import { Colors, FontSize, Spacing, Radius, Shadow } from '@/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 
 const DEFAULT_RADIUS = 25;
 
@@ -33,6 +34,7 @@ const STATE_NAMES: Record<string, string> = {
 
 // ── Main screen ───────────────────────────────────────────────────────────
 export function AlertsScreen() {
+  useTheme(); // re-render when theme changes so inline Colors.* picks up new values
   const navigation = useNavigation<any>();
 
   const [areas,       setAreas]       = useState<ServiceArea[]>([]);
@@ -159,15 +161,15 @@ export function AlertsScreen() {
     <ScreenShell title="Lead Alerts" subtitle="Get notified when matching leads go live" scrollable>
 
       {/* ── Saved alerts ─────────────────────────────────────────────── */}
-      <Text style={styles.sectionLabel}>Your Alerts</Text>
+      <Text style={[styles.sectionLabel, { color: Colors.textSecondary }]}>Your Alerts</Text>
 
       {loading ? (
         <ActivityIndicator color={Colors.accent} style={{ marginVertical: Spacing.xl }} />
       ) : prefs.length === 0 ? (
-        <View style={styles.emptyCard}>
+        <View style={[styles.emptyCard, { backgroundColor: Colors.panel, borderColor: Colors.border }]}>
           <Text style={styles.emptyIcon}>🔔</Text>
-          <Text style={styles.emptyTitle}>No alerts yet</Text>
-          <Text style={styles.emptyText}>
+          <Text style={[styles.emptyTitle, { color: Colors.foreground }]}>No alerts yet</Text>
+          <Text style={[styles.emptyText, { color: Colors.textSecondary }]}>
             Add an alert below and we'll notify you as soon as a matching lead is published.
           </Text>
         </View>
@@ -178,7 +180,7 @@ export function AlertsScreen() {
           const hasAny     = stateCodes.length > 0 || areaIds.length > 0;
 
           return (
-            <View key={pref.id} style={styles.prefCard}>
+            <View key={pref.id} style={[styles.prefCard, { backgroundColor: Colors.panel, borderColor: Colors.border }]}>
               {/* Header row: category badge + delete */}
               <View style={styles.prefHeader}>
                 <View style={styles.categoryBadge}>
@@ -198,13 +200,13 @@ export function AlertsScreen() {
 
               {/* Area chips */}
               {!hasAny ? (
-                <Text style={styles.prefAreaText}>📍 All areas (nationwide)</Text>
+                <Text style={[styles.prefAreaText, { color: Colors.textSecondary }]}>📍 All areas (nationwide)</Text>
               ) : (
                 <View style={styles.prefChips}>
                   {/* State chips (blue) */}
                   {stateCodes.map(code => (
                     <View key={code} style={styles.stateChip}>
-                      <Text style={styles.stateChipText}>
+                      <Text style={[styles.stateChipText, { color: Colors.accent }]}>
                         🗺  {STATE_NAMES[code] ?? code}
                       </Text>
                     </View>
@@ -212,7 +214,7 @@ export function AlertsScreen() {
                   {/* City chips (green) */}
                   {areaIds.map(id => (
                     <View key={id} style={styles.cityChip}>
-                      <Text style={styles.cityChipText}>📍  {areaName(id)}</Text>
+                      <Text style={[styles.cityChipText, { color: Colors.good }]}>📍  {areaName(id)}</Text>
                     </View>
                   ))}
                 </View>
@@ -222,7 +224,7 @@ export function AlertsScreen() {
               {areaIds.length > 0 && (
                 <View style={styles.radiusBadgeRow}>
                   <View style={styles.radiusBadge}>
-                    <Text style={styles.radiusBadgeText}>
+                    <Text style={[styles.radiusBadgeText, { color: Colors.accent }]}>
                       📡 {pref.radius_miles ?? DEFAULT_RADIUS} mi radius
                     </Text>
                   </View>
@@ -233,21 +235,21 @@ export function AlertsScreen() {
               <View style={styles.notifRow}>
                 {pref.notify_email
                   ? <View style={styles.notifOn}><Text style={styles.notifOnText}>📧 Email on</Text></View>
-                  : <View style={styles.notifOff}><Text style={styles.notifOffText}>📧 Email off</Text></View>
+                  : <View style={[styles.notifOff, { backgroundColor: Colors.panel2 }]}><Text style={[styles.notifOffText, { color: Colors.muted }]}>📧 Email off</Text></View>
                 }
                 {pref.notify_push
                   ? <View style={styles.notifOn}><Text style={styles.notifOnText}>📱 Push on</Text></View>
-                  : <View style={styles.notifOff}><Text style={styles.notifOffText}>📱 Push off</Text></View>
+                  : <View style={[styles.notifOff, { backgroundColor: Colors.panel2 }]}><Text style={[styles.notifOffText, { color: Colors.muted }]}>📱 Push off</Text></View>
                 }
               </View>
 
               {/* Edit button → navigates to AreaPickerScreen */}
               <TouchableOpacity
-                style={styles.editBtn}
+                style={[styles.editBtn, { borderColor: Colors.accent }]}
                 onPress={() => openEditAreas(pref)}
                 activeOpacity={0.75}
               >
-                <Text style={styles.editBtnText}>✏️  Edit Areas & Notifications</Text>
+                <Text style={[styles.editBtnText, { color: Colors.accent }]}>✏️  Edit Areas & Notifications</Text>
               </TouchableOpacity>
             </View>
           );
@@ -256,21 +258,21 @@ export function AlertsScreen() {
 
       {/* ── Add new alert ─────────────────────────────────────────────── */}
       {!showForm ? (
-        <TouchableOpacity style={styles.addBtn} onPress={() => setShowForm(true)} activeOpacity={0.8}>
-          <Text style={styles.addBtnText}>＋ Add New Alert</Text>
+        <TouchableOpacity style={[styles.addBtn, { borderColor: Colors.borderOrange }]} onPress={() => setShowForm(true)} activeOpacity={0.8}>
+          <Text style={[styles.addBtnText, { color: Colors.orange }]}>＋ Add New Alert</Text>
         </TouchableOpacity>
       ) : (
-        <View style={styles.formCard}>
-          <Text style={styles.formTitle}>New Alert</Text>
+        <View style={[styles.formCard, { backgroundColor: Colors.panel, borderColor: Colors.borderOrange }]}>
+          <Text style={[styles.formTitle, { color: Colors.foreground }]}>New Alert</Text>
 
           {/* Category search */}
-          <Text style={styles.fieldLabel}>
+          <Text style={[styles.fieldLabel, { color: Colors.text }]}>
             Category <Text style={styles.required}>*</Text>
           </Text>
-          <View style={[styles.searchRow, { marginBottom: Spacing.xs }]}>
+          <View style={[styles.searchRow, { marginBottom: Spacing.xs, backgroundColor: Colors.panel2, borderColor: Colors.border2 }]}>
             <Text style={styles.searchIcon}>🔍</Text>
             <TextInput
-              style={styles.searchInput}
+              style={[styles.searchInput, { color: Colors.foreground }]}
               placeholder="Search categories…"
               placeholderTextColor={Colors.muted}
               value={catSearch}
@@ -282,22 +284,22 @@ export function AlertsScreen() {
           </View>
 
           {catGroups.length === 0 ? (
-            <Text style={styles.noText}>No categories match "{catSearch}"</Text>
+            <Text style={[styles.noText, { color: Colors.muted }]}>No categories match "{catSearch}"</Text>
           ) : (
             catGroups.map(([group, cats]) => (
               <View key={group} style={{ marginBottom: Spacing.xs }}>
-                <Text style={styles.groupLabel}>{group}</Text>
+                <Text style={[styles.groupLabel, { color: Colors.accent }]}>{group}</Text>
                 <View style={styles.chipRow}>
                   {cats.map(cat => {
                     const sel = selCategory === cat.name;
                     return (
                       <TouchableOpacity
                         key={cat.id}
-                        style={[styles.chip, sel && styles.chipSelected]}
+                        style={[styles.chip, { backgroundColor: Colors.panel2, borderColor: Colors.border2 }, sel && styles.chipSelected]}
                         onPress={() => setSelCategory(prev => prev === cat.name ? null : cat.name)}
                         activeOpacity={0.7}
                       >
-                        <Text style={[styles.chipText, sel && styles.chipTextSelected]}>
+                        <Text style={[styles.chipText, { color: Colors.textSecondary }, sel && styles.chipTextSelected]}>
                           {cat.name}
                         </Text>
                       </TouchableOpacity>

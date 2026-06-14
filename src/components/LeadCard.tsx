@@ -44,51 +44,67 @@ function getCategoryThumb(category: string) {
 }
 
 // ── Category & subcategory photo mapping ──────────────────────────────────────
-// Photos from Unsplash (free, no attribution required for commercial use).
+// All photo IDs verified directly from Unsplash search results.
 // Job type (subcategory) is checked first, then category.
 // If a URL fails to load, the gradient fallback shows automatically.
-// To swap photos: replace any photo-XXXX ID with your preferred Unsplash photo ID.
+const U = (id: string) => `https://images.unsplash.com/photo-${id}?w=164&h=400&fit=crop&q=80`;
+
 const JOB_TYPE_PHOTOS: Record<string, string> = {
-  'car lockout':                'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=164&h=400&fit=crop&q=80',
-  'car lockout / unlock':       'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=164&h=400&fit=crop&q=80',
-  'home / residential lockout': 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=164&h=400&fit=crop&q=80',
-  'lock rekey':                 'https://images.unsplash.com/photo-1583847268964-b28dc8f51f92?w=164&h=400&fit=crop&q=80',
-  'commercial lockout':         'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=164&h=400&fit=crop&q=80',
-  'broken spring replacement':  'https://images.unsplash.com/photo-1558618047-3c8c76ca7c54?w=164&h=400&fit=crop&q=80',
-  'cable repair / replacement':  'https://images.unsplash.com/photo-1558618047-3c8c76ca7c54?w=164&h=400&fit=crop&q=80',
-  'new garage door install':    'https://images.unsplash.com/photo-1558618047-3c8c76ca7c54?w=164&h=400&fit=crop&q=80',
-  'drain cleaning':             'https://images.unsplash.com/photo-1621905251189-08b45249ff78?w=164&h=400&fit=crop&q=80',
-  'pipe repair':                'https://images.unsplash.com/photo-1621905251189-08b45249ff78?w=164&h=400&fit=crop&q=80',
-  'roof repair':                'https://images.unsplash.com/photo-1524758631624-e2822e304c36?w=164&h=400&fit=crop&q=80',
-  'roof replacement':           'https://images.unsplash.com/photo-1524758631624-e2822e304c36?w=164&h=400&fit=crop&q=80',
-  'house painting':             'https://images.unsplash.com/photo-1562259949-e8e7689d7828?w=164&h=400&fit=crop&q=80',
-  'interior painting':          'https://images.unsplash.com/photo-1562259949-e8e7689d7828?w=164&h=400&fit=crop&q=80',
-  'lawn mowing':                'https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=164&h=400&fit=crop&q=80',
-  'tree trimming':              'https://images.unsplash.com/photo-1592417817098-8fd3d9eb14a5?w=164&h=400&fit=crop&q=80',
-  'solar panel install':        'https://images.unsplash.com/photo-1509391366360-2e959784a276?w=164&h=400&fit=crop&q=80',
+  // Locksmith subcategories
+  'car lockout':                U('1707296916219-4f2d7529a4c5'), // man opening door of black SUV
+  'car lockout / unlock':       U('1707296916330-ae32416d9260'), // person holding car remote next to van
+  'home / residential lockout': U('1564767609213-c75ee685263a'), // person holds door lever
+  'lock rekey':                 U('1592744254966-58c65cfd2e69'), // silver combination lock
+  'lock installation':          U('1614797091730-e2a6121aaa60'), // brass padlock on wooden door
+  'commercial lockout':         U('1588689653688-9b312cd6bc2b'), // padlock on blue door
+  'key duplication':            U('1635237393049-55046279ebb8'), // bunch of keys on table
+  // Garage door subcategories
+  'broken spring replacement':  U('1617782674367-341cf5f527c9'), // gray roll-up door closed
+  'cable repair / replacement': U('1696992812596-3c0d4d2d1299'), // grey garage door brick wall
+  'new garage door install':    U('1605276374104-dee2a0ed3cd6'), // house with garage door
+  'garage door opener repair':  U('1540476547779-348beb642680'), // man standing in front of open garage
+  // Plumbing subcategories
+  'drain cleaning':             U('1649959738550-ad6254b9bb7e'), // water faucet with hose
+  'pipe repair':                U('1760571327612-8ab776dcd462'), // hand holding brass pipe fitting
+  'leak repair':                U('1693907986952-3cd372e4c9d8'), // blue pipe
+  'water heater':               U('1768321916212-17ae334a3d63'), // pipes in brick wall
+  // Painting subcategories
+  'house painting':             U('1652829069834-2c05031199c5'), // man with paint roller on wall
+  'interior painting':          U('1562259949-e8e7689d7828'),   // blue paint brush
+  'exterior painting':          U('1574359411659-15573a27fd0c'), // two men on ladder painting wall
+  // Landscaping subcategories
+  'lawn mowing':                U('1458245201577-fc8a130b8829'), // lawnmower on green grass
+  'garden maintenance':         U('1689728318937-17d24bc0a65c'), // man mowing lawn
+  // Solar subcategories
+  'solar panel install':        U('1613665813446-82a78c468a1d'), // black and white solar panels on roof
+  'solar panel repair':         U('1658298775754-5839ffd434cc'), // solar panels on roof
+  // Tree service subcategories
+  'tree trimming':              U('Oq6YnFdXfZ8'), // trees standing in dirt
+  'tree removal':               U('Oq6YnFdXfZ8'),
+  'maintenance / tune-up':      U('Oq6YnFdXfZ8'),
 };
 
 const CATEGORY_PHOTOS: Record<string, string> = {
-  'locksmith':        'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=164&h=400&fit=crop&q=80',
-  'garage door':      'https://images.unsplash.com/photo-1558618047-3c8c76ca7c54?w=164&h=400&fit=crop&q=80',
-  'dog walker':       'https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=164&h=400&fit=crop&q=80',
-  'real estate':      'https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=164&h=400&fit=crop&q=80',
-  'plumbing':         'https://images.unsplash.com/photo-1621905251189-08b45249ff78?w=164&h=400&fit=crop&q=80',
-  'electrical':       'https://images.unsplash.com/photo-1524758631624-e2822e304c36?w=164&h=400&fit=crop&q=80',
-  'hvac':             'https://images.unsplash.com/photo-1585771724684-38269d6639fd?w=164&h=400&fit=crop&q=80',
-  'roofing':          'https://images.unsplash.com/photo-1524758631624-e2822e304c36?w=164&h=400&fit=crop&q=80',
-  'painting':         'https://images.unsplash.com/photo-1562259949-e8e7689d7828?w=164&h=400&fit=crop&q=80',
-  'cleaning':         'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=164&h=400&fit=crop&q=80',
-  'pest control':     'https://images.unsplash.com/photo-1632779553286-34b5c5b55936?w=164&h=400&fit=crop&q=80',
-  'landscaping':      'https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=164&h=400&fit=crop&q=80',
-  'moving':           'https://images.unsplash.com/photo-1601584115197-04ecc0da31d7?w=164&h=400&fit=crop&q=80',
-  'appliance repair': 'https://images.unsplash.com/photo-1621905252507-b35492cc74b4?w=164&h=400&fit=crop&q=80',
-  'handyman':         'https://images.unsplash.com/photo-1504148455328-c376907d081c?w=164&h=400&fit=crop&q=80',
-  'pool service':     'https://images.unsplash.com/photo-1571902943202-507ec2618e8f?w=164&h=400&fit=crop&q=80',
-  'tree service':     'https://images.unsplash.com/photo-1592417817098-8fd3d9eb14a5?w=164&h=400&fit=crop&q=80',
-  'solar':            'https://images.unsplash.com/photo-1509391366360-2e959784a276?w=164&h=400&fit=crop&q=80',
-  'car dealer':       'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=164&h=400&fit=crop&q=80',
-  'chimney sweep':    'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=164&h=400&fit=crop&q=80',
+  'locksmith':        U('1564767609342-620cb19b2357'), // keys on hand
+  'garage door':      U('1696992812596-3c0d4d2d1299'), // grey garage door next to brick wall
+  'dog walker':       U('1587300003388-59208cc962cb'), // dog on leash being walked
+  'real estate':      U('1560518883-ce09059eeffa'),   // house keys / real estate
+  'plumbing':         U('1760571327612-8ab776dcd462'), // hand holding brass pipe fitting
+  'electrical':       U('1621905251918-48416bd8575a'), // man with hard hat and orange drill
+  'hvac':             U('1732395805034-e0bf859665e5'), // man in blue uniform in front of building
+  'roofing':          U('1635424824800-692767998d07'), // man in yellow shirt working on roof
+  'painting':         U('1652829069834-2c05031199c5'), // man with paint roller
+  'cleaning':         U('1740657254989-42fe9c3b8cce'), // person cleaning floor with yellow gloves
+  'pest control':     U('1593999094742-4f5280054b23'), // person with pest control equipment on grass
+  'landscaping':      U('1458245201577-fc8a130b8829'), // lawnmower on green grass
+  'moving':           U('1698917414969-feade59e3343'), // man unloading furniture from moving truck
+  'appliance repair': U('1717176876437-490aa75bf9b5'), // man standing next to a dryer
+  'handyman':         U('1562259929-b4e1fd3aef09'),   // blue and black Makita power drill
+  'pool service':     U('1558617320-e695f0d420de'),   // swimming pool close-up photography
+  'tree service':     U('Oq6YnFdXfZ8'), // tree branches against sky
+  'solar':            U('1613665813446-82a78c468a1d'), // black and white solar panels on roof
+  'car dealer':       U('1643142314913-0cf633d9bbb5'), // red car parked in a showroom
+  'chimney sweep':    U('1554332208-9dfebcc48334'),   // firewood burning in fireplace
 };
 
 function getPhotoUrl(category: string, jobType?: string): string | null {

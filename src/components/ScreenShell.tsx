@@ -1,10 +1,11 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, RefreshControl, ViewStyle, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, RefreshControl, ViewStyle, Dimensions, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors, FontSize, Spacing } from '@/theme';
 import { useTheme } from '@/contexts/ThemeContext';
 
 const { width: SW, height: SH } = Dimensions.get('screen');
+const FONT_BLACK = Platform.OS === 'ios' ? 'AvenirNextCondensed-Heavy' : 'sans-serif-condensed';
 const SPACING = 20; // pixels between diagonal lines
 // Enough lines to cover screen diagonally even on largest devices
 const LINE_COUNT = Math.ceil((SW + SH) / SPACING) + 4;
@@ -68,8 +69,8 @@ export function ScreenShell({
       {(title || subtitle) && (
         <View style={styles.headerRow}>
           <View style={{ flex: 1 }}>
-            {title    && <Text style={styles.title}>{title}</Text>}
-            {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
+            {title    && <Text style={[styles.title,    { color: Colors.foreground, fontFamily: FONT_BLACK }]}>{title}</Text>}
+            {subtitle && <Text style={[styles.subtitle, { color: Colors.textSecondary }]}>{subtitle}</Text>}
           </View>
           {rightElement}
         </View>
@@ -126,13 +127,13 @@ const styles = StyleSheet.create({
     gap:           Spacing.sm,
   },
   title: {
-    fontSize:   FontSize.xl,
+    fontSize:   FontSize.xxl,
     fontWeight: '700',
-    color:      Colors.foreground,
+    // color applied inline so it updates with theme
   },
   subtitle: {
     fontSize:  FontSize.sm,
-    color:     Colors.textSecondary,
     marginTop: 3,
+    // color applied inline so it updates with theme
   },
 });
