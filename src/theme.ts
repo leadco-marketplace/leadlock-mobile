@@ -29,6 +29,10 @@ const DarkColors = {
   tabInactive: '#3e5472',
   // Pattern line color — subtle sapphire diagonal lines
   patternLine: 'rgba(59, 130, 246, 0.05)',
+  // Screen-level header text (rendered on bg, not on panel).
+  // Always light so titles are legible on the dark bg in all non-light modes.
+  headerText:    '#e8f4ff',
+  headerSubText: '#6080a8',
 };
 
 // ── Inner-Light theme — deep navy bg + white inner cards ───────────────────
@@ -49,6 +53,9 @@ const InnerLightColors = {
   placeholder:   '#94a3b8',
   // Keep bg deep navy
   bg: '#040c1e',
+  // Header text stays light — it renders on the dark navy bg, not inside a card.
+  headerText:    '#e8f4ff',
+  headerSubText: '#8ba3c7',
 };
 
 // ── Light theme — warm peach (matches web light mode) ─────────────────────
@@ -75,6 +82,9 @@ const LightColors = {
   tabActive:   '#f97316',
   tabInactive: '#a8a29e',
   patternLine: 'rgba(249, 115, 22, 0.06)',
+  // Header text dark to contrast with warm peach bg
+  headerText:    '#1C1917',
+  headerSubText: '#57534e',
 };
 
 // ── Exported dynamic Colors object (default = dark) ───────────────────────

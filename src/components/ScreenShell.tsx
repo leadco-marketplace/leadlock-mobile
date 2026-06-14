@@ -69,8 +69,8 @@ export function ScreenShell({
       {(title || subtitle) && (
         <View style={styles.headerRow}>
           <View style={{ flex: 1 }}>
-            {title    && <Text style={[styles.title,    { color: Colors.foreground, fontFamily: FONT_BLACK }]}>{title}</Text>}
-            {subtitle && <Text style={[styles.subtitle, { color: Colors.textSecondary }]}>{subtitle}</Text>}
+            {title    && <Text style={[styles.title,    { color: Colors.headerText,    fontFamily: FONT_BLACK }]}>{title}</Text>}
+            {subtitle && <Text style={[styles.subtitle, { color: Colors.headerSubText }]}>{subtitle}</Text>}
           </View>
           {rightElement}
         </View>

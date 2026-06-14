@@ -31,7 +31,7 @@ function PurchasedCard({ lead }: { lead: PurchasedLead }) {
           </Text>
         </View>
         <View style={{ alignItems: 'flex-end' }}>
-          <Text style={[styles.price, { color: Colors.foreground }]}>{formatPrice(lead.buyer_price_cents ?? Math.round(lead.price_cents * 1.125))}</Text>
+          <Text style={[styles.price, { color: Colors.foreground }]}>{formatPrice(lead.buyer_price_cents || Math.round(lead.price_cents * 1.125))}</Text>
           <Text style={[styles.unlockedLabel, { color: Colors.accent }]}>✓ Unlocked</Text>
           <Text style={[styles.tapHint, { color: Colors.muted }]}>Tap to view →</Text>
         </View>
