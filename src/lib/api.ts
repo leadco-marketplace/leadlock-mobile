@@ -234,6 +234,61 @@ export const creditsApi = {
     }),
 };
 
+// ── Lead Signals ───────────────────────────────────────────────────────────
+// Structured buyer→provider communication. No free text — buttons only.
+// Buyer reports a call issue; provider responds with one of four fixed codes.
+
+export interface LeadSignal {
+  id:                string;
+  signal_type:       "no_answer" | "wrong_number";
+  provider_response: "verifying" | "number_correct" | "customer_available" | "info_updated" | null;
+  created_at:        string;
+  responded_at:      string | null;
+  /** Present in provider-side fetch (includes full lead + purchase details) */
+  leads?:            {
+    id: string;
+    service_category: string;
+    job_type: string;
+    city: string;
+    state: string;
+    customer_name?: string | null;
+    customer_phone?: string | null;
+    customer_email?: string | null;
+    public_summary?: string | null;
+    price_cents?: number;
+  };
+  purchases?:        { id: string; purchased_at: string; amount_cents?: number };
+}
+
+export const signalsApi = {
+  /** Buyer creates a signal — "no_answer" or "wrong_number" */
+  create: (body: { purchase_id: string; signal_type: "no_answer" | "wrong_number" }) =>
+    request<LeadSignal>("/api/lead-signals", {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify(body),
+    }),
+
+  /** Buyer checks signal status for a specific purchase */
+  getForPurchase: (purchaseId: string) =>
+    request<LeadSignal[]>(`/api/lead-signals?purchase_id=${encodeURIComponent(purchaseId)}`),
+
+  /** Provider fetches all signals directed to them (with full lead details) */
+  getProviderSignals: () =>
+    request<LeadSignal[]>("/api/lead-signals"),
+
+  /** Provider submits a structured response */
+  respond: (
+    signalId: string,
+    response: "verifying" | "number_correct" | "customer_available" | "info_updated"
+  ) =>
+    request<{ ok: boolean; message: string }>(`/api/lead-signals/${signalId}/respond`, {
+      method:  "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ response }),
+    }),
+};
+
 // ── Admin ──────────────────────────────────────────────────────────────────
 export const adminApi = {
   getOverview: ()                      => request<Record<string, unknown>>('/api/admin/overview'),

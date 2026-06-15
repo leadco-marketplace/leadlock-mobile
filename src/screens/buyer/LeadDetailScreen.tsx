@@ -4,7 +4,7 @@ import {
   TouchableOpacity, ScrollView,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { leadsApi, rateApi, PurchasedLead, RatingThumb, THUMBS_UP_REASONS, THUMBS_DOWN_REASONS } from '@/lib/api';
+import { leadsApi, rateApi, signalsApi, PurchasedLead, RatingThumb, LeadSignal, THUMBS_UP_REASONS, THUMBS_DOWN_REASONS } from '@/lib/api';
 import { ScreenShell } from '@/components/ScreenShell';
 import { Colors, FontSize, Spacing, Radius, Shadow } from '@/theme';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -197,6 +197,159 @@ const callStyles = StyleSheet.create({
     borderRadius: Radius.sm, borderWidth: 1, borderColor: Colors.accent,
   },
   retryText: { fontSize: FontSize.xs, color: Colors.accent, fontWeight: '600' },
+});
+
+// ── Signal panel ───────────────────────────────────────────────────────────
+// Lets the buyer report a call issue (no_answer / wrong_number) and see the
+// provider's structured response. No free text — buttons only.
+
+const SIGNAL_RESPONSE_TEXT: Record<string, string> = {
+  verifying:          "Provider is verifying the contact info — check back soon",
+  number_correct:     "Number is confirmed correct — try calling again",
+  customer_available: "Customer is now available — call them now!",
+  info_updated:       "Provider has updated the lead contact info — try calling again",
+};
+
+function SignalPanel({ purchaseId }: { purchaseId: string }) {
+  useTheme();
+  const [existing,   setExisting]   = useState<LeadSignal | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [loadedOnce, setLoadedOnce] = useState(false);
+
+  useEffect(() => {
+    signalsApi.getForPurchase(purchaseId)
+      .then(list => { if (list.length > 0) setExisting(list[0]); })
+      .catch(() => {})
+      .finally(() => setLoadedOnce(true));
+  }, [purchaseId]);
+
+  async function sendSignal(signalType: 'no_answer' | 'wrong_number') {
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      const result = await signalsApi.create({ purchase_id: purchaseId, signal_type: signalType });
+      setExisting(result);
+    } catch (e: any) {
+      Alert.alert('Error', e.message ?? 'Could not send signal. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  // Don't render until we've checked — avoids layout flash
+  if (!loadedOnce) return null;
+
+  return (
+    <View style={[signalStyles.box, { backgroundColor: Colors.panel }]}>
+      <Text style={[signalStyles.title, { color: Colors.accent }]}>
+        📵  REPORT A CALL ISSUE
+      </Text>
+
+      {!existing ? (
+        /* ── No signal sent yet — show two buttons ── */
+        <>
+          <Text style={[signalStyles.prompt, { color: Colors.muted }]}>
+            Did you have trouble reaching this customer?
+          </Text>
+          <View style={signalStyles.btnRow}>
+            <TouchableOpacity
+              style={[signalStyles.signalBtn, { borderColor: 'rgba(251,191,36,0.4)' }]}
+              onPress={() => sendSignal('no_answer')}
+              disabled={submitting}
+              activeOpacity={0.8}
+            >
+              <Text style={signalStyles.btnIcon}>📵</Text>
+              <Text style={[signalStyles.btnLabel, { color: Colors.foreground }]}>
+                Customer didn't answer
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[signalStyles.signalBtn, { borderColor: 'rgba(248,113,113,0.4)' }]}
+              onPress={() => sendSignal('wrong_number')}
+              disabled={submitting}
+              activeOpacity={0.8}
+            >
+              <Text style={signalStyles.btnIcon}>❌</Text>
+              <Text style={[signalStyles.btnLabel, { color: Colors.danger }]}>
+                Wrong number
+              </Text>
+            </TouchableOpacity>
+          </View>
+          {submitting && (
+            <ActivityIndicator color={Colors.accent} style={{ marginTop: 4 }} />
+          )}
+        </>
+      ) : existing.provider_response ? (
+        /* ── Provider has responded ── */
+        <View style={[signalStyles.responseBox, { backgroundColor: Colors.panel2 }]}>
+          <Text style={[signalStyles.responseTitle, { color: '#4ade80' }]}>
+            ✓ Provider responded
+          </Text>
+          <Text style={[signalStyles.responseBody, { color: Colors.foreground }]}>
+            {SIGNAL_RESPONSE_TEXT[existing.provider_response] ?? existing.provider_response}
+          </Text>
+          {existing.responded_at && (
+            <Text style={[signalStyles.responseDate, { color: Colors.muted }]}>
+              {new Date(existing.responded_at).toLocaleDateString()}
+            </Text>
+          )}
+        </View>
+      ) : (
+        /* ── Signal sent — awaiting provider response ── */
+        <View style={[signalStyles.pendingBox, { backgroundColor: Colors.panel2 }]}>
+          <Text style={[signalStyles.pendingLabel, { color: Colors.textSecondary }]}>
+            {existing.signal_type === 'no_answer'
+              ? '📵  Customer didn't answer — reported'
+              : '❌  Wrong number — reported'}
+          </Text>
+          <Text style={[signalStyles.pendingSub, { color: Colors.muted }]}>
+            Provider has been notified via push, SMS, and email. Waiting for their response…
+          </Text>
+        </View>
+      )}
+    </View>
+  );
+}
+
+const signalStyles = StyleSheet.create({
+  box: {
+    borderRadius:  Radius.lg,
+    borderWidth:   1,
+    borderColor:   'rgba(129,140,248,0.25)',
+    padding:       Spacing.md,
+    gap:           Spacing.sm,
+    ...Shadow.card,
+  },
+  title:    { fontSize: FontSize.sm, fontWeight: '700', letterSpacing: 0.5 },
+  prompt:   { fontSize: FontSize.xs },
+  btnRow:   { flexDirection: 'row', gap: Spacing.sm },
+  signalBtn: {
+    flex:             1,
+    alignItems:       'center',
+    justifyContent:   'center',
+    gap:              4,
+    paddingVertical:  12,
+    borderRadius:     Radius.md,
+    borderWidth:      0.5,
+    backgroundColor:  'rgba(255,255,255,0.03)',
+  },
+  btnIcon:    { fontSize: 20 },
+  btnLabel:   { fontSize: FontSize.xs, textAlign: 'center', lineHeight: 16, marginTop: 2 },
+  responseBox: {
+    borderRadius: Radius.md,
+    padding:      Spacing.sm,
+    gap:          4,
+  },
+  responseTitle: { fontSize: FontSize.sm, fontWeight: '600' },
+  responseBody:  { fontSize: FontSize.sm, lineHeight: 20 },
+  responseDate:  { fontSize: FontSize.xs },
+  pendingBox: {
+    borderRadius: Radius.md,
+    padding:      Spacing.sm,
+    gap:          4,
+  },
+  pendingLabel: { fontSize: FontSize.sm, fontWeight: '600' },
+  pendingSub:   { fontSize: FontSize.xs, lineHeight: 18 },
 });
 
 // ── Rating panel ───────────────────────────────────────────────────────────
@@ -645,6 +798,9 @@ export function LeadDetailScreen() {
 
         {/* ── Call panel ──────────────────────────────── */}
         <CallPanel purchaseId={lead.purchase_id} />
+
+        {/* ── Signal panel ─────────────────────────────── */}
+        <SignalPanel purchaseId={lead.purchase_id} />
 
         {/* ── Private notes ────────────────────────────── */}
         {lead.private_notes && (

@@ -4,6 +4,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Text } from 'react-native';
 import { MySubmissionsScreen } from '@/screens/provider/MySubmissionsScreen';
 import { SubmitLeadScreen }    from '@/screens/provider/SubmitLeadScreen';
+import { SignalsScreen }       from '@/screens/provider/SignalsScreen';
 import { AccountScreen }       from '@/screens/shared/AccountScreen';
 import { Colors, FontSize } from '@/theme';
 
@@ -55,6 +56,14 @@ export function ProviderNavigator() {
         options={{
           title: 'Submit Lead',
           tabBarIcon: ({ focused }) => <TabIcon emoji="➕" focused={focused} />,
+        }}
+      />
+      <Tab.Screen
+        name="SignalsTab"
+        component={SignalsScreen}
+        options={{
+          title: 'Signals',
+          tabBarIcon: ({ focused }) => <TabIcon emoji="🔔" focused={focused} />,
         }}
       />
       <Tab.Screen
