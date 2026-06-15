@@ -299,7 +299,7 @@ function SignalPanel({ purchaseId }: { purchaseId: string }) {
         <View style={[signalStyles.pendingBox, { backgroundColor: Colors.panel2 }]}>
           <Text style={[signalStyles.pendingLabel, { color: Colors.textSecondary }]}>
             {existing.signal_type === 'no_answer'
-              ? '📵  Customer didn't answer — reported'
+              ? "📵  Customer didn't answer — reported"
               : '❌  Wrong number — reported'}
           </Text>
           <Text style={[signalStyles.pendingSub, { color: Colors.muted }]}>

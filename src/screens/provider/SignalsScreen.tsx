@@ -13,7 +13,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 
 const SIGNAL_LABELS: Record<string, { text: string; color: string; bg: string }> = {
   no_answer: {
-    text:  'Customer didn't answer',
+    text:  "Customer didn't answer",
     color: '#fbbf24',
     bg:    'rgba(251,191,36,0.10)',
   },
@@ -27,7 +27,7 @@ const SIGNAL_LABELS: Record<string, { text: string; color: string; bg: string }>
 const RESPONSE_OPTIONS = [
   {
     key:   'verifying' as const,
-    label: 'I'm verifying the contact info now',
+    label: "I'm verifying the contact info now",
     color: '#818cf8',
   },
   {
@@ -42,7 +42,7 @@ const RESPONSE_OPTIONS = [
   },
   {
     key:   'info_updated' as const,
-    label: 'I've updated the lead contact info',
+    label: "I've updated the lead contact info",
     color: '#fb923c',
   },
 ];
