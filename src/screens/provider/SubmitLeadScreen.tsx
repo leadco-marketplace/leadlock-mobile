@@ -36,13 +36,13 @@ import {
   categoriesApi,
   leadFieldsApi,
   placesApi,
+  BASE,
+  authHeaders,
   ServiceCategory,
   LeadFieldConfig,
   LeadExtraField,
   PlacePrediction,
 } from '@/lib/api';
-import Constants  from 'expo-constants';
-import { supabase } from '@/lib/supabase';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -190,6 +190,7 @@ interface AddressResult {
   state:       string;
   lat:         number;
   lng:         number;
+  street?:     string; // Populated when searchType="address"
 }
 
 interface AddressAutocompleteInputProps {
@@ -198,6 +199,7 @@ interface AddressAutocompleteInputProps {
   value:       string;
   onSelect:    (result: AddressResult) => void;
   onClear:     () => void;
+  searchType?: 'city' | 'address'; // "address" → full street-level search
 }
 
 function AddressAutocompleteInput({
@@ -206,6 +208,7 @@ function AddressAutocompleteInput({
   value,
   onSelect,
   onClear,
+  searchType,
 }: AddressAutocompleteInputProps) {
   const [query,       setQuery]       = useState(value);
   const [suggestions, setSuggestions] = useState<PlacePrediction[]>([]);
@@ -222,22 +225,24 @@ function AddressAutocompleteInput({
     setQuery(text);
     setConfirmed(false);
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    if (text.length < 2) { setSuggestions([]); return; }
+    // Address search needs more chars to get useful results from Nominatim
+    const minLen = searchType === 'address' ? 5 : 2;
+    if (text.length < minLen) { setSuggestions([]); return; }
     debounceRef.current = setTimeout(async () => {
       setLoading(true);
       try {
-        const results = await placesApi.autocomplete(text);
+        const results = await placesApi.autocomplete(text, searchType ?? 'city');
         setSuggestions(results);
       } catch { /* ignore network errors */ }
       finally { setLoading(false); }
-    }, 350);
+    }, 400);
   }
 
   function pickSuggestion(item: PlacePrediction) {
     setQuery(item.description);
     setSuggestions([]);
     setConfirmed(true);
-    onSelect({ description: item.description, city: item.city, state: item.state, lat: item.lat, lng: item.lng });
+    onSelect({ description: item.description, city: item.city, state: item.state, lat: item.lat, lng: item.lng, street: item.street });
   }
 
   function clearInput() {
@@ -673,8 +678,7 @@ export function SubmitLeadScreen({ navigation }: any) {
 
     setLoading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const apiBase = Constants.expoConfig?.extra?.apiBaseUrl ?? 'https://leadcomarketplace.com';
+      const headers = await authHeaders();
 
       const decayConfig = decayEnabled
         ? {
@@ -685,12 +689,9 @@ export function SubmitLeadScreen({ navigation }: any) {
           }
         : { decay_enabled: false };
 
-      const res = await fetch(`${apiBase}/api/leads/submit`, {
+      const res = await fetch(`${BASE}/api/leads/submit`, {
         method:  'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization:  `Bearer ${session?.access_token}`,
-        },
+        headers,
         body: JSON.stringify({
           service_category:  selectedCat.name,
           job_type:          jobType,
@@ -747,8 +748,7 @@ export function SubmitLeadScreen({ navigation }: any) {
     setLoading(true);
     setError(null);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const apiBase = Constants.expoConfig?.extra?.apiBaseUrl ?? 'https://leadcomarketplace.com';
+      const headers = await authHeaders();
       const priceCents = Math.round(parseFloat(price) * 100);
       const isNeedsAddress = fieldConfig.needsAddress && !nationwide;
       const submitCity  = nationwide ? '' : isNeedsAddress ? addrCity : cityInput;
@@ -757,9 +757,9 @@ export function SubmitLeadScreen({ navigation }: any) {
         ? (streetAddress ? `${streetAddress}, ${addrCity}, ${addrState}` : `${addrCity}, ${addrState}`)
         : null;
 
-      const res = await fetch(`${(Constants.expoConfig?.extra?.apiBaseUrl ?? 'https://leadcomarketplace.com')}/api/leads/submit`, {
+      const res = await fetch(`${BASE}/api/leads/submit`, {
         method:  'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+        headers,
         body: JSON.stringify({
           service_category:  selectedCat.name,
           job_type:          jobType,
@@ -952,31 +952,31 @@ export function SubmitLeadScreen({ navigation }: any) {
                   />
 
                   {fieldConfig.needsAddress ? (
-                    <>
-                      {/* Street address (free text) */}
-                      <Input
-                        label="Street address (optional)"
-                        value={streetAddress}
-                        onChangeText={setStreetAddress}
-                        placeholder="e.g. 1234 Oak Ave"
-                        autoCapitalize="words"
-                      />
-                      {/* City autocomplete */}
-                      <AddressAutocompleteInput
-                        label="City / area *"
-                        placeholder="Start typing a city…"
-                        value={addrCity ? `${addrCity}, ${addrState}` : ''}
-                        onSelect={(r) => {
-                          setAddrCity(r.city);
-                          setAddrState(r.state);
-                          setAddrLat(r.lat);
-                          setAddrLng(r.lng);
-                        }}
-                        onClear={() => { setAddrCity(''); setAddrState(''); setAddrLat(null); setAddrLng(null); }}
-                      />
-                    </>
+                    /* Single address autocomplete — type full address, Nominatim returns
+                       street + city + state + lat/lng all at once. No more "optional" field. */
+                    <AddressAutocompleteInput
+                      label={(fieldConfig.addressLabel ?? 'Service address') + ' *'}
+                      placeholder="Type full address, e.g. 123 Oak Ave, Boca Raton, FL…"
+                      searchType="address"
+                      value={
+                        streetAddress
+                          ? `${streetAddress}, ${addrCity}, ${addrState}`
+                          : addrCity ? `${addrCity}, ${addrState}` : ''
+                      }
+                      onSelect={(r) => {
+                        setStreetAddress(r.street ?? '');
+                        setAddrCity(r.city);
+                        setAddrState(r.state);
+                        setAddrLat(r.lat);
+                        setAddrLng(r.lng);
+                      }}
+                      onClear={() => {
+                        setStreetAddress(''); setAddrCity(''); setAddrState('');
+                        setAddrLat(null); setAddrLng(null);
+                      }}
+                    />
                   ) : (
-                    /* City + State for non-address categories */
+                    /* City autocomplete for non-address categories */
                     <AddressAutocompleteInput
                       label="City / area *"
                       placeholder="Start typing a city…"

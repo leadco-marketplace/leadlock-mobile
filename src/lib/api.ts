@@ -1,9 +1,10 @@
 import Constants from 'expo-constants';
 import { supabase } from './supabase';
 
-const BASE = (Constants.expoConfig?.extra?.apiBaseUrl as string) ?? 'https://leadcomarketplace.com';
+export const BASE = (Constants.expoConfig?.extra?.apiBaseUrl as string) ?? 'https://leadcomarketplace.com';
 
-async function authHeaders(): Promise<Record<string, string>> {
+/** Exported so screens that need a raw fetch (e.g. submit lead with duplicate handling) can share the same auth token logic. */
+export async function authHeaders(): Promise<Record<string, string>> {
   const { data: { session } } = await supabase.auth.getSession();
   const token = session?.access_token;
   return {
@@ -227,16 +228,18 @@ export const leadFieldsApi = {
 // ── Places Autocomplete (city/area search) ─────────────────────────────────
 export type PlacePrediction = {
   place_id:    string;
-  description: string;  // "Miami, Florida"
+  description: string;  // "123 Oak Ave, Miami, Florida" or "Miami, Florida"
   city:        string;
   state:       string;
   lat:         number;
   lng:         number;
+  street?:     string;  // Present for type=address results (e.g. "123 Oak Ave")
 };
 
 export const placesApi = {
-  autocomplete: (input: string) =>
-    request<PlacePrediction[]>(`/api/places/autocomplete?input=${encodeURIComponent(input)}`),
+  /** type="city" (default) → city/area search. type="address" → full street address search. */
+  autocomplete: (input: string, type: 'city' | 'address' = 'city') =>
+    request<PlacePrediction[]>(`/api/places/autocomplete?input=${encodeURIComponent(input)}&type=${type}`),
 };
 
 // ── Service Areas ──────────────────────────────────────────────────────────
