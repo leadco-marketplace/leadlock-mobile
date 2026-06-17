@@ -210,10 +210,12 @@ function AddressAutocompleteInput({
   onClear,
   searchType,
 }: AddressAutocompleteInputProps) {
-  const [query,       setQuery]       = useState(value);
-  const [suggestions, setSuggestions] = useState<PlacePrediction[]>([]);
-  const [loading,     setLoading]     = useState(false);
-  const [confirmed,   setConfirmed]   = useState(!!value);
+  const [query,          setQuery]          = useState(value);
+  const [suggestions,    setSuggestions]    = useState<PlacePrediction[]>([]);
+  const [loading,        setLoading]        = useState(false);
+  const [confirmed,      setConfirmed]      = useState(!!value);
+  const [confirmedCity,  setConfirmedCity]  = useState('');
+  const [confirmedState, setConfirmedState] = useState('');
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // When value is reset externally (form reset), clear local state
@@ -242,6 +244,8 @@ function AddressAutocompleteInput({
     setQuery(item.description);
     setSuggestions([]);
     setConfirmed(true);
+    setConfirmedCity(item.city ?? '');
+    setConfirmedState(item.state ?? '');
     onSelect({ description: item.description, city: item.city, state: item.state, lat: item.lat, lng: item.lng, street: item.street });
   }
 
@@ -249,6 +253,8 @@ function AddressAutocompleteInput({
     setQuery('');
     setSuggestions([]);
     setConfirmed(false);
+    setConfirmedCity('');
+    setConfirmedState('');
     onClear();
   }
 
@@ -273,7 +279,9 @@ function AddressAutocompleteInput({
         {loading && <ActivityIndicator size="small" color={Colors.orange} style={{ marginRight: 8 }} />}
       </View>
       {confirmed && (
-        <Text style={ac.confirmedHint}>✓ Location set</Text>
+        <Text style={ac.confirmedHint}>
+          {confirmedCity ? `✓ ${confirmedCity}${confirmedState ? `, ${confirmedState}` : ''}` : '✓ Location set'}
+        </Text>
       )}
       {suggestions.length > 0 && (
         <View style={ac.dropdown}>
