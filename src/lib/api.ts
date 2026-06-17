@@ -117,6 +117,7 @@ export const rateApi = {
 // ── Provider leads ─────────────────────────────────────────────────────────
 export type ProviderLead = {
   id: string;
+  lead_code?: string | null;    // 5-char unique ID, e.g. "A3K9Z"
   service_category: string;
   job_type: string;
   city: string;
@@ -127,6 +128,7 @@ export type ProviderLead = {
   public_summary: string | null;
   created_at: string;
   published_at: string | null;
+  sold_at?: string | null;      // when the lead was marked sold
 };
 
 export const providerApi = {

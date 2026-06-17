@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, StyleSheet, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { View, Text, FlatList, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useFocusEffect } from '@react-navigation/native';
 import { providerApi, ProviderLead } from '@/lib/api';
 import { ScreenShell } from '@/components/ScreenShell';
 import { Button }  from '@/components/Button';
@@ -8,6 +9,11 @@ import { Input }   from '@/components/Input';
 import { Colors, FontSize, Spacing, Radius, Shadow } from '@/theme';
 
 function formatPrice(cents: number) { return `$${(cents / 100).toFixed(2)}`; }
+
+function formatDate(dateStr: string): string {
+  const d = new Date(dateStr);
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
 
 const STATUS_COLORS: Record<string, { bg: string; border: string; text: string }> = {
   draft:     { bg: 'rgba(251,191,36,0.12)',  border: 'rgba(251,191,36,0.35)',  text: '#fbbf24' },
@@ -88,14 +94,39 @@ function SubmissionCard({
   const sc = STATUS_COLORS[lead.status] ?? STATUS_COLORS.archived;
   const canEditLead = ['draft', 'available'].includes(lead.status);
 
+  // Choose the most relevant date label
+  const dateLabel = lead.status === 'sold'      ? 'Sold'      :
+                    lead.status === 'available'  ? 'Live'      :
+                    lead.status === 'draft'      ? 'Submitted' : 'Updated';
+  const dateStr   = lead.sold_at ?? lead.published_at ?? lead.created_at;
+
   return (
     <View style={styles.card}>
       <View style={styles.cardRow}>
-        <View style={{ flex: 1 }}>
+        <View style={{ flex: 1, gap: 3 }}>
           <Text style={styles.category}>{lead.service_category}</Text>
           <Text style={styles.jobType}>{lead.job_type}</Text>
-          <Text style={styles.location}>{lead.nationwide ? '🌐 Nationwide' : `${lead.city}, ${lead.state}`}</Text>
+
+          {/* Lead ID badge — same Option B style as Live Feed */}
+          {lead.lead_code && (
+            <View style={styles.leadIdRow}>
+              <Text style={styles.leadIdLabel}>LEAD ID</Text>
+              <View style={styles.leadIdPill}>
+                <Text style={styles.leadIdCode}>#{lead.lead_code}</Text>
+              </View>
+            </View>
+          )}
+
+          <Text style={styles.location}>
+            {lead.nationwide ? '🌐 Nationwide' : `${lead.city}, ${lead.state}`}
+          </Text>
+
+          {/* Date line */}
+          {dateStr && (
+            <Text style={styles.dateText}>{dateLabel} · {formatDate(dateStr)}</Text>
+          )}
         </View>
+
         <View style={{ alignItems: 'flex-end', gap: 6 }}>
           <View style={[styles.badge, { backgroundColor: sc.bg, borderColor: sc.border }]}>
             <Text style={[styles.badgeText, { color: sc.text }]}>{STATUS_LABELS[lead.status] ?? lead.status}</Text>
@@ -115,14 +146,15 @@ function SubmissionCard({
 }
 
 export function MySubmissionsScreen({ navigation }: any) {
-  const [leads,     setLeads]     = useState<ProviderLead[]>([]);
-  const [earnings,  setEarnings]  = useState(0);
-  const [soldCount, setSoldCount] = useState(0);
-  const [loading,   setLoading]   = useState(true);
+  const [leads,      setLeads]      = useState<ProviderLead[]>([]);
+  const [earnings,   setEarnings]   = useState(0);
+  const [soldCount,  setSoldCount]  = useState(0);
+  const [loading,    setLoading]    = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [editTarget, setEditTarget] = useState<ProviderLead | null>(null);
 
-  async function load() {
+  async function load(silent = false) {
+    if (!silent) setLoading(prev => prev);   // keep existing loading state on focus refresh
     try {
       const data = await providerApi.getSubmissions();
       setLeads(data.leads);
@@ -132,7 +164,13 @@ export function MySubmissionsScreen({ navigation }: any) {
     finally { setLoading(false); setRefreshing(false); }
   }
 
-  useEffect(() => { load(); }, []);
+  // Refresh every time the screen comes into focus — this ensures newly
+  // purchased leads appear immediately without the user having to pull-to-refresh.
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [])
+  );
 
   function handleDelete(lead: ProviderLead) {
     Alert.alert(
@@ -276,8 +314,21 @@ const styles = StyleSheet.create({
   category:   { fontSize: FontSize.base, fontWeight: '700', color: Colors.foreground },
   jobType:    { fontSize: FontSize.xs, color: Colors.textSecondary },
   location:   { fontSize: FontSize.xs, color: Colors.muted },
+  dateText:   { fontSize: FontSize.xs - 1, color: Colors.muted },
   badge:      { paddingHorizontal: 8, paddingVertical: 3, borderRadius: Radius.sm, borderWidth: 1 },
   badgeText:  { fontSize: FontSize.xs - 1, fontWeight: '700' },
   price:      { fontSize: FontSize.md, fontWeight: '700', color: Colors.foreground, fontVariant: ['tabular-nums'] },
   actions:    { flexDirection: 'row', gap: Spacing.sm },
+  // ── Lead ID row ──────────────────────────────────────────────────────────
+  leadIdRow:  { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  leadIdLabel: { fontSize: FontSize.xs - 2, fontWeight: '700', color: Colors.muted, textTransform: 'uppercase', letterSpacing: 0.5 },
+  leadIdPill: {
+    backgroundColor: 'rgba(249,115,22,0.12)',
+    borderWidth:      1,
+    borderColor:      'rgba(249,115,22,0.45)',
+    borderRadius:     5,
+    paddingHorizontal: 6,
+    paddingVertical:   1,
+  },
+  leadIdCode: { fontSize: FontSize.xs, color: '#f97316', fontFamily: 'Courier', fontWeight: '700', letterSpacing: 1 },
 });

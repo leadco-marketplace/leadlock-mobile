@@ -326,6 +326,16 @@ export function LeadCard({ lead, onUnlock, unlocking, purchased, highlighted }: 
             </View>
           </View>
 
+          {/* Lead ID badge — Option B: labeled row directly under header */}
+          {lead.lead_code && (
+            <View style={styles.leadIdRow}>
+              <Text style={[styles.leadIdLabel, { color: Colors.muted }]}>LEAD ID</Text>
+              <View style={styles.leadIdPill}>
+                <Text style={styles.leadIdCode}>#{lead.lead_code}</Text>
+              </View>
+            </View>
+          )}
+
           {/* Summary */}
           {lead.public_summary && (
             <View style={[styles.summaryBox, { backgroundColor: Colors.panel2 }]}>
@@ -344,9 +354,6 @@ export function LeadCard({ lead, onUnlock, unlocking, purchased, highlighted }: 
               <Text style={[styles.price, { color: Colors.foreground }]}>
                 {formatPrice(price)}
               </Text>
-              {lead.lead_code && (
-                <Text style={[styles.leadCode, { color: Colors.muted }]}>#{lead.lead_code}</Text>
-              )}
             </View>
 
             {!purchased && onUnlock && (
@@ -604,11 +611,32 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
     lineHeight:    24,
   },
-  leadCode: {
-    fontSize:      FontSize.xs - 1,
-    fontFamily:    'Courier',
-    marginTop:     2,
+  // ── Lead ID row (Option B: labeled row under header) ─────────────────────
+  leadIdRow: {
+    flexDirection: 'row',
+    alignItems:    'center',
+    gap:           6,
+  },
+  leadIdLabel: {
+    fontSize:      10,
+    fontWeight:    '600',
     letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  leadIdPill: {
+    backgroundColor: 'rgba(249,115,22,0.12)',
+    borderWidth:      1,
+    borderColor:      'rgba(249,115,22,0.45)',
+    borderRadius:     6,
+    paddingHorizontal: 7,
+    paddingVertical:   2,
+  },
+  leadIdCode: {
+    fontSize:      12,
+    color:         '#f97316',
+    fontFamily:    'Courier',
+    fontWeight:    '700',
+    letterSpacing: 1,
   },
   unlockBtn: {
     paddingHorizontal: 18,
