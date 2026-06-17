@@ -33,6 +33,9 @@ function PurchasedCard({ lead }: { lead: PurchasedLead }) {
         <View style={{ alignItems: 'flex-end' }}>
           <Text style={[styles.price, { color: Colors.foreground }]}>{formatPrice(lead.buyer_price_cents || Math.round(lead.price_cents * 1.125))}</Text>
           <Text style={[styles.unlockedLabel, { color: Colors.accent }]}>✓ Unlocked</Text>
+          {lead.lead_code && (
+            <Text style={[styles.leadCode, { color: Colors.orange }]}>#{lead.lead_code}</Text>
+          )}
           <Text style={[styles.tapHint, { color: Colors.muted }]}>Tap to view →</Text>
         </View>
       </View>
@@ -230,6 +233,7 @@ const styles = StyleSheet.create({
   location:     { fontSize: FontSize.xs,   color: Colors.muted },
   price:        { fontSize: FontSize.md,   fontWeight: '700', color: Colors.foreground, textAlign: 'right', fontVariant: ['tabular-nums'] },
   unlockedLabel:{ fontSize: FontSize.xs,   color: Colors.accent, textAlign: 'right', marginTop: 2 },
+  leadCode:     { fontSize: FontSize.xs - 1, fontFamily: 'Courier', fontWeight: '700', textAlign: 'right', marginTop: 2, letterSpacing: 1 },
   tapHint:      { fontSize: FontSize.xs - 1, color: Colors.muted, textAlign: 'right', marginTop: 4 },
   notesBox: {
     backgroundColor: Colors.panel2,

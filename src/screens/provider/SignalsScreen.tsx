@@ -64,10 +64,12 @@ interface SignalCardProps {
 function SignalCard({ signal, onRespond }: SignalCardProps) {
   useTheme();
   const [responding, setResponding] = useState(false);
-  const lead = signal.leads;
+  const lead  = signal.leads;
   const badge = SIGNAL_LABELS[signal.signal_type];
+  const currentResponse = signal.provider_response;
 
   async function handleRespond(responseKey: string) {
+    // Allow re-selecting same option to resend, or pick a different one
     if (responding) return;
     setResponding(true);
     try {
@@ -80,9 +82,17 @@ function SignalCard({ signal, onRespond }: SignalCardProps) {
   }
 
   return (
-    <View style={[cardStyles.card, { backgroundColor: Colors.panel, borderColor: badge?.color + '33' }]}>
+    <View style={[cardStyles.card, { backgroundColor: Colors.panel, borderColor: (badge?.color ?? '#555') + '33' }]}>
 
-      {/* ── Lead details (so provider knows which lead this is) ── */}
+      {/* ── Lead ID badge — most important identifier ── */}
+      {lead?.lead_code && (
+        <View style={cardStyles.leadIdRow}>
+          <Text style={cardStyles.leadIdLabel}>LEAD ID</Text>
+          <Text style={cardStyles.leadIdCode}>#{lead.lead_code}</Text>
+        </View>
+      )}
+
+      {/* ── Lead details ── */}
       {lead && (
         <View style={cardStyles.leadSection}>
           <Text style={[cardStyles.category, { color: Colors.foreground }]}>
@@ -94,7 +104,6 @@ function SignalCard({ signal, onRespond }: SignalCardProps) {
           <Text style={[cardStyles.location, { color: Colors.muted }]}>
             {lead.city}, {lead.state}
           </Text>
-          {/* Provider submitted this lead so they can see the contact info */}
           {lead.customer_name && (
             <Text style={[cardStyles.contact, { color: Colors.muted }]}>
               Customer: {lead.customer_name}
@@ -110,7 +119,7 @@ function SignalCard({ signal, onRespond }: SignalCardProps) {
 
       {/* ── Signal badge + date ── */}
       <View style={cardStyles.badgeRow}>
-        <View style={[cardStyles.badge, { backgroundColor: badge?.bg ?? 'transparent', borderColor: badge?.color + '66' }]}>
+        <View style={[cardStyles.badge, { backgroundColor: badge?.bg ?? 'transparent', borderColor: (badge?.color ?? '#555') + '66' }]}>
           <Text style={[cardStyles.badgeText, { color: badge?.color ?? Colors.muted }]}>
             {badge?.text ?? signal.signal_type}
           </Text>
@@ -120,29 +129,35 @@ function SignalCard({ signal, onRespond }: SignalCardProps) {
         </Text>
       </View>
 
-      {/* ── Response section ── */}
-      {signal.provider_response ? (
-        /* Already responded */
-        <View style={[cardStyles.respondedBox, { backgroundColor: Colors.panel2 }]}>
+      {/* ── Current response status (if already responded) ── */}
+      {currentResponse && (
+        <View style={[cardStyles.respondedBox, { backgroundColor: 'rgba(74,222,128,0.08)', borderColor: 'rgba(74,222,128,0.25)' }]}>
           <Text style={[cardStyles.respondedLabel, { color: '#4ade80' }]}>
-            ✓ You responded: {RESPONDED_LABELS[signal.provider_response] ?? signal.provider_response}
+            ✓ Last response: {RESPONDED_LABELS[currentResponse] ?? currentResponse}
           </Text>
           {signal.responded_at && (
             <Text style={[cardStyles.respondedDate, { color: Colors.muted }]}>
-              {new Date(signal.responded_at).toLocaleDateString()}
+              {new Date(signal.responded_at).toLocaleDateString()} · Tap below to send an update
             </Text>
           )}
         </View>
-      ) : (
-        /* Awaiting response */
-        <View style={cardStyles.responseSection}>
-          <Text style={[cardStyles.responsePrompt, { color: Colors.muted }]}>
-            How do you want to respond?
-          </Text>
-          {RESPONSE_OPTIONS.map((opt) => (
+      )}
+
+      {/* ── Response buttons (always shown — provider can update at any time) ── */}
+      <View style={cardStyles.responseSection}>
+        <Text style={[cardStyles.responsePrompt, { color: Colors.muted }]}>
+          {currentResponse ? 'Send an update:' : 'How do you want to respond?'}
+        </Text>
+        {RESPONSE_OPTIONS.map((opt) => {
+          const isSelected = currentResponse === opt.key;
+          return (
             <TouchableOpacity
               key={opt.key}
-              style={[cardStyles.responseBtn, { borderColor: opt.color + '44' }]}
+              style={[
+                cardStyles.responseBtn,
+                { borderColor: opt.color + (isSelected ? 'bb' : '44') },
+                isSelected && { backgroundColor: opt.color + '18' },
+              ]}
               onPress={() => handleRespond(opt.key)}
               disabled={responding}
               activeOpacity={0.75}
@@ -151,13 +166,16 @@ function SignalCard({ signal, onRespond }: SignalCardProps) {
               <Text style={[cardStyles.responseBtnText, { color: Colors.foreground }]}>
                 {opt.label}
               </Text>
+              {isSelected && (
+                <Text style={[cardStyles.checkMark, { color: opt.color }]}>✓</Text>
+              )}
             </TouchableOpacity>
-          ))}
-          {responding && (
-            <ActivityIndicator color={Colors.accent} style={{ marginTop: 6 }} />
-          )}
-        </View>
-      )}
+          );
+        })}
+        {responding && (
+          <ActivityIndicator color={Colors.accent} style={{ marginTop: 6 }} />
+        )}
+      </View>
     </View>
   );
 }
@@ -170,6 +188,32 @@ const cardStyles = StyleSheet.create({
     marginBottom: Spacing.sm + 4,
     gap:          Spacing.sm,
     ...Shadow.card,
+  },
+  leadIdRow: {
+    flexDirection:  'row',
+    alignItems:     'center',
+    gap:             8,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    backgroundColor: 'rgba(249,115,22,0.08)',
+    borderRadius:    Radius.sm,
+    borderWidth:     1,
+    borderColor:     'rgba(249,115,22,0.28)',
+    alignSelf:       'flex-start',
+  },
+  leadIdLabel: {
+    fontSize:      9,
+    fontWeight:    '700',
+    color:         '#f97316',
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+  },
+  leadIdCode: {
+    fontSize:      18,
+    fontWeight:    '700',
+    fontFamily:    'Courier',
+    color:         '#f97316',
+    letterSpacing: 2,
   },
   leadSection:  { gap: 2 },
   category:     { fontSize: FontSize.base, fontWeight: '700' },
@@ -185,6 +229,14 @@ const cardStyles = StyleSheet.create({
   },
   badgeText:     { fontSize: FontSize.xs, fontWeight: '600' },
   date:          { fontSize: FontSize.xs - 1 },
+  respondedBox: {
+    borderRadius: Radius.md,
+    borderWidth:  1,
+    padding:      Spacing.sm,
+    gap:          3,
+  },
+  respondedLabel: { fontSize: FontSize.sm, fontWeight: '600' },
+  respondedDate:  { fontSize: FontSize.xs },
   responseSection: { gap: 7 },
   responsePrompt:  { fontSize: FontSize.xs, fontWeight: '600', letterSpacing: 0.3 },
   responseBtn: {
@@ -199,13 +251,7 @@ const cardStyles = StyleSheet.create({
   },
   dot:              { width: 8, height: 8, borderRadius: 4, flexShrink: 0 },
   responseBtnText:  { fontSize: FontSize.sm, flex: 1, lineHeight: 18 },
-  respondedBox: {
-    borderRadius: Radius.md,
-    padding:      Spacing.sm,
-    gap:          3,
-  },
-  respondedLabel: { fontSize: FontSize.sm, fontWeight: '600' },
-  respondedDate:  { fontSize: FontSize.xs },
+  checkMark:        { fontSize: FontSize.sm, fontWeight: '700', flexShrink: 0 },
 });
 
 // ── SignalsScreen ─────────────────────────────────────────────────────────────
@@ -233,7 +279,7 @@ export function SignalsScreen() {
 
   async function handleRespond(signalId: string, response: string) {
     await signalsApi.respond(signalId, response as any);
-    // Optimistic update so the card flips to responded immediately
+    // Optimistic update — reflect updated response immediately
     setSignals(prev =>
       prev.map(s =>
         s.id === signalId

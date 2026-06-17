@@ -240,6 +240,8 @@ export const creditsApi = {
 
 export interface LeadSignal {
   id:                string;
+  purchase_id?:      string;  // present in signal row — used for deep-link navigation
+  lead_id?:          string;  // present in signal row — used for deep-link navigation
   signal_type:       "no_answer" | "wrong_number";
   provider_response: "verifying" | "number_correct" | "customer_available" | "info_updated" | null;
   created_at:        string;
@@ -247,6 +249,7 @@ export interface LeadSignal {
   /** Present in provider-side fetch (includes full lead + purchase details) */
   leads?:            {
     id: string;
+    lead_code?: string | null;
     service_category: string;
     job_type: string;
     city: string;

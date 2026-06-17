@@ -147,25 +147,57 @@ function PushResponseHandler() {
   useEffect(() => {
     function handleResponse(response: Notifications.NotificationResponse | null) {
       if (!response) return;
-      const data = response.notification.request.content.data as Record<string, unknown>;
-      const leadId = data?.leadId as string | undefined;
+      const data       = response.notification.request.content.data as Record<string, unknown>;
+      const type       = data?.type       as string | undefined;
+      const leadId     = data?.leadId     as string | undefined;
+      const purchaseId = data?.purchaseId as string | undefined;
 
+      const tryNavigate = (fn: () => void) => {
+        if (navigationRef.current?.isReady()) {
+          fn();
+        } else {
+          setTimeout(() => tryNavigate(fn), 200);
+        }
+      };
+
+      // ── Provider: buyer sent a signal (no_answer / wrong_number) ──────────
+      if (type === 'lead_signal') {
+        tryNavigate(() => {
+          navigationRef.current!.navigate('SignalsTab' as never);
+        });
+        return;
+      }
+
+      // ── Buyer: provider responded to their signal ──────────────────────────
+      if (type === 'lead_signal_response' && leadId) {
+        tryNavigate(() => {
+          // First navigate to My Leads tab so it's in the stack…
+          navigationRef.current!.navigate('BuyerTabs' as never, {
+            screen: 'MyLeads',
+          } as never);
+          // …then push LeadDetail on top (100 ms delay so BuyerTabs settles first)
+          setTimeout(() => {
+            navigationRef.current?.navigate('LeadDetail' as never, {
+              leadId,
+              purchaseId,
+            } as never);
+          }, 100);
+        });
+        return;
+      }
+
+      // ── Default: new lead notification → highlight card in Live Feed ───────
       if (!leadId) return;
 
       // Emit first — LiveFeedScreen subscription or useFocusEffect will pick it up.
       notificationEvents.emit(leadId);
 
       // Navigate to ensure the LiveFeed tab is visible.
-      const tryNavigate = () => {
-        if (navigationRef.current?.isReady()) {
-          navigationRef.current.navigate('BuyerTabs' as never, {
-            screen: 'LiveFeed',
-          } as never);
-        } else {
-          setTimeout(tryNavigate, 200);
-        }
-      };
-      tryNavigate();
+      tryNavigate(() => {
+        navigationRef.current!.navigate('BuyerTabs' as never, {
+          screen: 'LiveFeed',
+        } as never);
+      });
     }
 
     // Path 1 — app opened/foregrounded BY tapping a notification (background / cold-start).
