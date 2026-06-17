@@ -192,6 +192,53 @@ export const categoriesApi = {
   getAll: () => request<ServiceCategory[]>('/api/categories'),
 };
 
+// ── Lead Field Config (for Submit Lead form) ──────────────────────────────
+export type LeadExtraField = {
+  key:          string;
+  label:        string;
+  type:         'text' | 'select' | 'textarea' | 'date' | 'tel' | 'email';
+  required:     boolean;
+  options?:     string[];
+  placeholder?: string;
+};
+
+export type LeadFieldConfig = {
+  needsAddress:            boolean;
+  addressLabel:            string;
+  addressOptionalJobTypes: string[];
+  jobTypeLabel:            string;
+  jobTypeOptions:          string[];
+  categoryJobTypes:        Record<string, string[]>;
+  autoPublish:             boolean;
+  nationwideEligible:      boolean;
+  extraFields:             LeadExtraField[];
+  categoryExtraFields:     Record<string, LeadExtraField[]>;
+  jobTypeFields:           Record<string, LeadExtraField[]>;
+};
+
+export const leadFieldsApi = {
+  /** Fetch field config for a given category group + category name */
+  getConfig: (group: string, category: string) =>
+    request<LeadFieldConfig>(
+      `/api/lead-fields?group=${encodeURIComponent(group)}&category=${encodeURIComponent(category)}`
+    ),
+};
+
+// ── Places Autocomplete (city/area search) ─────────────────────────────────
+export type PlacePrediction = {
+  place_id:    string;
+  description: string;  // "Miami, Florida"
+  city:        string;
+  state:       string;
+  lat:         number;
+  lng:         number;
+};
+
+export const placesApi = {
+  autocomplete: (input: string) =>
+    request<PlacePrediction[]>(`/api/places/autocomplete?input=${encodeURIComponent(input)}`),
+};
+
 // ── Service Areas ──────────────────────────────────────────────────────────
 export type ServiceArea = {
   id: string;
