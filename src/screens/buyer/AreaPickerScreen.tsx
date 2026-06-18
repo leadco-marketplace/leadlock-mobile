@@ -109,7 +109,12 @@ function stateName(code: string): string {
 
 // ── Screen ─────────────────────────────────────────────────────────────────
 export function AreaPickerScreen({ route, navigation }: any) {
-  useTheme(); // re-render when theme changes so Colors.* picks up new values
+  const { mode } = useTheme(); // subscribes to theme changes
+  // Recreate styles when mode changes so Colors.* values are always current.
+  // (StyleSheet.create captures values at call-time, so we must call it fresh
+  //  on each theme switch rather than once at module load.)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const styles = useMemo(makeStyles, [mode]);
 
   const {
     prefId            = null,
@@ -668,7 +673,10 @@ export function AreaPickerScreen({ route, navigation }: any) {
 }
 
 // ── Styles ────────────────────────────────────────────────────────────────
-const styles = StyleSheet.create({
+// Defined as a function so useMemo(makeStyles, [mode]) can recreate the
+// stylesheet whenever the theme changes.  A module-level StyleSheet.create()
+// would capture Colors values at load time (always dark) and never update.
+function makeStyles() { return StyleSheet.create({
   // Tab toggle
   tabRow: {
     flexDirection:   'row',
@@ -1004,4 +1012,4 @@ const styles = StyleSheet.create({
   mapRadiusBtnSelected: { borderColor: Colors.accent, backgroundColor: 'rgba(249,115,22,0.15)' },
   mapRadiusBtnText:     { fontSize: FontSize.xs, fontWeight: '700', color: Colors.textSecondary },
   mapRadiusBtnTextSelected: { color: Colors.accent },
-});
+}); }
