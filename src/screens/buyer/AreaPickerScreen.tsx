@@ -1,12 +1,13 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, Switch,
   ScrollView, ActivityIndicator, Alert, TextInput,
 } from 'react-native';
-import { areasApi, preferencesApi, ServiceArea } from '@/lib/api';
+import { areasApi, placesApi, preferencesApi, PlacePrediction, ServiceArea } from '@/lib/api';
 import { ScreenShell } from '@/components/ScreenShell';
 import { Button } from '@/components/Button';
 import { Colors, FontSize, Spacing, Radius, Shadow } from '@/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 
 // ── US States ─────────────────────────────────────────────────────────────
 const US_STATES = [
@@ -77,6 +78,8 @@ function stateName(code: string): string {
 
 // ── Screen ─────────────────────────────────────────────────────────────────
 export function AreaPickerScreen({ route, navigation }: any) {
+  useTheme(); // re-render when theme changes so Colors.* picks up new values
+
   const {
     prefId            = null,
     serviceCategory,
@@ -101,6 +104,11 @@ export function AreaPickerScreen({ route, navigation }: any) {
   // Search
   const [stateSearch, setStateSearch] = useState('');
   const [citySearch,  setCitySearch]  = useState('');
+
+  // Google Places fallback (fires when local DB search returns nothing)
+  const [placesResults,  setPlacesResults]  = useState<PlacePrediction[]>([]);
+  const [placesLoading,  setPlacesLoading]  = useState(false);
+  const placesDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Selections
   const [selStateCodes, setSelStateCodes] = useState<string[]>(initialStateCodes);
@@ -143,6 +151,47 @@ export function AreaPickerScreen({ route, navigation }: any) {
       ),
     );
   }, [areas, citySearch]);
+
+  // When the local list is empty but the user is still typing, fall back to
+  // Google Places city autocomplete after a 400ms debounce.
+  useEffect(() => {
+    if (placesDebounceRef.current) clearTimeout(placesDebounceRef.current);
+    const q = citySearch.trim();
+    if (!q || filteredAreas.length > 0) {
+      setPlacesResults([]);
+      return;
+    }
+    placesDebounceRef.current = setTimeout(async () => {
+      setPlacesLoading(true);
+      try {
+        const results = await placesApi.autocomplete(q, 'city');
+        setPlacesResults(results.filter(r => r.lat && r.lng));
+      } catch { /* silent */ }
+      finally { setPlacesLoading(false); }
+    }, 400);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [citySearch, filteredAreas.length]);
+
+  // User tapped a Google Places result — upsert a service_area and select it.
+  async function selectPlacesArea(place: PlacePrediction) {
+    if (!place.lat || !place.lng) return;
+    setCitySearch('');
+    setPlacesResults([]);
+    try {
+      const area = await areasApi.upsertFromPlace({
+        name:  place.description,
+        city:  place.city,
+        state: place.state,
+        lat:   place.lat,
+        lng:   place.lng,
+      });
+      // Add to local cache so the chip renders immediately
+      setAreas(prev => prev.some(a => a.id === area.id) ? prev : [...prev, area]);
+      setSelAreaIds(prev => prev.includes(area.id) ? prev : [...prev, area.id]);
+    } catch (e: any) {
+      Alert.alert('Error', e.message ?? 'Could not add area');
+    }
+  }
 
   // Selected city area objects (for chips)
   const selectedAreaObjs = useMemo(
@@ -382,9 +431,7 @@ export function AreaPickerScreen({ route, navigation }: any) {
             <Text style={styles.noResultText}>
               Type a city name above to search available areas.
             </Text>
-          ) : filteredAreas.length === 0 ? (
-            <Text style={styles.noResultText}>No areas match "{citySearch}"</Text>
-          ) : (
+          ) : filteredAreas.length > 0 ? (
             filteredAreas.map(area => {
               const sel = selAreaIds.includes(area.id);
               return (
@@ -404,6 +451,30 @@ export function AreaPickerScreen({ route, navigation }: any) {
                 </TouchableOpacity>
               );
             })
+          ) : placesLoading ? (
+            <ActivityIndicator color={Colors.accent} style={{ marginVertical: Spacing.sm }} />
+          ) : placesResults.length > 0 ? (
+            <>
+              <Text style={[styles.sectionDividerLabel, { color: Colors.muted }]}>
+                📍 Results from Maps
+              </Text>
+              {placesResults.map(place => (
+                <TouchableOpacity
+                  key={place.place_id}
+                  style={styles.listRow}
+                  onPress={() => selectPlacesArea(place)}
+                  activeOpacity={0.75}
+                >
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.listRowTitle}>{place.description}</Text>
+                    <Text style={styles.listRowSub}>{place.city}, {place.state}</Text>
+                  </View>
+                  <Text style={[styles.listRowSub, { color: Colors.accent }]}>＋ Add</Text>
+                </TouchableOpacity>
+              ))}
+            </>
+          ) : (
+            <Text style={styles.noResultText}>No areas match "{citySearch}"</Text>
           )}
 
           {/* Radius picker (only when city areas are selected) */}
@@ -673,6 +744,15 @@ const styles = StyleSheet.create({
   checkmarkCity: { fontSize: 15, color: '#4ade80', fontWeight: '700' },
 
   noResultText: { fontSize: FontSize.sm, color: Colors.muted, marginBottom: Spacing.sm },
+
+  sectionDividerLabel: {
+    fontSize:     FontSize.xs,
+    fontWeight:   '600',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase' as const,
+    marginTop:    Spacing.sm,
+    marginBottom: Spacing.xs,
+  },
 
   // Radius
   radiusSection: {

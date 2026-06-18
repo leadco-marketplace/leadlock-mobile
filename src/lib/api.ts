@@ -254,6 +254,15 @@ export type ServiceArea = {
 
 export const areasApi = {
   getAll: () => request<ServiceArea[]>('/api/areas'),
+
+  /** Create (or return existing) service area from a Places result.
+   *  Used when a buyer searches for a city not in the pre-seeded list. */
+  upsertFromPlace: (place: { name: string; city: string; state: string; lat: number; lng: number }) =>
+    request<ServiceArea>('/api/areas', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(place),
+    }),
 };
 
 // ── Phone verification ─────────────────────────────────────────────────────
