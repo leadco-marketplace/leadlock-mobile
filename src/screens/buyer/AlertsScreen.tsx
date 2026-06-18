@@ -138,7 +138,9 @@ export function AlertsScreen() {
 
   function areaName(id: string) {
     const a = areas.find(x => x.id === id);
-    return a ? `${a.name}, ${a.state}` : id;
+    // a.name already includes the state (e.g. "Miami, Florida") — don't append
+    // a.state again or it renders as "Miami, Florida, Florida".
+    return a ? a.name : id;
   }
 
   // Filtered + grouped categories for the picker

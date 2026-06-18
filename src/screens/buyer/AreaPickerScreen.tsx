@@ -128,14 +128,19 @@ export function AreaPickerScreen({ route, navigation }: any) {
     );
   }, [stateSearch]);
 
-  // Only show city results while user is actively searching
+  // Only show city results while user is actively searching.
+  // Filter to areas that have coordinates — null-coord DMA entries can't be
+  // used for geo-radius matching and would silently give buyers false coverage.
   const filteredAreas = useMemo(() => {
     const q = citySearch.trim().toLowerCase();
     if (!q) return [];
     return areas.filter(a =>
-      a.name.toLowerCase().includes(q) ||
-      (a.city  ?? '').toLowerCase().includes(q) ||
-      (a.state ?? '').toLowerCase().includes(q),
+      a.lat !== null && a.lng !== null &&
+      (
+        a.name.toLowerCase().includes(q) ||
+        (a.city  ?? '').toLowerCase().includes(q) ||
+        (a.state ?? '').toLowerCase().includes(q)
+      ),
     );
   }, [areas, citySearch]);
 
@@ -256,7 +261,7 @@ export function AreaPickerScreen({ route, navigation }: any) {
                 onPress={() => toggleArea(area.id)}
                 activeOpacity={0.8}
               >
-                <Text style={styles.cityChipText}>📍  {area.name}, {area.state}</Text>
+                <Text style={styles.cityChipText}>📍  {area.name}</Text>
                 <Text style={styles.chipRemove}>  ×</Text>
               </TouchableOpacity>
             ))}
