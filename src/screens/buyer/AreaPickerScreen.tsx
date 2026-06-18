@@ -1,13 +1,44 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, Switch,
-  ScrollView, ActivityIndicator, Alert, TextInput,
+  ScrollView, ActivityIndicator, Alert, TextInput, Dimensions,
 } from 'react-native';
+import MapView, { Circle, Marker, Region } from 'react-native-maps';
 import { areasApi, placesApi, preferencesApi, PlacePrediction, ServiceArea } from '@/lib/api';
 import { ScreenShell } from '@/components/ScreenShell';
 import { Button } from '@/components/Button';
 import { Colors, FontSize, Spacing, Radius, Shadow } from '@/theme';
 import { useTheme } from '@/contexts/ThemeContext';
+
+const SCREEN_WIDTH = Dimensions.get('window').width;
+const MAP_HEIGHT    = 340;
+const MILES_TO_M    = 1609.34; // 1 mile in metres — used for MapView Circle radius
+
+/** Compute a MapView region that fits all selected area circles with padding. */
+function computeMapRegion(areas: ServiceArea[], radiusMiles: number): Region {
+  const valid = areas.filter(a => a.lat != null && a.lng != null);
+  if (!valid.length) {
+    // Default: contiguous US overview
+    return { latitude: 39.5, longitude: -98.35, latitudeDelta: 28, longitudeDelta: 40 };
+  }
+  const radiusDeg = radiusMiles / 69.0; // rough degree equivalent of the radius
+  const lats = valid.map(a => a.lat as number);
+  const lngs = valid.map(a => a.lng as number);
+  const minLat = Math.min(...lats) - radiusDeg;
+  const maxLat = Math.max(...lats) + radiusDeg;
+  const minLng = Math.min(...lngs) - radiusDeg * 1.3;
+  const maxLng = Math.max(...lngs) + radiusDeg * 1.3;
+  return {
+    latitude:       (minLat + maxLat) / 2,
+    longitude:      (minLng + maxLng) / 2,
+    latitudeDelta:  Math.max(maxLat - minLat, 0.15) * 1.25,
+    longitudeDelta: Math.max(maxLng - minLng, 0.15) * 1.25,
+  };
+}
+
+// Circle fill / stroke for each coverage area on the map
+const CIRCLE_FILL   = 'rgba(249, 115, 22, 0.15)'; // orange tint
+const CIRCLE_STROKE = 'rgba(249, 115, 22, 0.85)'; // solid orange border
 
 // ── US States ─────────────────────────────────────────────────────────────
 const US_STATES = [
@@ -96,7 +127,7 @@ export function AreaPickerScreen({ route, navigation }: any) {
   const [saving,  setSaving]  = useState(false);
 
   // Tab
-  const [activeTab, setActiveTab] = useState<'state' | 'city'>('state');
+  const [activeTab, setActiveTab] = useState<'state' | 'city' | 'map'>('state');
 
   // State dropdown open/closed
   const [stateDropdownOpen, setStateDropdownOpen] = useState(false);
@@ -193,10 +224,16 @@ export function AreaPickerScreen({ route, navigation }: any) {
     }
   }
 
-  // Selected city area objects (for chips)
+  // Selected city area objects (for chips + map)
   const selectedAreaObjs = useMemo(
     () => areas.filter(a => selAreaIds.includes(a.id)),
     [areas, selAreaIds],
+  );
+
+  // Map region — re-computes whenever selection or radius changes
+  const mapRegion = useMemo(
+    () => computeMapRegion(selectedAreaObjs, radius),
+    [selectedAreaObjs, radius],
   );
 
   // ── Toggles ─────────────────────────────────────────────────────────────
@@ -281,6 +318,15 @@ export function AreaPickerScreen({ route, navigation }: any) {
         >
           <Text style={[styles.tabText, activeTab === 'city' && styles.tabTextActive]}>
             🏙  City / Area
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'map' && styles.tabActive]}
+          onPress={() => setActiveTab('map')}
+          activeOpacity={0.8}
+        >
+          <Text style={[styles.tabText, activeTab === 'map' && styles.tabTextActive]}>
+            🔵  Coverage
           </Text>
         </TouchableOpacity>
       </View>
@@ -502,6 +548,87 @@ export function AreaPickerScreen({ route, navigation }: any) {
                 Leads within {radius} mile{radius > 1 ? 's' : ''} of your selected city area{selAreaIds.length > 1 ? 's' : ''} will match.
               </Text>
             </View>
+          )}
+        </View>
+      )}
+
+      {/* ── Coverage Map tab ───────────────────────────────────────────── */}
+      {activeTab === 'map' && (
+        <View style={styles.mapTabPanel}>
+          {selectedAreaObjs.filter(a => a.lat && a.lng).length === 0 ? (
+            <View style={styles.mapEmptyState}>
+              <Text style={styles.mapEmptyIcon}>🗺</Text>
+              <Text style={styles.mapEmptyTitle}>No city areas selected yet</Text>
+              <Text style={styles.mapEmptyHint}>
+                Add city areas on the City / Area tab — your coverage circles will appear here so you can see exactly which leads you'll receive.
+              </Text>
+            </View>
+          ) : (
+            <>
+              {/* Info strip */}
+              <View style={styles.mapInfoStrip}>
+                <Text style={styles.mapInfoText}>
+                  📍 {selectedAreaObjs.filter(a => a.lat && a.lng).length} area{selectedAreaObjs.length !== 1 ? 's' : ''}
+                  {'  ·  '}
+                  <Text style={{ color: Colors.accent }}>
+                    {radius} mi radius each
+                  </Text>
+                </Text>
+                <Text style={styles.mapInfoSub}>
+                  Orange circles show exactly which leads will notify you.
+                </Text>
+              </View>
+
+              {/* Live map */}
+              <MapView
+                style={styles.map}
+                region={mapRegion}
+                mapType="standard"
+                showsUserLocation={false}
+                showsCompass={false}
+                showsScale={false}
+                rotateEnabled={false}
+                pitchEnabled={false}
+              >
+                {selectedAreaObjs
+                  .filter(a => a.lat != null && a.lng != null)
+                  .map(area => (
+                    <React.Fragment key={area.id}>
+                      {/* Coverage circle */}
+                      <Circle
+                        center={{ latitude: area.lat as number, longitude: area.lng as number }}
+                        radius={radius * MILES_TO_M}
+                        fillColor={CIRCLE_FILL}
+                        strokeColor={CIRCLE_STROKE}
+                        strokeWidth={2}
+                      />
+                      {/* Centre pin */}
+                      <Marker
+                        coordinate={{ latitude: area.lat as number, longitude: area.lng as number }}
+                        title={area.name}
+                        pinColor="#f97316"
+                      />
+                    </React.Fragment>
+                  ))}
+              </MapView>
+
+              {/* Radius quick-picker so buyer can see impact without switching tabs */}
+              <View style={styles.mapRadiusRow}>
+                <Text style={styles.mapRadiusLabel}>Radius:</Text>
+                {RADIUS_OPTIONS.map(opt => (
+                  <TouchableOpacity
+                    key={opt.value}
+                    style={[styles.mapRadiusBtn, radius === opt.value && styles.mapRadiusBtnSelected]}
+                    onPress={() => setRadius(opt.value)}
+                    activeOpacity={0.75}
+                  >
+                    <Text style={[styles.mapRadiusBtnText, radius === opt.value && styles.mapRadiusBtnTextSelected]}>
+                      {opt.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </>
           )}
         </View>
       )}
@@ -817,4 +944,64 @@ const styles = StyleSheet.create({
   screenHeader:   { marginBottom: Spacing.xs },
   screenTitle:    { fontSize: FontSize.xl, fontWeight: '700', color: Colors.foreground },
   screenSubtitle: { fontSize: FontSize.sm, color: Colors.textSecondary, marginTop: 3 },
+
+  // ── Coverage Map tab ─────────────────────────────────────────────────────
+  mapTabPanel: {
+    marginBottom: Spacing.sm,
+    borderRadius: Radius.lg,
+    overflow:     'hidden',
+    borderWidth:  1,
+    borderColor:  Colors.border,
+    backgroundColor: Colors.panel,
+    ...Shadow.card,
+  },
+
+  // Empty state (no areas selected)
+  mapEmptyState: {
+    alignItems:  'center',
+    padding:     Spacing.xl,
+  },
+  mapEmptyIcon:  { fontSize: 40, marginBottom: Spacing.sm },
+  mapEmptyTitle: { fontSize: FontSize.base, fontWeight: '700', color: Colors.foreground, marginBottom: 6 },
+  mapEmptyHint:  { fontSize: FontSize.xs, color: Colors.muted, textAlign: 'center', lineHeight: 18 },
+
+  // Info strip above the map
+  mapInfoStrip: {
+    padding:         Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  mapInfoText: { fontSize: FontSize.sm, fontWeight: '700', color: Colors.foreground },
+  mapInfoSub:  { fontSize: FontSize.xs, color: Colors.muted, marginTop: 2 },
+
+  // The map itself
+  map: {
+    width:  SCREEN_WIDTH - Spacing.md * 2, // matches modal/card width
+    height: MAP_HEIGHT,
+  },
+
+  // Radius quick-picker below the map
+  mapRadiusRow: {
+    flexDirection:   'row',
+    alignItems:      'center',
+    gap:             Spacing.xs,
+    padding:         Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    borderTopWidth:  1,
+    borderTopColor:  Colors.border,
+  },
+  mapRadiusLabel:        { fontSize: FontSize.xs, color: Colors.muted, fontWeight: '600', marginRight: 4 },
+  mapRadiusBtn: {
+    flex:            1,
+    paddingVertical: 8,
+    borderRadius:    Radius.md,
+    borderWidth:     1,
+    borderColor:     Colors.border2,
+    backgroundColor: Colors.panel2,
+    alignItems:      'center',
+  },
+  mapRadiusBtnSelected: { borderColor: Colors.accent, backgroundColor: 'rgba(249,115,22,0.15)' },
+  mapRadiusBtnText:     { fontSize: FontSize.xs, fontWeight: '700', color: Colors.textSecondary },
+  mapRadiusBtnTextSelected: { color: Colors.accent },
 });
