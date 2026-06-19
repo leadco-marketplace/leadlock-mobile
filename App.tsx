@@ -9,7 +9,7 @@ import Constants from 'expo-constants';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { AppNavigator, navigationRef } from '@/navigation/AppNavigator';
-import { supabase } from '@/lib/supabase';
+import { pushApi } from '@/lib/api';
 import { notificationEvents } from '@/lib/notificationEvents';
 
 SplashScreen.preventAutoHideAsync();
@@ -87,16 +87,15 @@ async function registerForPushNotifications(userId: string): Promise<void> {
     return;
   }
 
-  // Save directly via Supabase client — no web server hop, no Bearer token needed
-  const { error } = await supabase
-    .from('profiles')
-    .update({ expo_push_token: expoToken })
-    .eq('id', userId);
-
-  if (error) {
-    console.error('[push] Failed to save token to Supabase:', error.message);
-  } else {
+  // Save via the API endpoint (service role) so RLS can never silently drop the write.
+  // This updates both push_subscriptions AND profiles.expo_push_token, ensuring
+  // all server-side notification paths (dispatch, signal notify, lead-sold notify)
+  // can find this token with a direct column lookup.
+  try {
+    await pushApi.register(expoToken, Platform.OS);
     console.log('[push] Token saved ✅ for user', userId);
+  } catch (e: any) {
+    console.error('[push] Failed to save token via API:', e?.message ?? String(e));
   }
 }
 
@@ -159,6 +158,14 @@ function PushResponseHandler() {
           setTimeout(() => tryNavigate(fn), 200);
         }
       };
+
+      // ── Provider: their submitted lead was purchased ───────────────────────
+      if (type === 'lead_sold') {
+        tryNavigate(() => {
+          navigationRef.current!.navigate('MySubmissions' as never);
+        });
+        return;
+      }
 
       // ── Provider: buyer sent a signal (no_answer / wrong_number) ──────────
       if (type === 'lead_signal') {
