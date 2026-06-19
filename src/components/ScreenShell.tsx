@@ -1,12 +1,11 @@
 import React from 'react';
-import { View, Text, Image, StyleSheet, ScrollView, RefreshControl, ViewStyle, Dimensions, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, RefreshControl, ViewStyle, Dimensions, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors, FontSize, Spacing } from '@/theme';
 import { useTheme } from '@/contexts/ThemeContext';
 
 const { width: SW, height: SH } = Dimensions.get('screen');
 const FONT_BLACK = Platform.OS === 'ios' ? 'AvenirNextCondensed-Heavy' : 'sans-serif-condensed';
-const LOGO = require('../../assets/icon.png');
 const SPACING = 20; // pixels between diagonal lines
 // Enough lines to cover screen diagonally even on largest devices
 const LINE_COUNT = Math.ceil((SW + SH) / SPACING) + 4;
@@ -14,8 +13,6 @@ const LINE_COUNT = Math.ceil((SW + SH) / SPACING) + 4;
 /**
  * Diagonal line pattern rendered with pure View elements.
  * Works on all platforms without react-native-svg or image tiling.
- * Each line is a 1px-wide View rotated 45°, extending long enough
- * to span the full screen at an angle.
  */
 function DiagonalPattern() {
   const lineLength = Math.sqrt(SW * SW + SH * SH) + 100;
@@ -41,17 +38,52 @@ function DiagonalPattern() {
 }
 
 /**
+ * LeadCo logo as pure View elements — no image file, no black background.
+ * Renders the 3×3 grid of coloured rounded squares directly.
+ * Transparent background — shows whatever is behind it.
+ */
+function LogoIcon({ size = 40 }: { size?: number }) {
+  const gap = Math.round(size * 0.08);
+  const cell = Math.round((size - gap * 2) / 3);
+  const br = Math.round(cell * 0.28);
+  const ROWS = [
+    ['#152244', '#5078D8', '#8898DC'],
+    ['#7050CC', '#D87828', '#D87828'],
+    ['#5C38B8', '#D87828', '#A84C18'],
+  ];
+  return (
+    <View>
+      {ROWS.map((row, r) => (
+        <View key={r} style={{ flexDirection: 'row', marginBottom: r < 2 ? gap : 0 }}>
+          {row.map((color, c) => (
+            <View
+              key={c}
+              style={{
+                width: cell,
+                height: cell,
+                backgroundColor: color,
+                borderRadius: br,
+                marginRight: c < 2 ? gap : 0,
+              }}
+            />
+          ))}
+        </View>
+      ))}
+    </View>
+  );
+}
+
+/**
  * Option B — Neon Pulse title.
  *
  * React Native only supports one textShadow per Text element, so we stack
  * four Text layers at increasing radii to fake CSS's multi-value text-shadow.
- * The bottom layers are wide + faint (outer glow ring), the top layer is
- * tight + bright (the crisp core). All layers are white — glow colour comes
- * entirely from textShadowColor, which is set at render-time so it follows
- * the active theme (orange in light, blue in dark / inner-light).
+ * All layers are white — glow colour comes from textShadowColor, which is
+ * read at render time so it follows the active theme (orange in light, blue
+ * in dark / inner-light).
  */
 function GlowTitle({ text, fontFamily }: { text: string; fontFamily: string }) {
-  const gc = Colors.glowColor; // theme-aware — read at render, not in StyleSheet
+  const gc = Colors.glowColor;
   const base = {
     fontSize: 32,
     fontWeight: '700' as const,
@@ -61,34 +93,11 @@ function GlowTitle({ text, fontFamily }: { text: string; fontFamily: string }) {
   };
   return (
     <View>
-      {/* Outermost ring — widest blur, most transparent */}
-      <Text
-        style={[base, { position: 'absolute', textShadowColor: gc, textShadowRadius: 28, opacity: 0.45 }]}
-        numberOfLines={1}
-      >
-        {text}
-      </Text>
-      {/* Second ring */}
-      <Text
-        style={[base, { position: 'absolute', textShadowColor: gc, textShadowRadius: 14, opacity: 0.65 }]}
-        numberOfLines={1}
-      >
-        {text}
-      </Text>
-      {/* Third ring — inner halo */}
-      <Text
-        style={[base, { position: 'absolute', textShadowColor: gc, textShadowRadius: 6, opacity: 0.85 }]}
-        numberOfLines={1}
-      >
-        {text}
-      </Text>
-      {/* Core — sets layout height; tight glow for crispness */}
-      <Text
-        style={[base, { textShadowColor: gc, textShadowRadius: 3 }]}
-        numberOfLines={1}
-      >
-        {text}
-      </Text>
+      <Text style={[base, { position: 'absolute', textShadowColor: gc, textShadowRadius: 28, opacity: 0.45 }]} numberOfLines={1}>{text}</Text>
+      <Text style={[base, { position: 'absolute', textShadowColor: gc, textShadowRadius: 14, opacity: 0.65 }]} numberOfLines={1}>{text}</Text>
+      <Text style={[base, { position: 'absolute', textShadowColor: gc, textShadowRadius: 6,  opacity: 0.85 }]} numberOfLines={1}>{text}</Text>
+      {/* Core — sets layout height */}
+      <Text style={[base, { textShadowColor: gc, textShadowRadius: 3 }]} numberOfLines={1}>{text}</Text>
     </View>
   );
 }
@@ -114,21 +123,37 @@ export function ScreenShell({
   contentStyle,
   rightElement,
 }: ScreenShellProps) {
-  // Calling useTheme() ensures this component re-renders when theme changes,
-  // which lets the inline Colors.* and GlowTitle's Colors.glowColor pick up
-  // the updated values.
   useTheme();
 
   const content = (
     <View style={[styles.content, contentStyle]}>
       {(title || subtitle || rightElement) && (
-        <View style={styles.headerContainer}>
-          {/* Logo + title row — centered as a unit (Layout 2) */}
-          <View style={styles.titleRow}>
-            {title && <Image source={LOGO} style={styles.logoImg} />}
-            {title && <GlowTitle text={title} fontFamily={FONT_BLACK} />}
-            {rightElement && <View style={{ marginLeft: 8 }}>{rightElement}</View>}
+        <View>
+          {/*
+           * Three-zone header row — equal flex: 1 columns so the logo
+           * is always locked to the mathematical centre of the screen
+           * and the title is always in the left third. They can never
+           * overlap regardless of title length.
+           *
+           *  [  title (left)  ] [ logo (center) ] [  right zone  ]
+           */}
+          <View style={styles.headerRow}>
+            {/* Left zone — neon title */}
+            <View style={styles.headerLeft}>
+              {title && <GlowTitle text={title} fontFamily={FONT_BLACK} />}
+            </View>
+
+            {/* Center zone — transparent logo, always centred */}
+            <View style={styles.headerCenter}>
+              <LogoIcon size={38} />
+            </View>
+
+            {/* Right zone — rightElement if any, otherwise empty spacer */}
+            <View style={styles.headerRight}>
+              {rightElement ?? null}
+            </View>
           </View>
+
           {subtitle && (
             <Text style={[styles.subtitle, { color: Colors.headerSubText }]}>{subtitle}</Text>
           )}
@@ -180,25 +205,26 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.md,
     gap: Spacing.md,
   },
-  // Header wrapper — centers everything horizontally
-  headerContainer: {
-    alignItems: 'center',
-  },
-  // Logo + neon title sit side by side, the unit is centered by headerContainer
-  titleRow: {
+  // Three-zone row — each zone gets exactly one third of the width
+  headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
   },
-  logoImg: {
-    width: 40,
-    height: 40,
-    borderRadius: 9,
+  headerLeft: {
+    flex: 1,
+    // title anchored to left edge
+  },
+  headerCenter: {
+    flex: 1,
+    alignItems: 'center', // logo locked to center of this zone = center of screen
+  },
+  headerRight: {
+    flex: 1,
+    alignItems: 'flex-end', // rightElement pushed to right edge, or empty
   },
   subtitle: {
     fontSize: FontSize.sm,
     marginTop: 6,
-    textAlign: 'center',
-    // color applied inline
+    // color applied inline; left-aligned to match title zone
   },
 });
