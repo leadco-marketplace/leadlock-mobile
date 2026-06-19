@@ -130,28 +130,16 @@ export function ScreenShell({
       {(title || subtitle || rightElement) && (
         <View>
           {/*
-           * Three-zone header row — equal flex: 1 columns so the logo
-           * is always locked to the mathematical centre of the screen
-           * and the title is always in the left third. They can never
-           * overlap regardless of title length.
-           *
-           *  [  title (left)  ] [ logo (center) ] [  right zone  ]
+           * Simple left-aligned row: [logo] [title] — both anchored to
+           * the left edge. Logo sits immediately to the left of the title
+           * text. rightElement floats to the far right if present.
            */}
           <View style={styles.headerRow}>
-            {/* Left zone — neon title */}
             <View style={styles.headerLeft}>
+              <LogoIcon size={36} />
               {title && <GlowTitle text={title} fontFamily={FONT_BLACK} />}
             </View>
-
-            {/* Center zone — transparent logo, always centred */}
-            <View style={styles.headerCenter}>
-              <LogoIcon size={38} />
-            </View>
-
-            {/* Right zone — rightElement if any, otherwise empty spacer */}
-            <View style={styles.headerRight}>
-              {rightElement ?? null}
-            </View>
+            {rightElement && <View>{rightElement}</View>}
           </View>
 
           {subtitle && (
@@ -205,26 +193,20 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.md,
     gap: Spacing.md,
   },
-  // Three-zone row — each zone gets exactly one third of the width
+  // Logo + title together on the left
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
   },
   headerLeft: {
-    flex: 1,
-    // title anchored to left edge
-  },
-  headerCenter: {
-    flex: 1,
-    alignItems: 'center', // logo locked to center of this zone = center of screen
-  },
-  headerRight: {
-    flex: 1,
-    alignItems: 'flex-end', // rightElement pushed to right edge, or empty
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
   subtitle: {
     fontSize: FontSize.sm,
     marginTop: 6,
-    // color applied inline; left-aligned to match title zone
+    // color applied inline
   },
 });
