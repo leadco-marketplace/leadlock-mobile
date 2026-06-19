@@ -214,6 +214,7 @@ export function LeadCard({ lead, onUnlock, unlocking, purchased, highlighted }: 
         {
           backgroundColor: Colors.panel,
           borderColor: highlighted ? animBorderColor : Colors.borderOrange,
+          shadowColor: Colors.glowColor,
         },
         highlighted && { borderWidth: 2.5 },
         isSold && styles.cardSold,
@@ -396,7 +397,7 @@ const styles = StyleSheet.create({
   // ── Card shell ────────────────────────────────────────────────────────────
   card: {
     borderRadius:  Radius.xl,
-    borderWidth:   1,
+    borderWidth:   2,
     flexDirection: 'column',
     overflow:      'hidden',
     ...Shadow.card,

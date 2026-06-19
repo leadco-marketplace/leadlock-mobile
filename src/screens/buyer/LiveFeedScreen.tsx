@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View, Text, FlatList, StyleSheet, ActivityIndicator,
   TouchableOpacity, Linking, Alert,
@@ -143,6 +143,20 @@ export function LiveFeedScreen() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ── Sort: available/reserved first, recently sold sinks to bottom ─────────
+  // Declared as useMemo (a hook) so it is always initialised before any early
+  // return — this prevents the temporal-dead-zone ReferenceError that would
+  // occur if the useEffect below ran while `loading` was true (which would have
+  // caused the component to early-return before the old const declaration).
+  const sortedLeads = useMemo(
+    () => [...leads].sort((a, b) => {
+      const aSold = a.status === 'sold' ? 1 : 0;
+      const bSold = b.status === 'sold' ? 1 : 0;
+      return aSold - bSold;
+    }),
+    [leads],
+  );
+
   // ── Scroll to highlighted lead once (does NOT reset the highlight) ────────
   // Re-runs whenever leads or highlightedId update (needed to find the index)
   // but scrolls only ONCE per notification ID via highlightScrolledRef — so the
@@ -271,13 +285,6 @@ export function LiveFeedScreen() {
       </ScreenShell>
     );
   }
-
-  // ── Sort: available/reserved first, recently sold sinks to bottom ─────────
-  const sortedLeads = [...leads].sort((a, b) => {
-    const aSold = a.status === 'sold' ? 1 : 0;
-    const bSold = b.status === 'sold' ? 1 : 0;
-    return aSold - bSold;
-  });
 
   // ── Stats derived from current feed ───────────────────────────────────────
   const availableCount = leads.filter(l => l.status === 'available').length;

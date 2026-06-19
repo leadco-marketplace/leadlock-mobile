@@ -240,7 +240,7 @@ function SignalPanel({ purchaseId }: { purchaseId: string }) {
   if (!loadedOnce) return null;
 
   return (
-    <View style={[signalStyles.box, { backgroundColor: Colors.panel }]}>
+    <View style={[signalStyles.box, { backgroundColor: Colors.panel, shadowColor: Colors.glowColor }]}>
       <Text style={[signalStyles.title, { color: Colors.accent }]}>
         📵  REPORT A CALL ISSUE
       </Text>
@@ -314,7 +314,7 @@ function SignalPanel({ purchaseId }: { purchaseId: string }) {
 const signalStyles = StyleSheet.create({
   box: {
     borderRadius:  Radius.lg,
-    borderWidth:   1,
+    borderWidth:   2,
     borderColor:   'rgba(129,140,248,0.25)',
     padding:       Spacing.md,
     gap:           Spacing.sm,
@@ -384,7 +384,7 @@ function RatingPanel({ leadId }: { leadId: string }) {
 
   if (submitted) {
     return (
-      <View style={[ratingStyles.box, { backgroundColor: Colors.panel }]}>
+      <View style={[ratingStyles.box, { backgroundColor: Colors.panel, shadowColor: Colors.glowColor }]}>
         <Text style={[ratingStyles.title, { color: Colors.foreground }]}>⭐  Lead Rated</Text>
         <Text style={[ratingStyles.submitted, { color: Colors.accent }]}>Thanks for your feedback!</Text>
       </View>
@@ -459,7 +459,7 @@ const ratingStyles = StyleSheet.create({
   box: {
     backgroundColor: Colors.panel,
     borderRadius: Radius.lg,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: Colors.border,
     padding: Spacing.md,
     gap: Spacing.sm,
@@ -745,7 +745,7 @@ export function LeadDetailScreen() {
         contentContainerStyle={{ gap: Spacing.md, paddingBottom: Spacing.xxl }}
       >
         {/* ── Header card ─────────────────────────────── */}
-        <View style={[styles.headerCard, { backgroundColor: Colors.panel }]}>
+        <View style={[styles.headerCard, { backgroundColor: Colors.panel, shadowColor: Colors.glowColor }]}>
           <View style={styles.headerTop}>
             <View style={{ flex: 1 }}>
               <Text style={[styles.category, { color: Colors.foreground }]}>{lead.service_category}</Text>
@@ -777,7 +777,7 @@ export function LeadDetailScreen() {
 
         {/* ── Job description ──────────────────────────── */}
         {lead.public_summary && (
-          <View style={[styles.section, { backgroundColor: Colors.panel }]}>
+          <View style={[styles.section, { backgroundColor: Colors.panel, shadowColor: Colors.glowColor }]}>
             <Text style={[styles.sectionTitle, { color: Colors.foreground }]}>📋  Job Description</Text>
             <Text style={[styles.description, { color: Colors.text }]}>{lead.public_summary}</Text>
           </View>
@@ -785,7 +785,7 @@ export function LeadDetailScreen() {
 
         {/* ── Lead details (metadata fields) ──────────── */}
         {metaEntries.length > 0 && (
-          <View style={[styles.section, { backgroundColor: Colors.panel }]}>
+          <View style={[styles.section, { backgroundColor: Colors.panel, shadowColor: Colors.glowColor }]}>
             <Text style={[styles.sectionTitle, { color: Colors.foreground }]}>🔍  Lead Details</Text>
             {metaEntries.map(([key, value]) => (
               <View key={key} style={[styles.metaRow, { borderBottomColor: Colors.border }]}>
@@ -804,7 +804,7 @@ export function LeadDetailScreen() {
 
         {/* ── Private notes ────────────────────────────── */}
         {lead.private_notes && (
-          <View style={[styles.section, { backgroundColor: Colors.panel }]}>
+          <View style={[styles.section, { backgroundColor: Colors.panel, shadowColor: Colors.glowColor }]}>
             <Text style={[styles.sectionTitle, { color: Colors.foreground }]}>📝  Lead Notes</Text>
             <Text style={[styles.description, { color: Colors.text }]}>{lead.private_notes}</Text>
           </View>
@@ -841,7 +841,7 @@ const styles = StyleSheet.create({
   headerCard: {
     backgroundColor: Colors.panel,
     borderRadius: Radius.xl,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: 'rgba(129,140,248,0.32)',
     padding: Spacing.md,
     gap: Spacing.sm,
@@ -875,7 +875,7 @@ const styles = StyleSheet.create({
   section: {
     backgroundColor: Colors.panel,
     borderRadius: Radius.lg,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: Colors.border,
     padding: Spacing.md,
     gap: Spacing.sm,

@@ -101,7 +101,7 @@ function SubmissionCard({
   const dateStr   = lead.sold_at ?? lead.published_at ?? lead.created_at;
 
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, { shadowColor: Colors.glowColor }]}>
       <View style={styles.cardRow}>
         <View style={{ flex: 1, gap: 3 }}>
           <Text style={styles.category}>{lead.service_category}</Text>
@@ -303,7 +303,7 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: Colors.panel,
     borderRadius: Radius.xl,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: Colors.borderOrange,
     padding: Spacing.md,
     marginBottom: Spacing.sm + 4,

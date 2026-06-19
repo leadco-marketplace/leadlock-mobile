@@ -18,7 +18,7 @@ function PurchasedCard({ lead }: { lead: PurchasedLead }) {
   useTheme(); // re-render on theme change so inline Colors.* picks up new values
   return (
     <TouchableOpacity
-      style={[styles.card, { backgroundColor: Colors.panel }]}
+      style={[styles.card, { backgroundColor: Colors.panel, shadowColor: Colors.glowColor }]}
       onPress={() => navigation.dispatch(StackActions.push('LeadDetail', { leadId: lead.id, purchaseId: lead.purchase_id }))}
       activeOpacity={0.85}
     >
@@ -216,7 +216,7 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: Colors.panel,
     borderRadius: Radius.xl,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: 'rgba(129,140,248,0.32)',
     padding: Spacing.md,
     marginBottom: Spacing.sm + 4,

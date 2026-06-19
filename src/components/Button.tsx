@@ -81,7 +81,7 @@ export function Button({
   }
 
   const variantStyle = {
-    secondary: { backgroundColor: Colors.panel2, borderColor: Colors.borderOrange, borderWidth: 1 },
+    secondary: { backgroundColor: Colors.panel2, borderColor: Colors.borderOrange, borderWidth: 2 },
     danger:    { backgroundColor: 'rgba(248,113,113,0.10)', borderColor: 'rgba(248,113,113,0.40)', borderWidth: 1 },
     ghost:     { backgroundColor: 'transparent' },
   }[variant];

@@ -338,7 +338,7 @@ export function AreaPickerScreen({ route, navigation }: any) {
 
       {/* ── Selected chips ─────────────────────────────────────────────── */}
       {totalSelected > 0 && (
-        <View style={styles.selectedBox}>
+        <View style={[styles.selectedBox, { shadowColor: Colors.glowColor }]}>
           <Text style={styles.selectedLabel}>
             Selected ({totalSelected}):
           </Text>
@@ -391,7 +391,7 @@ export function AreaPickerScreen({ route, navigation }: any) {
 
           {/* Dropdown panel */}
           {stateDropdownOpen && (
-            <View style={styles.dropdownPanel}>
+            <View style={[styles.dropdownPanel, { shadowColor: Colors.glowColor }]}>
               {/* Search inside dropdown */}
               <View style={styles.dropdownSearchRow}>
                 <Text style={styles.searchIcon}>🔍</Text>
@@ -559,7 +559,7 @@ export function AreaPickerScreen({ route, navigation }: any) {
 
       {/* ── Coverage Map tab ───────────────────────────────────────────── */}
       {activeTab === 'map' && (
-        <View style={styles.mapTabPanel}>
+        <View style={[styles.mapTabPanel, { shadowColor: Colors.glowColor }]}>
           {selectedAreaObjs.filter(a => a.lat && a.lng).length === 0 ? (
             <View style={styles.mapEmptyState}>
               <Text style={styles.mapEmptyIcon}>🗺</Text>
@@ -639,7 +639,7 @@ export function AreaPickerScreen({ route, navigation }: any) {
       )}
 
       {/* ── Notification toggles ─────────────────────────────────────────── */}
-      <View style={styles.notifSection}>
+      <View style={[styles.notifSection, { shadowColor: Colors.glowColor }]}>
         <Text style={styles.sectionLabel}>Notifications</Text>
         <View style={styles.toggleRow}>
           <Text style={styles.toggleLabel}>📧  Email alerts</Text>
@@ -708,7 +708,7 @@ function makeStyles() { return StyleSheet.create({
   selectedBox: {
     backgroundColor: Colors.panel,
     borderRadius:    Radius.lg,
-    borderWidth:     1,
+    borderWidth:     2,
     borderColor:     Colors.border,
     padding:         Spacing.sm,
     marginBottom:    Spacing.md,
@@ -784,7 +784,7 @@ function makeStyles() { return StyleSheet.create({
   dropdownPanel: {
     backgroundColor: Colors.panel,
     borderRadius:    Radius.lg,
-    borderWidth:     1,
+    borderWidth:     2,
     borderColor:     Colors.border,
     marginTop:       4,
     overflow:        'hidden',
@@ -917,7 +917,7 @@ function makeStyles() { return StyleSheet.create({
   notifSection: {
     backgroundColor: Colors.panel,
     borderRadius:    Radius.lg,
-    borderWidth:     1,
+    borderWidth:     2,
     borderColor:     Colors.border,
     padding:         Spacing.md,
     marginTop:       Spacing.sm,
@@ -958,7 +958,7 @@ function makeStyles() { return StyleSheet.create({
     marginBottom: Spacing.sm,
     borderRadius: Radius.lg,
     overflow:     'hidden',
-    borderWidth:  1,
+    borderWidth:  2,
     borderColor:  Colors.border,
     backgroundColor: Colors.panel,
     ...Shadow.card,

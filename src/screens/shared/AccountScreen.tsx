@@ -186,7 +186,7 @@ export function AccountScreen() {
     <ScreenShell title="My Account" scrollable>
 
       {/* ── Profile card ──────────────────────────────────────── */}
-      <View style={[styles.card, { backgroundColor: Colors.panel, borderColor: Colors.borderOrange }]}>
+      <View style={[styles.card, { backgroundColor: Colors.panel, borderColor: Colors.borderOrange, shadowColor: Colors.glowColor }]}>
         <View style={styles.avatarRow}>
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>{(profile.email?.[0] ?? '?').toUpperCase()}</Text>
@@ -208,7 +208,7 @@ export function AccountScreen() {
       </View>
 
       {/* ── Phone number ──────────────────────────────────────── */}
-      <View style={[styles.card, { backgroundColor: Colors.panel, borderColor: Colors.borderOrange }]}>
+      <View style={[styles.card, { backgroundColor: Colors.panel, borderColor: Colors.borderOrange, shadowColor: Colors.glowColor }]}>
         <Text style={[styles.sectionTitle, { color: Colors.foreground }]}>📱  Phone Number</Text>
 
         {phoneStep === 'done' ? (
@@ -295,7 +295,7 @@ export function AccountScreen() {
 
       {/* ── Add credits (buyers only) ─────────────────────────── */}
       {isBuyer && (
-        <View style={[styles.creditCard, { backgroundColor: Colors.panel, borderColor: Colors.borderOrange }]}>
+        <View style={[styles.creditCard, { backgroundColor: Colors.panel, borderColor: Colors.borderOrange, shadowColor: Colors.glowColor }]}>
           <Text style={[styles.sectionTitle, { color: Colors.foreground }]}>💰  Add Credits</Text>
           <Text style={[styles.creditsHint, { color: Colors.muted, marginTop: Spacing.xs }]}>
             Select an amount to top up your balance. You'll be taken to a secure checkout page.
@@ -332,7 +332,7 @@ export function AccountScreen() {
       {/* ── Account & billing (buyers only) ───────────────────── */}
       {isBuyer && (
         <TouchableOpacity
-          style={[styles.linkCard, { backgroundColor: Colors.panel }]}
+          style={[styles.linkCard, { backgroundColor: Colors.panel, shadowColor: Colors.glowColor }]}
           onPress={() => Linking.openURL(`${WEB_APP}/account`)}
           activeOpacity={0.75}
         >
@@ -345,7 +345,7 @@ export function AccountScreen() {
       )}
 
       {/* ── Notifications ──────────────────────────────────────── */}
-      <View style={[styles.card, { backgroundColor: Colors.panel, borderColor: Colors.borderOrange }]}>
+      <View style={[styles.card, { backgroundColor: Colors.panel, borderColor: Colors.borderOrange, shadowColor: Colors.glowColor }]}>
         <Text style={[styles.sectionTitle, { color: Colors.foreground }]}>Notifications</Text>
         {([
           ['notify_email', '✉️  Email alerts'],
@@ -366,7 +366,7 @@ export function AccountScreen() {
       </View>
 
       {/* ── Appearance ─────────────────────────────────────────── */}
-      <View style={[styles.card, { backgroundColor: Colors.panel, borderColor: Colors.borderOrange }]}>
+      <View style={[styles.card, { backgroundColor: Colors.panel, borderColor: Colors.borderOrange, shadowColor: Colors.glowColor }]}>
         <Text style={[styles.sectionTitle, { color: Colors.foreground }]}>🎨  Appearance</Text>
         <View style={styles.themeRow}>
           {([
@@ -412,7 +412,7 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: Colors.panel,
     borderRadius: Radius.xl,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: Colors.borderOrange,
     padding: Spacing.md,
     gap: Spacing.md,
@@ -422,7 +422,7 @@ const styles = StyleSheet.create({
   linkCard: {
     backgroundColor: Colors.panel,
     borderRadius: Radius.xl,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: Colors.border2,
     padding: Spacing.md,
     marginBottom: Spacing.sm + 4,
@@ -517,7 +517,7 @@ const styles = StyleSheet.create({
   creditCard: {
     backgroundColor: Colors.panel,
     borderRadius: Radius.xl,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: Colors.borderOrange,
     padding: Spacing.md,
     marginBottom: Spacing.sm + 4,

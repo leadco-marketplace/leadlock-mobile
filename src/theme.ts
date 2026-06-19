@@ -12,7 +12,8 @@ const DarkColors = {
   panel3:  '#122248',   // subtle tertiary surface
   border:  '#182e52',   // quiet border
   border2: '#1f3a68',   // visible border
-  borderOrange: 'rgba(59,130,246,0.42)',  // sapphire-tinted accent border
+  borderOrange: 'rgba(59,130,246,0.70)',  // sapphire-tinted accent border
+  glowColor: '#3b82f6',
   accent:  '#3b82f6',   // sapphire blue — primary accent
   accent2: '#22d3ee',   // cyan secondary accent
   orange:  '#3b82f6',   // primary CTA = sapphire (replaces orange)
@@ -44,7 +45,8 @@ const InnerLightColors = {
   panel3:  '#f1f5f9',
   border:  '#e2e8f0',
   border2: '#cbd5e1',
-  borderOrange: 'rgba(59,130,246,0.30)',
+  borderOrange: 'rgba(59,130,246,0.65)',
+  glowColor: '#3b82f6',
   // Text goes dark inside cards
   foreground:    '#0f172a',
   text:          '#1e293b',
@@ -66,7 +68,8 @@ const LightColors = {
   panel3:  '#FED7AA',
   border:  '#FED7AA',
   border2: '#FDBA74',
-  borderOrange: 'rgba(249,115,22,0.30)',
+  borderOrange: 'rgba(249,115,22,0.70)',
+  glowColor: '#f97316',
   accent:  '#6366f1',
   accent2: '#06b6d4',
   orange:  '#f97316',
@@ -133,11 +136,11 @@ export const FontSize = {
 
 export const Shadow = {
   card: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.35,
-    shadowRadius: 16,
-    elevation: 8,
+    shadowColor: '#3b82f6',   // default dark mode; components override with Colors.glowColor inline
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.55,
+    shadowRadius: 18,
+    elevation: 12,
   },
   orange: {
     // Now used for sapphire primary buttons (name kept for backward compat)

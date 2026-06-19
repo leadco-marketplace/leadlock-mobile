@@ -82,7 +82,7 @@ function SignalCard({ signal, onRespond }: SignalCardProps) {
   }
 
   return (
-    <View style={[cardStyles.card, { backgroundColor: Colors.panel, borderColor: (badge?.color ?? '#555') + '33' }]}>
+    <View style={[cardStyles.card, { backgroundColor: Colors.panel, borderColor: (badge?.color ?? '#555') + '33', shadowColor: Colors.glowColor }]}>
 
       {/* ── Lead ID badge — most important identifier ── */}
       {lead?.lead_code && (
@@ -183,7 +183,7 @@ function SignalCard({ signal, onRespond }: SignalCardProps) {
 const cardStyles = StyleSheet.create({
   card: {
     borderRadius: Radius.xl,
-    borderWidth:  1,
+    borderWidth:  2,
     padding:      Spacing.md,
     marginBottom: Spacing.sm + 4,
     gap:          Spacing.sm,

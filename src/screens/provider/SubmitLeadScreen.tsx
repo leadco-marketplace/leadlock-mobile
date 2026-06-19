@@ -284,7 +284,7 @@ function AddressAutocompleteInput({
         </Text>
       )}
       {suggestions.length > 0 && (
-        <View style={ac.dropdown}>
+        <View style={[ac.dropdown, { shadowColor: Colors.glowColor }]}>
           {suggestions.map((item) => (
             <TouchableOpacity
               key={item.place_id}
@@ -320,7 +320,7 @@ const ac = StyleSheet.create({
   dropdown: {
     backgroundColor: Colors.panel2,
     borderRadius:    Radius.md,
-    borderWidth:     1,
+    borderWidth:     2,
     borderColor:     Colors.borderOrange,
     marginTop:       2,
     ...Shadow.card,
@@ -452,7 +452,7 @@ function CategoryModal({ visible, categories, onSelect, onClose }: CategoryModal
           ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
           renderItem={({ item }) => (
             <TouchableOpacity
-              style={cat.card}
+              style={[cat.card, { shadowColor: Colors.glowColor }]}
               onPress={() => { onSelect(item); setQuery(''); }}
               activeOpacity={0.75}
             >
@@ -490,7 +490,7 @@ const cat = StyleSheet.create({
   card: {
     backgroundColor:   Colors.panel,
     borderRadius:      Radius.lg,
-    borderWidth:       1,
+    borderWidth:       2,
     borderColor:       Colors.borderOrange,
     paddingHorizontal: Spacing.md,
     paddingVertical:   Spacing.sm + 4,
@@ -887,7 +887,7 @@ export function SubmitLeadScreen({ navigation }: any) {
         <ScreenShell title="Submit a Lead" subtitle="Fill in the customer's details">
 
           {/* ── Category selector ── */}
-          <View style={styles.section}>
+          <View style={[styles.section, { shadowColor: Colors.glowColor }]}>
             <SectionHeader title="Service Category" />
             <TouchableOpacity
               style={[styles.catPicker, selectedCat && styles.catPickerActive]}
@@ -920,7 +920,7 @@ export function SubmitLeadScreen({ navigation }: any) {
           {selectedCat && fieldConfig && !configLoading && (
             <>
               {/* ── Service Details ── */}
-              <View style={styles.section}>
+              <View style={[styles.section, { shadowColor: Colors.glowColor }]}>
                 <SectionHeader title="Service Details" />
 
                 {/* Job Type */}
@@ -951,7 +951,7 @@ export function SubmitLeadScreen({ navigation }: any) {
 
               {/* ── Location ── */}
               {!nationwide && (
-                <View style={styles.section}>
+                <View style={[styles.section, { shadowColor: Colors.glowColor }]}>
                   <SectionHeader
                     title={fieldConfig.needsAddress ? (fieldConfig.addressLabel ?? 'Service Address') : 'Service Location'}
                     subtitle={fieldConfig.needsAddress
@@ -1008,7 +1008,7 @@ export function SubmitLeadScreen({ navigation }: any) {
               )}
 
               {/* ── Customer Contact ── */}
-              <View style={styles.section}>
+              <View style={[styles.section, { shadowColor: Colors.glowColor }]}>
                 <SectionHeader
                   title="Customer Contact"
                   subtitle="At least one of name, phone, or email is required."
@@ -1039,7 +1039,7 @@ export function SubmitLeadScreen({ navigation }: any) {
 
               {/* ── Lead Details (dynamic extra fields) ── */}
               {activeFields.length > 0 && (
-                <View style={styles.section}>
+                <View style={[styles.section, { shadowColor: Colors.glowColor }]}>
                   <SectionHeader title="Lead Details" />
                   {activeFields.map((field) => (
                     <ExtraFieldInput
@@ -1053,7 +1053,7 @@ export function SubmitLeadScreen({ navigation }: any) {
               )}
 
               {/* ── Description ── */}
-              <View style={styles.section}>
+              <View style={[styles.section, { shadowColor: Colors.glowColor }]}>
                 <SectionHeader
                   title="Description *"
                   subtitle="Describe the customer's situation. Shown to buyers — do not include contact info here."
@@ -1076,7 +1076,7 @@ export function SubmitLeadScreen({ navigation }: any) {
               </View>
 
               {/* ── Pricing ── */}
-              <View style={styles.section}>
+              <View style={[styles.section, { shadowColor: Colors.glowColor }]}>
                 <SectionHeader title="Pricing" />
 
                 <Input
@@ -1227,7 +1227,7 @@ const styles = StyleSheet.create({
   section: {
     backgroundColor: Colors.panel,
     borderRadius:    Radius.xl,
-    borderWidth:     1,
+    borderWidth:     2,
     borderColor:     Colors.borderOrange,
     padding:         Spacing.md,
     gap:             Spacing.md,

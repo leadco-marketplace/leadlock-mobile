@@ -182,7 +182,7 @@ export function AlertsScreen() {
           const hasAny     = stateCodes.length > 0 || areaIds.length > 0;
 
           return (
-            <View key={pref.id} style={[styles.prefCard, { backgroundColor: Colors.panel, borderColor: Colors.border }]}>
+            <View key={pref.id} style={[styles.prefCard, { backgroundColor: Colors.panel, borderColor: Colors.border, shadowColor: Colors.glowColor }]}>
               {/* Header row: category badge + delete */}
               <View style={styles.prefHeader}>
                 <View style={styles.categoryBadge}>
@@ -264,7 +264,7 @@ export function AlertsScreen() {
           <Text style={[styles.addBtnText, { color: Colors.orange }]}>＋ Add New Alert</Text>
         </TouchableOpacity>
       ) : (
-        <View style={[styles.formCard, { backgroundColor: Colors.panel, borderColor: Colors.borderOrange }]}>
+        <View style={[styles.formCard, { backgroundColor: Colors.panel, borderColor: Colors.borderOrange, shadowColor: Colors.glowColor }]}>
           <Text style={[styles.formTitle, { color: Colors.foreground }]}>New Alert</Text>
 
           {/* Category search */}
@@ -353,7 +353,7 @@ const styles = StyleSheet.create({
   prefCard: {
     backgroundColor: Colors.panel,
     borderRadius:    Radius.lg,
-    borderWidth:     1,
+    borderWidth:     2,
     borderColor:     Colors.border,
     padding:         Spacing.md,
     marginBottom:    Spacing.sm,
@@ -460,7 +460,7 @@ const styles = StyleSheet.create({
   formCard: {
     backgroundColor: Colors.panel,
     borderRadius:    Radius.lg,
-    borderWidth:     1,
+    borderWidth:     2,
     borderColor:     Colors.borderOrange,
     padding:         Spacing.md,
     marginBottom:    Spacing.lg,
