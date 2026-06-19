@@ -14,6 +14,7 @@ const DarkColors = {
   border2: '#1f3a68',   // visible border
   borderOrange: 'rgba(59,130,246,0.70)',  // sapphire-tinted accent border
   glowColor: '#3b82f6',
+  glowBg:   'rgba(59,130,246,0.15)',      // pill/capsule background tint
   accent:  '#3b82f6',   // sapphire blue — primary accent
   accent2: '#22d3ee',   // cyan secondary accent
   orange:  '#3b82f6',   // primary CTA = sapphire (replaces orange)
@@ -47,6 +48,7 @@ const InnerLightColors = {
   border2: '#cbd5e1',
   borderOrange: 'rgba(59,130,246,0.65)',
   glowColor: '#3b82f6',
+  glowBg:   'rgba(59,130,246,0.15)',
   // Text goes dark inside cards
   foreground:    '#0f172a',
   text:          '#1e293b',
@@ -70,6 +72,7 @@ const LightColors = {
   border2: '#FDBA74',
   borderOrange: 'rgba(249,115,22,0.70)',
   glowColor: '#f97316',
+  glowBg:   'rgba(249,115,22,0.15)',      // pill/capsule background tint
   accent:  '#6366f1',
   accent2: '#06b6d4',
   orange:  '#f97316',

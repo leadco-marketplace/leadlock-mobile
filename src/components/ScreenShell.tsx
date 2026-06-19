@@ -1,11 +1,12 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, RefreshControl, ViewStyle, Dimensions, Platform } from 'react-native';
+import { View, Text, Image, StyleSheet, ScrollView, RefreshControl, ViewStyle, Dimensions, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors, FontSize, Spacing } from '@/theme';
 import { useTheme } from '@/contexts/ThemeContext';
 
 const { width: SW, height: SH } = Dimensions.get('screen');
 const FONT_BLACK = Platform.OS === 'ios' ? 'AvenirNextCondensed-Heavy' : 'sans-serif-condensed';
+const LOGO = require('../../assets/icon.png');
 const SPACING = 20; // pixels between diagonal lines
 // Enough lines to cover screen diagonally even on largest devices
 const LINE_COUNT = Math.ceil((SW + SH) / SPACING) + 4;
@@ -66,11 +67,24 @@ export function ScreenShell({
 
   const content = (
     <View style={[styles.content, contentStyle]}>
-      {(title || subtitle) && (
+      {(title || subtitle || rightElement) && (
         <View style={styles.headerRow}>
           <View style={{ flex: 1 }}>
-            {title    && <Text style={[styles.title,    { color: Colors.headerText,    fontFamily: FONT_BLACK }]}>{title}</Text>}
-            {subtitle && <Text style={[styles.subtitle, { color: Colors.headerSubText }]}>{subtitle}</Text>}
+            {title && (
+              <View style={[styles.titlePill, {
+                backgroundColor: Colors.glowBg,
+                borderColor: Colors.borderOrange,
+                shadowColor: Colors.glowColor,
+              }]}>
+                <Image source={LOGO} style={styles.logoImg} />
+                <Text style={[styles.title, { color: Colors.headerText, fontFamily: FONT_BLACK }]}>
+                  {title}
+                </Text>
+              </View>
+            )}
+            {subtitle && (
+              <Text style={[styles.subtitle, { color: Colors.headerSubText }]}>{subtitle}</Text>
+            )}
           </View>
           {rightElement}
         </View>
@@ -123,17 +137,38 @@ const styles = StyleSheet.create({
   },
   headerRow: {
     flexDirection: 'row',
-    alignItems:    'flex-start',
-    gap:           Spacing.sm,
+    alignItems: 'flex-start',
+    gap: Spacing.sm,
+  },
+  // Option E: pill/capsule with logo
+  titlePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    borderWidth: 1.5,
+    borderRadius: 12,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    gap: 9,
+    // shadowColor set inline for theme-awareness
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.28,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  logoImg: {
+    width: 30,
+    height: 30,
+    borderRadius: 7,
   },
   title: {
-    fontSize:   FontSize.xxl,
+    fontSize: 32,
     fontWeight: '700',
-    // color applied inline so it updates with theme
+    // color + fontFamily applied inline
   },
   subtitle: {
-    fontSize:  FontSize.sm,
-    marginTop: 3,
-    // color applied inline so it updates with theme
+    fontSize: FontSize.sm,
+    marginTop: 6,
+    // color applied inline
   },
 });

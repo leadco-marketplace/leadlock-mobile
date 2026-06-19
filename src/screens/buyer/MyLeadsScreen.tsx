@@ -18,7 +18,7 @@ function PurchasedCard({ lead }: { lead: PurchasedLead }) {
   useTheme(); // re-render on theme change so inline Colors.* picks up new values
   return (
     <TouchableOpacity
-      style={[styles.card, { backgroundColor: Colors.panel, shadowColor: Colors.glowColor }]}
+      style={[styles.card, { backgroundColor: Colors.panel, borderColor: Colors.borderOrange, shadowColor: Colors.glowColor }]}
       onPress={() => navigation.dispatch(StackActions.push('LeadDetail', { leadId: lead.id, purchaseId: lead.purchase_id }))}
       activeOpacity={0.85}
     >
@@ -194,7 +194,7 @@ export function MyLeadsScreen() {
         }
         showsVerticalScrollIndicator={false}
         contentContainerStyle={
-          leads.length === 0 ? { flex: 1 } : { paddingBottom: Spacing.xxl }
+          leads.length === 0 ? { flex: 1 } : { paddingBottom: Spacing.xxl, paddingHorizontal: 4 }
         }
         ListEmptyComponent={
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.sm, paddingTop: 80 }}>
@@ -217,7 +217,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.panel,
     borderRadius: Radius.xl,
     borderWidth: 2,
-    borderColor: 'rgba(129,140,248,0.32)',
+    // borderColor set inline on each card so it follows the active theme
     padding: Spacing.md,
     marginBottom: Spacing.sm + 4,
     gap: Spacing.sm,
