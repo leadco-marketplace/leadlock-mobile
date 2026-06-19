@@ -332,7 +332,7 @@ export function AccountScreen() {
       {/* ── Account & billing (buyers only) ───────────────────── */}
       {isBuyer && (
         <TouchableOpacity
-          style={[styles.linkCard, { backgroundColor: Colors.panel, shadowColor: Colors.glowColor }]}
+          style={[styles.linkCard, { backgroundColor: Colors.panel, borderColor: Colors.borderOrange, shadowColor: Colors.glowColor }]}
           onPress={() => Linking.openURL(`${WEB_APP}/account`)}
           activeOpacity={0.75}
         >

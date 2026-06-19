@@ -322,17 +322,17 @@ export function LiveFeedScreen() {
       {/* ── Stats bar ──────────────────────────────────────────────── */}
       {leads.length > 0 && (
         <View style={styles.statsRow}>
-          <View style={[styles.statCard, { backgroundColor: Colors.panel }]}>
+          <View style={[styles.statCard, { backgroundColor: Colors.panel, borderColor: Colors.borderOrange, shadowColor: Colors.glowColor, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.55, shadowRadius: 18, elevation: 12 }]}>
             <Text style={styles.statLabel}>AVAILABLE</Text>
             <Text style={[styles.statValue, { color: Colors.foreground }]}>{availableCount}</Text>
             <Text style={[styles.statSub, { color: Colors.muted }]}>leads live</Text>
           </View>
-          <View style={[styles.statCard, { backgroundColor: Colors.panel }]}>
+          <View style={[styles.statCard, { backgroundColor: Colors.panel, borderColor: Colors.borderOrange, shadowColor: Colors.glowColor, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.55, shadowRadius: 18, elevation: 12 }]}>
             <Text style={styles.statLabel}>AVG PRICE</Text>
             <Text style={[styles.statValue, { color: Colors.foreground }]}>${Math.round(avgPrice / 100)}</Text>
             <Text style={[styles.statSub, { color: Colors.muted }]}>in your areas</Text>
           </View>
-          <View style={[styles.statCard, { backgroundColor: Colors.panel }]}>
+          <View style={[styles.statCard, { backgroundColor: Colors.panel, borderColor: Colors.borderOrange, shadowColor: Colors.glowColor, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.55, shadowRadius: 18, elevation: 12 }]}>
             <Text style={styles.statLabel}>NEWEST</Text>
             <Text numberOfLines={1} style={[styles.statValue, { fontSize: FontSize.sm, color: Colors.foreground }]}>
               {newestLead?.service_category ?? '—'}
@@ -422,10 +422,8 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: Colors.panel,
     borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.borderOrange,
+    borderWidth: 2,
     padding: Spacing.sm + 2,
     gap: 2,
     alignItems: 'center',
