@@ -229,11 +229,11 @@ export function LeadCard({ lead, onUnlock, unlocking, purchased, highlighted }: 
           </View>
         )}
 
-        {/* ── Card body: square thumb + content ─────────────────────────────── */}
-        <View style={styles.cardBody}>
+        {/* ── Card body: full-height thumb column + compact content ──────────── */}
+        <View style={styles.cardInner}>
 
-          {/* Square thumbnail */}
-          <View style={styles.thumbSquare}>
+          {/* Full-height left thumbnail column — stretches to match content height */}
+          <View style={styles.thumbCol}>
             {photoUrl && !photoError ? (
               <Image
                 source={{ uri: photoUrl }}
@@ -358,7 +358,7 @@ export function LeadCard({ lead, onUnlock, unlocking, purchased, highlighted }: 
             </View>
 
           </View>{/* end rightCol */}
-        </View>{/* end cardBody */}
+        </View>{/* end cardInner */}
 
         {/* ── SOLD stamp — absoluteFill covers the entire card ──────────────── */}
         {isSold && (
@@ -383,7 +383,7 @@ export function LeadCard({ lead, onUnlock, unlocking, purchased, highlighted }: 
 // StyleSheet.create(). StyleSheet.create() runs once at module load time and
 // captures the initial dark-theme values — it won't update when the theme changes.
 // Only non-color layout/spacing/radius/font values live here.
-const THUMB_SIZE = 64;
+const THUMB_SIZE = 82; // width of the left photo column (matches original)
 
 const styles = StyleSheet.create({
 
@@ -432,44 +432,43 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
 
-  // ── Card body row (thumb + content) ──────────────────────────────────────
-  cardBody: {
+  // ── Card inner row (thumb column + content) ──────────────────────────────
+  // alignItems defaults to 'stretch' in RN, so thumbCol fills the full height
+  // of whatever rightCol needs — no fixed height required.
+  cardInner: {
     flexDirection: 'row',
-    padding:       Spacing.md - 2,
-    gap:           10,
   },
 
-  // ── Square thumbnail ──────────────────────────────────────────────────────
-  thumbSquare: {
+  // ── Full-height left thumbnail column ────────────────────────────────────
+  thumbCol: {
     width:           THUMB_SIZE,
-    height:          THUMB_SIZE,
-    borderRadius:    Radius.md,
+    alignSelf:       'stretch',   // fills full card height automatically
+    alignItems:      'center',
+    justifyContent:  'flex-end',
+    paddingVertical:   10,
+    paddingHorizontal: 6,
     backgroundColor: '#1a2a44',
     overflow:        'hidden',
-    flexShrink:      0,
-    justifyContent:  'flex-end',
-    alignItems:      'center',
-    paddingBottom:   4,
-    paddingHorizontal: 3,
   },
   thumbDim: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.40)',
   },
   thumbName: {
-    fontSize:      7,
+    fontSize:      8,
     fontFamily:    FONT_BOLD,
     fontWeight:    '700',
-    color:         'rgba(255,255,255,0.85)',
-    letterSpacing: 0.8,
+    color:         'rgba(255,255,255,0.82)',
+    letterSpacing: 1.2,
     textAlign:     'center',
-    lineHeight:    9,
+    lineHeight:    10,
   },
 
   // ── Right content column ──────────────────────────────────────────────────
   rightCol: {
-    flex: 1,
-    gap:  4,
+    flex:    1,
+    padding: Spacing.md - 2,
+    gap:     4,
   },
 
   // ── Title row ─────────────────────────────────────────────────────────────
