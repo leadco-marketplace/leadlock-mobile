@@ -9,12 +9,10 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { Lead } from '@/lib/api';
 
 // ── Typography ────────────────────────────────────────────────────────────────
-// Uses built-in system condensed font — no package install needed.
-// Upgrade to Barlow Condensed later: npm install @expo-google-fonts/barlow-condensed
 const FONT_BLACK = Platform.OS === 'ios' ? 'AvenirNextCondensed-Heavy'    : 'sans-serif-condensed';
 const FONT_BOLD  = Platform.OS === 'ios' ? 'AvenirNextCondensed-DemiBold' : 'sans-serif-condensed';
 
-// ── Category gradient fallbacks (shown when photo is loading or unavailable) ──
+// ── Category gradient fallbacks ───────────────────────────────────────────────
 const CATEGORY_THUMB: Record<string, { colors: readonly [string, string] }> = {
   'locksmith':        { colors: ['#1a2a44', '#354a6e'] as const },
   'real estate':      { colors: ['#5c3a0c', '#906018'] as const },
@@ -43,68 +41,58 @@ function getCategoryThumb(category: string) {
   return CATEGORY_THUMB[category.toLowerCase().trim()] ?? DEFAULT_THUMB;
 }
 
-// ── Category & subcategory photo mapping ──────────────────────────────────────
-// All photo IDs verified directly from Unsplash search results.
-// Job type (subcategory) is checked first, then category.
-// If a URL fails to load, the gradient fallback shows automatically.
-const U = (id: string) => `https://images.unsplash.com/photo-${id}?w=164&h=400&fit=crop&q=80`;
+// ── Photo mapping (subcategory first, then category) ─────────────────────────
+const U = (id: string) => `https://images.unsplash.com/photo-${id}?w=164&h=164&fit=crop&q=80`;
 
 const JOB_TYPE_PHOTOS: Record<string, string> = {
-  // Locksmith subcategories
-  'car lockout':                U('1707296916219-4f2d7529a4c5'), // man opening door of black SUV
-  'car lockout / unlock':       U('1707296916330-ae32416d9260'), // person holding car remote next to van
-  'home / residential lockout': U('1564767609213-c75ee685263a'), // person holds door lever
-  'lock rekey':                 U('1592744254966-58c65cfd2e69'), // silver combination lock
-  'lock installation':          U('1614797091730-e2a6121aaa60'), // brass padlock on wooden door
-  'commercial lockout':         U('1588689653688-9b312cd6bc2b'), // padlock on blue door
-  'key duplication':            U('1635237393049-55046279ebb8'), // bunch of keys on table
-  // Garage door subcategories
-  'broken spring replacement':  U('1617782674367-341cf5f527c9'), // gray roll-up door closed
-  'cable repair / replacement': U('1696992812596-3c0d4d2d1299'), // grey garage door brick wall
-  'new garage door install':    U('1605276374104-dee2a0ed3cd6'), // house with garage door
-  'garage door opener repair':  U('1540476547779-348beb642680'), // man standing in front of open garage
-  // Plumbing subcategories
-  'drain cleaning':             U('1649959738550-ad6254b9bb7e'), // water faucet with hose
-  'pipe repair':                U('1760571327612-8ab776dcd462'), // hand holding brass pipe fitting
-  'leak repair':                U('1693907986952-3cd372e4c9d8'), // blue pipe
-  'water heater':               U('1768321916212-17ae334a3d63'), // pipes in brick wall
-  // Painting subcategories
-  'house painting':             U('1652829069834-2c05031199c5'), // man with paint roller on wall
-  'interior painting':          U('1562259949-e8e7689d7828'),   // blue paint brush
-  'exterior painting':          U('1574359411659-15573a27fd0c'), // two men on ladder painting wall
-  // Landscaping subcategories
-  'lawn mowing':                U('1458245201577-fc8a130b8829'), // lawnmower on green grass
-  'garden maintenance':         U('1689728318937-17d24bc0a65c'), // man mowing lawn
-  // Solar subcategories
-  'solar panel install':        U('1613665813446-82a78c468a1d'), // black and white solar panels on roof
-  'solar panel repair':         U('1658298775754-5839ffd434cc'), // solar panels on roof
-  // Tree service subcategories
-  'tree trimming':              U('Oq6YnFdXfZ8'), // trees standing in dirt
+  'car lockout':                U('1707296916219-4f2d7529a4c5'),
+  'car lockout / unlock':       U('1707296916330-ae32416d9260'),
+  'home / residential lockout': U('1564767609213-c75ee685263a'),
+  'lock rekey':                 U('1592744254966-58c65cfd2e69'),
+  'lock installation':          U('1614797091730-e2a6121aaa60'),
+  'commercial lockout':         U('1588689653688-9b312cd6bc2b'),
+  'key duplication':            U('1635237393049-55046279ebb8'),
+  'broken spring replacement':  U('1617782674367-341cf5f527c9'),
+  'cable repair / replacement': U('1696992812596-3c0d4d2d1299'),
+  'new garage door install':    U('1605276374104-dee2a0ed3cd6'),
+  'garage door opener repair':  U('1540476547779-348beb642680'),
+  'drain cleaning':             U('1649959738550-ad6254b9bb7e'),
+  'pipe repair':                U('1760571327612-8ab776dcd462'),
+  'leak repair':                U('1693907986952-3cd372e4c9d8'),
+  'water heater':               U('1768321916212-17ae334a3d63'),
+  'house painting':             U('1652829069834-2c05031199c5'),
+  'interior painting':          U('1562259949-e8e7689d7828'),
+  'exterior painting':          U('1574359411659-15573a27fd0c'),
+  'lawn mowing':                U('1458245201577-fc8a130b8829'),
+  'garden maintenance':         U('1689728318937-17d24bc0a65c'),
+  'solar panel install':        U('1613665813446-82a78c468a1d'),
+  'solar panel repair':         U('1658298775754-5839ffd434cc'),
+  'tree trimming':              U('Oq6YnFdXfZ8'),
   'tree removal':               U('Oq6YnFdXfZ8'),
   'maintenance / tune-up':      U('Oq6YnFdXfZ8'),
 };
 
 const CATEGORY_PHOTOS: Record<string, string> = {
-  'locksmith':        U('1564767609342-620cb19b2357'), // keys on hand
-  'garage door':      U('1696992812596-3c0d4d2d1299'), // grey garage door next to brick wall
-  'dog walker':       U('1587300003388-59208cc962cb'), // dog on leash being walked
-  'real estate':      U('1560518883-ce09059eeffa'),   // house keys / real estate
-  'plumbing':         U('1760571327612-8ab776dcd462'), // hand holding brass pipe fitting
-  'electrical':       U('1621905251918-48416bd8575a'), // man with hard hat and orange drill
-  'hvac':             U('1732395805034-e0bf859665e5'), // man in blue uniform in front of building
-  'roofing':          U('1635424824800-692767998d07'), // man in yellow shirt working on roof
-  'painting':         U('1652829069834-2c05031199c5'), // man with paint roller
-  'cleaning':         U('1740657254989-42fe9c3b8cce'), // person cleaning floor with yellow gloves
-  'pest control':     U('1593999094742-4f5280054b23'), // person with pest control equipment on grass
-  'landscaping':      U('1458245201577-fc8a130b8829'), // lawnmower on green grass
-  'moving':           U('1698917414969-feade59e3343'), // man unloading furniture from moving truck
-  'appliance repair': U('1717176876437-490aa75bf9b5'), // man standing next to a dryer
-  'handyman':         U('1562259929-b4e1fd3aef09'),   // blue and black Makita power drill
-  'pool service':     U('1558617320-e695f0d420de'),   // swimming pool close-up photography
-  'tree service':     U('Oq6YnFdXfZ8'), // tree branches against sky
-  'solar':            U('1613665813446-82a78c468a1d'), // black and white solar panels on roof
-  'car dealer':       U('1643142314913-0cf633d9bbb5'), // red car parked in a showroom
-  'chimney sweep':    U('1554332208-9dfebcc48334'),   // firewood burning in fireplace
+  'locksmith':        U('1564767609342-620cb19b2357'),
+  'garage door':      U('1696992812596-3c0d4d2d1299'),
+  'dog walker':       U('1587300003388-59208cc962cb'),
+  'real estate':      U('1560518883-ce09059eeffa'),
+  'plumbing':         U('1760571327612-8ab776dcd462'),
+  'electrical':       U('1621905251918-48416bd8575a'),
+  'hvac':             U('1732395805034-e0bf859665e5'),
+  'roofing':          U('1635424824800-692767998d07'),
+  'painting':         U('1652829069834-2c05031199c5'),
+  'cleaning':         U('1740657254989-42fe9c3b8cce'),
+  'pest control':     U('1593999094742-4f5280054b23'),
+  'landscaping':      U('1458245201577-fc8a130b8829'),
+  'moving':           U('1698917414969-feade59e3343'),
+  'appliance repair': U('1717176876437-490aa75bf9b5'),
+  'handyman':         U('1562259929-b4e1fd3aef09'),
+  'pool service':     U('1558617320-e695f0d420de'),
+  'tree service':     U('Oq6YnFdXfZ8'),
+  'solar':            U('1613665813446-82a78c468a1d'),
+  'car dealer':       U('1643142314913-0cf633d9bbb5'),
+  'chimney sweep':    U('1554332208-9dfebcc48334'),
 };
 
 function getPhotoUrl(category: string, jobType?: string): string | null {
@@ -113,7 +101,7 @@ function getPhotoUrl(category: string, jobType?: string): string | null {
   return JOB_TYPE_PHOTOS[jt] ?? CATEGORY_PHOTOS[cat] ?? null;
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// ── Props ─────────────────────────────────────────────────────────────────────
 interface LeadCardProps {
   lead: Lead;
   onUnlock?: () => void;
@@ -139,14 +127,14 @@ function timeAgo(dateStr: string) {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export function LeadCard({ lead, onUnlock, unlocking, purchased, highlighted }: LeadCardProps) {
-  useTheme(); // re-render on theme change so inline Colors.* picks up new values
+  useTheme();
 
   const [photoError, setPhotoError] = useState(false);
 
-  const price     = lead.buyer_price_cents ?? Math.round(lead.price_cents * 1.125);
-  const catThumb  = getCategoryThumb(lead.service_category);
-  const photoUrl  = getPhotoUrl(lead.service_category, lead.job_type);
-  const isSold    = lead.status === 'sold';
+  const price    = lead.buyer_price_cents ?? Math.round(lead.price_cents * 1.125);
+  const catThumb = getCategoryThumb(lead.service_category);
+  const photoUrl = getPhotoUrl(lead.service_category, lead.job_type);
+  const isSold   = lead.status === 'sold';
 
   // ── Pulse animation for notification-highlighted card ─────────────────────
   const pulseAnim = useRef(new Animated.Value(0)).current;
@@ -163,7 +151,7 @@ export function LeadCard({ lead, onUnlock, unlocking, purchased, highlighted }: 
     return () => loop.stop();
   }, [highlighted, pulseAnim]);
 
-  // ── LIVE badge orange glow blink (0.8 s cycle) ────────────────────────────
+  // ── LIVE badge orange glow blink ──────────────────────────────────────────
   const liveAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -201,9 +189,14 @@ export function LeadCard({ lead, onUnlock, unlocking, purchased, highlighted }: 
     onUnlock?.();
   }
 
+  // Distance label helper
+  const distanceLabel = lead.distance_minutes != null && !lead.nationwide
+    ? (lead.distance_minutes < 60
+        ? `${lead.distance_minutes}m away`
+        : `${(lead.distance_minutes / 60).toFixed(1)}h away`)
+    : null;
+
   return (
-    // Outer wrapper carries the animated glow — no overflow:hidden so shadow radiates freely.
-    // backgroundColor must be set inline (not StyleSheet) so it updates on theme change.
     <Animated.View style={[
       styles.glowWrap,
       { backgroundColor: Colors.panel },
@@ -216,7 +209,6 @@ export function LeadCard({ lead, onUnlock, unlocking, purchased, highlighted }: 
       },
     ]}>
 
-      {/* Card shell — backgroundColor inline so theme changes take effect */}
       <Animated.View style={[
         styles.card,
         {
@@ -227,160 +219,148 @@ export function LeadCard({ lead, onUnlock, unlocking, purchased, highlighted }: 
         isSold && styles.cardSold,
       ]}>
 
-        {/* ── Left: category photo thumbnail ───────────────────────────────── */}
-        <View style={styles.thumbCol}>
-          {/* Photo (falls back to gradient on error or missing URL) */}
-          {photoUrl && !photoError ? (
-            <Image
-              source={{ uri: photoUrl }}
-              style={StyleSheet.absoluteFillObject}
-              resizeMode="cover"
-              onError={() => setPhotoError(true)}
-            />
-          ) : (
-            <LinearGradient
-              colors={catThumb.colors}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={StyleSheet.absoluteFillObject}
-            />
-          )}
-          {/* Dark overlay — makes category label readable over any photo */}
-          <View style={styles.thumbDim} />
-          {/* Category label — pinned to the bottom of the column */}
-          <Text style={styles.thumbName} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.5}>
-            {lead.service_category.toUpperCase()}
-          </Text>
-        </View>
+        {/* ── "🔥 Your Lead" banner — full card width ───────────────────────── */}
+        {highlighted && (
+          <View style={styles.highlightBanner}>
+            <View style={styles.highlightBannerRow}>
+              <Text style={styles.highlightBannerEmoji}>🔥</Text>
+              <Text style={styles.highlightBannerText}>Your Lead</Text>
+            </View>
+          </View>
+        )}
 
-        {/* ── Right: all lead content ───────────────────────────────────────── */}
-        <View style={styles.rightCol}>
+        {/* ── Card body: square thumb + content ─────────────────────────────── */}
+        <View style={styles.cardBody}>
 
-          {/* "🔥 Your Lead" banner */}
-          {highlighted && (
-            <View style={styles.highlightBanner}>
-              <View style={styles.highlightBannerRow}>
-                <Text style={styles.highlightBannerEmoji}>🔥</Text>
-                <Text style={styles.highlightBannerText}>Your Lead</Text>
+          {/* Square thumbnail */}
+          <View style={styles.thumbSquare}>
+            {photoUrl && !photoError ? (
+              <Image
+                source={{ uri: photoUrl }}
+                style={StyleSheet.absoluteFillObject}
+                resizeMode="cover"
+                onError={() => setPhotoError(true)}
+              />
+            ) : (
+              <LinearGradient
+                colors={catThumb.colors}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={StyleSheet.absoluteFillObject}
+              />
+            )}
+            <View style={styles.thumbDim} />
+            <Text style={styles.thumbName} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.5}>
+              {lead.service_category.toUpperCase()}
+            </Text>
+          </View>
+
+          {/* Right content column */}
+          <View style={styles.rightCol}>
+
+            {/* Title row: job type + LIVE/status badge */}
+            <View style={styles.titleRow}>
+              <Text style={[styles.jobTypeMain, { color: Colors.foreground }]} numberOfLines={2}>
+                {lead.job_type}
+              </Text>
+              <View style={styles.badgeCol}>
+                {lead.status === 'available' ? (
+                  <Animated.View style={[
+                    styles.badge,
+                    styles.badgeLive,
+                    {
+                      opacity:       liveOpacity,
+                      transform:     [{ scale: liveScale }],
+                      shadowColor:   '#f97316',
+                      shadowOpacity: liveShadowOp,
+                      shadowRadius:  liveShadowRadius,
+                      shadowOffset:  { width: 0, height: 0 },
+                      elevation:     8,
+                    },
+                  ]}>
+                    <View style={styles.liveDot} />
+                    <Text style={styles.badgeTextLive}>LIVE</Text>
+                  </Animated.View>
+                ) : (
+                  <View style={[
+                    styles.badge,
+                    styles.badgeOther,
+                    { backgroundColor: Colors.panel2, borderColor: Colors.border },
+                  ]}>
+                    <Text style={[styles.badgeText, { color: Colors.muted }]}>
+                      {lead.status.toUpperCase()}
+                    </Text>
+                  </View>
+                )}
+                {lead.quality_score != null && (
+                  <View style={styles.qualityBadge}>
+                    <Text style={[styles.qualityText, { color: Colors.accent }]}>
+                      ★ {lead.quality_score}
+                    </Text>
+                  </View>
+                )}
               </View>
             </View>
-          )}
 
-          {/* Header: category name + badges */}
-          <View style={styles.header}>
-            <View style={styles.headerLeft}>
-              <Text style={[styles.category, { color: Colors.foreground }]}>
-                {lead.service_category.toUpperCase()}
-              </Text>
-              <Text style={[styles.jobType, { color: Colors.textSecondary }]}>{lead.job_type}</Text>
-              <Text style={[styles.location, { color: Colors.muted }]}>
-                {lead.nationwide ? '🌐 Nationwide' : `${lead.city}, ${lead.state}`}
-              </Text>
-              {!lead.nationwide && lead.distance_minutes != null && (
+            {/* Meta: category · location · distance */}
+            <Text style={[styles.metaLine, { color: Colors.muted }]} numberOfLines={1}>
+              {lead.service_category.toUpperCase()}
+              {' · '}
+              {lead.nationwide ? '🌐 Nationwide' : `${lead.city}, ${lead.state}`}
+              {distanceLabel ? ` · ${distanceLabel}` : ''}
+            </Text>
+
+            {/* Badges row: distance pill + lead code */}
+            <View style={styles.badgesRow}>
+              {distanceLabel && (
                 <View style={styles.distanceBadge}>
-                  <Text style={styles.distanceText}>
-                    📍 {lead.distance_minutes < 60
-                      ? `${lead.distance_minutes} min away`
-                      : `${(lead.distance_minutes / 60).toFixed(1)} hr away`}
-                  </Text>
+                  <Text style={styles.distanceText}>📍 {distanceLabel}</Text>
+                </View>
+              )}
+              {lead.lead_code && (
+                <View style={styles.leadIdPill}>
+                  <Text style={styles.leadIdCode}>#{lead.lead_code}</Text>
                 </View>
               )}
             </View>
 
-            <View style={styles.headerRight}>
-              {lead.status === 'available' ? (
-                <Animated.View style={[
-                  styles.badge,
-                  styles.badgeLive,
-                  {
-                    opacity:       liveOpacity,
-                    transform:     [{ scale: liveScale }],
-                    shadowColor:   '#f97316',
-                    shadowOpacity: liveShadowOp,
-                    shadowRadius:  liveShadowRadius,
-                    shadowOffset:  { width: 0, height: 0 },
-                    elevation:     8,
-                  },
-                ]}>
-                  <View style={styles.liveDot} />
-                  <Text style={styles.badgeTextLive}>LIVE</Text>
-                </Animated.View>
-              ) : (
-                <View style={[
-                  styles.badge,
-                  styles.badgeOther,
-                  { backgroundColor: Colors.panel2, borderColor: Colors.border },
-                ]}>
-                  <Text style={[styles.badgeText, { color: Colors.muted }]}>
-                    {lead.status.toUpperCase()}
-                  </Text>
-                </View>
-              )}
-              {lead.quality_score != null && (
-                <View style={styles.qualityBadge}>
-                  <Text style={[styles.qualityText, { color: Colors.accent }]}>
-                    ★ {lead.quality_score}
-                  </Text>
-                </View>
-              )}
-            </View>
-          </View>
-
-          {/* Lead ID badge — Option B: labeled row directly under header */}
-          {lead.lead_code && (
-            <View style={styles.leadIdRow}>
-              <Text style={[styles.leadIdLabel, { color: Colors.muted }]}>LEAD ID</Text>
-              <View style={styles.leadIdPill}>
-                <Text style={styles.leadIdCode}>#{lead.lead_code}</Text>
+            {/* Footer: time/price + unlock button */}
+            <View style={styles.footer}>
+              <View>
+                <Text style={[styles.timeAgo, { color: Colors.muted }]}>
+                  {timeAgo(lead.published_at ?? lead.created_at)}
+                </Text>
+                <Text style={[styles.price, { color: Colors.foreground }]}>
+                  {formatPrice(price)}
+                </Text>
               </View>
+
+              {!purchased && onUnlock && (
+                <TouchableOpacity onPress={handleUnlock} disabled={unlocking} activeOpacity={0.85}>
+                  <LinearGradient
+                    colors={['#1d4ed8', '#3b82f6']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={[styles.unlockBtn, unlocking && { opacity: 0.6 }]}
+                  >
+                    <Text style={styles.unlockText}>
+                      {unlocking ? 'Unlocking…' : `Unlock ${formatPrice(price)}`}
+                    </Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              )}
+
+              {purchased && (
+                <View style={styles.purchasedBadge}>
+                  <Text style={[styles.purchasedText, { color: Colors.accent }]}>✓ Unlocked</Text>
+                </View>
+              )}
             </View>
-          )}
 
-          {/* Summary */}
-          {lead.public_summary && (
-            <View style={[styles.summaryBox, { backgroundColor: Colors.panel2 }]}>
-              <Text style={[styles.summaryText, { color: Colors.textSecondary }]} numberOfLines={3}>
-                {lead.public_summary}
-              </Text>
-            </View>
-          )}
+          </View>{/* end rightCol */}
+        </View>{/* end cardBody */}
 
-          {/* Footer: time + price + unlock */}
-          <View style={styles.footer}>
-            <View>
-              <Text style={[styles.timeAgo, { color: Colors.muted }]}>
-                {timeAgo(lead.published_at ?? lead.created_at)}
-              </Text>
-              <Text style={[styles.price, { color: Colors.foreground }]}>
-                {formatPrice(price)}
-              </Text>
-            </View>
-
-            {!purchased && onUnlock && (
-              <TouchableOpacity onPress={handleUnlock} disabled={unlocking} activeOpacity={0.85}>
-                <LinearGradient
-                  colors={['#1d4ed8', '#3b82f6']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={[styles.unlockBtn, unlocking && { opacity: 0.6 }]}
-                >
-                  <Text style={styles.unlockText}>
-                    {unlocking ? 'Unlocking…' : `Unlock ${formatPrice(price)}`}
-                  </Text>
-                </LinearGradient>
-              </TouchableOpacity>
-            )}
-
-            {purchased && (
-              <View style={styles.purchasedBadge}>
-                <Text style={[styles.purchasedText, { color: Colors.accent }]}>✓ Unlocked</Text>
-              </View>
-            )}
-          </View>
-
-        </View>{/* end rightCol */}
-
-        {/* ── SOLD stamp — absoluteFill covers both columns ─────────────────── */}
+        {/* ── SOLD stamp — absoluteFill covers the entire card ──────────────── */}
         {isSold && (
           <>
             <View style={[StyleSheet.absoluteFillObject, styles.soldDim]} pointerEvents="none" />
@@ -403,22 +383,21 @@ export function LeadCard({ lead, onUnlock, unlocking, purchased, highlighted }: 
 // StyleSheet.create(). StyleSheet.create() runs once at module load time and
 // captures the initial dark-theme values — it won't update when the theme changes.
 // Only non-color layout/spacing/radius/font values live here.
-const THUMB_WIDTH = 82;
+const THUMB_SIZE = 64;
 
 const styles = StyleSheet.create({
+
   // ── Outer glow wrapper ────────────────────────────────────────────────────
-  // backgroundColor is set inline so it follows theme changes.
   glowWrap: {
-    borderRadius:  Radius.xl,
-    marginBottom:  Spacing.sm + 4,
+    borderRadius: Radius.xl,
+    marginBottom: Spacing.sm + 2,
   },
 
   // ── Card shell ────────────────────────────────────────────────────────────
-  // backgroundColor and borderColor are set inline so they follow theme changes.
   card: {
     borderRadius:  Radius.xl,
     borderWidth:   1,
-    flexDirection: 'row',
+    flexDirection: 'column',
     overflow:      'hidden',
     ...Shadow.card,
   },
@@ -426,48 +405,12 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(185,28,28,0.45)',
   },
 
-  // ── Left thumbnail column ─────────────────────────────────────────────────
-  thumbCol: {
-    width:            THUMB_WIDTH,
-    alignItems:       'center',
-    justifyContent:   'flex-end',   // category label pinned to bottom
-    paddingVertical:   10,
-    paddingHorizontal: 6,
-    backgroundColor:  '#1a2a44',    // neutral dark shown while photo loads
-    overflow:         'hidden',     // clips photo to column bounds
-  },
-  thumbDim: {
-    ...StyleSheet.absoluteFillObject,
-    // Bottom-weighted gradient overlay: darker at bottom for text readability,
-    // lighter at top so the photo shows clearly.
-    backgroundColor: 'rgba(0,0,0,0.40)',
-  },
-  thumbName: {
-    fontSize:      8,
-    fontFamily:    FONT_BOLD,
-    fontWeight:    '700',
-    color:         'rgba(255,255,255,0.82)',
-    letterSpacing: 1.2,
-    textAlign:     'center',
-    lineHeight:    10,
-  },
-
-  // ── Right content column ──────────────────────────────────────────────────
-  rightCol: {
-    flex:    1,
-    padding: Spacing.md,
-    gap:     Spacing.sm,
-  },
-
-  // "🔥 Your Lead" banner
+  // ── "🔥 Your Lead" banner ─────────────────────────────────────────────────
   highlightBanner: {
-    backgroundColor:  '#ff9333',
-    marginTop:        -Spacing.md,
-    marginHorizontal: -Spacing.md,
-    marginBottom:     Spacing.sm - 2,
-    paddingVertical:  10,
-    alignItems:       'center',
-    justifyContent:   'center',
+    backgroundColor: '#ff9333',
+    paddingVertical: 8,
+    alignItems:      'center',
+    justifyContent:  'center',
   },
   highlightBannerRow: {
     flexDirection:  'row',
@@ -476,49 +419,83 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   highlightBannerEmoji: {
-    fontSize:   20,
-    lineHeight: 24,
+    fontSize:   18,
+    lineHeight: 22,
   },
   highlightBannerText: {
     color:         '#ffffff',
-    fontSize:      20,
-    lineHeight:    24,
+    fontSize:      18,
+    lineHeight:    22,
     fontFamily:    FONT_BLACK,
     fontWeight:    '900',
     letterSpacing: 2,
     textTransform: 'uppercase',
   },
 
-  // ── Header ────────────────────────────────────────────────────────────────
-  header: {
+  // ── Card body row (thumb + content) ──────────────────────────────────────
+  cardBody: {
+    flexDirection: 'row',
+    padding:       Spacing.md - 2,
+    gap:           10,
+  },
+
+  // ── Square thumbnail ──────────────────────────────────────────────────────
+  thumbSquare: {
+    width:           THUMB_SIZE,
+    height:          THUMB_SIZE,
+    borderRadius:    Radius.md,
+    backgroundColor: '#1a2a44',
+    overflow:        'hidden',
+    flexShrink:      0,
+    justifyContent:  'flex-end',
+    alignItems:      'center',
+    paddingBottom:   4,
+    paddingHorizontal: 3,
+  },
+  thumbDim: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.40)',
+  },
+  thumbName: {
+    fontSize:      7,
+    fontFamily:    FONT_BOLD,
+    fontWeight:    '700',
+    color:         'rgba(255,255,255,0.85)',
+    letterSpacing: 0.8,
+    textAlign:     'center',
+    lineHeight:    9,
+  },
+
+  // ── Right content column ──────────────────────────────────────────────────
+  rightCol: {
+    flex: 1,
+    gap:  4,
+  },
+
+  // ── Title row ─────────────────────────────────────────────────────────────
+  titleRow: {
     flexDirection:  'row',
     justifyContent: 'space-between',
     alignItems:     'flex-start',
+    gap:            6,
   },
-  headerLeft:  { flex: 1, gap: 2 },
-  headerRight: { alignItems: 'flex-end', gap: 4 },
-
-  category: {
-    fontSize:      19,
-    fontFamily:    FONT_BLACK,
-    fontWeight:    '900',
-    letterSpacing: 0.5,
-    lineHeight:    21,
-  },
-  jobType: {
-    fontSize:      12,
+  jobTypeMain: {
+    flex:          1,
+    fontSize:      15,
     fontFamily:    FONT_BOLD,
     fontWeight:    '700',
-    letterSpacing: 0.4,
+    letterSpacing: 0.2,
+    lineHeight:    18,
   },
-  location: {
-    fontSize:  FontSize.xs,
-    marginTop: 1,
+  badgeCol: {
+    alignItems: 'flex-end',
+    gap:        4,
+    flexShrink: 0,
   },
 
   // ── Badges ────────────────────────────────────────────────────────────────
   badge: {
-    paddingHorizontal: 8,
+    paddingHorizontal: 7,
     paddingVertical:   3,
     borderRadius:      Radius.sm,
     borderWidth:       1,
@@ -526,27 +503,26 @@ const styles = StyleSheet.create({
   badgeLive: {
     flexDirection:     'row',
     alignItems:        'center',
-    gap:               5,
-    paddingHorizontal: 10,
-    paddingVertical:   5,
+    gap:               4,
+    paddingHorizontal: 8,
+    paddingVertical:   4,
     backgroundColor:   'rgba(249,115,22,0.10)',
     borderColor:       'rgba(249,115,22,0.40)',
     borderRadius:      Radius.sm,
     borderWidth:       1,
   },
   liveDot: {
-    width:           6,
-    height:          6,
-    borderRadius:    3,
+    width:           5,
+    height:          5,
+    borderRadius:    2.5,
     backgroundColor: '#f97316',
   },
   badgeTextLive: {
-    fontSize:      14,
+    fontSize:      12,
     fontWeight:    '700',
     letterSpacing: 0.5,
     color:         '#f97316',
   },
-  // badgeOther bg/border set inline (theme-aware)
   badgeOther: {},
   badgeText: {
     fontSize:      FontSize.xs - 1,
@@ -554,7 +530,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   qualityBadge: {
-    paddingHorizontal: 6,
+    paddingHorizontal: 5,
     paddingVertical:   2,
     borderRadius:      Radius.sm,
     backgroundColor:   'rgba(129,140,248,0.12)',
@@ -565,10 +541,22 @@ const styles = StyleSheet.create({
     fontSize:   FontSize.xs - 1,
     fontWeight: '600',
   },
+
+  // ── Meta line ─────────────────────────────────────────────────────────────
+  metaLine: {
+    fontSize:  FontSize.xs - 1,
+    lineHeight: 14,
+  },
+
+  // ── Badges row ────────────────────────────────────────────────────────────
+  badgesRow: {
+    flexDirection: 'row',
+    flexWrap:      'wrap',
+    gap:           5,
+    alignItems:    'center',
+  },
   distanceBadge: {
-    alignSelf:         'flex-start',
-    marginTop:         3,
-    paddingHorizontal: 7,
+    paddingHorizontal: 6,
     paddingVertical:   2,
     borderRadius:      Radius.sm,
     backgroundColor:   'rgba(16,185,129,0.10)',
@@ -580,18 +568,20 @@ const styles = StyleSheet.create({
     color:      '#34d399',
     fontWeight: '600',
   },
-
-  // ── Summary box ───────────────────────────────────────────────────────────
-  // backgroundColor set inline (theme-aware)
-  summaryBox: {
-    borderRadius: Radius.md,
-    padding:      Spacing.sm + 2,
-    borderWidth:  1,
-    borderColor:  'rgba(59,130,246,0.18)',
+  leadIdPill: {
+    backgroundColor:   'rgba(249,115,22,0.12)',
+    borderWidth:       1,
+    borderColor:       'rgba(249,115,22,0.45)',
+    borderRadius:      6,
+    paddingHorizontal: 6,
+    paddingVertical:   2,
   },
-  summaryText: {
-    fontSize:   FontSize.xs,
-    lineHeight: 18,
+  leadIdCode: {
+    fontSize:      11,
+    color:         '#f97316',
+    fontFamily:    'Courier',
+    fontWeight:    '700',
+    letterSpacing: 0.8,
   },
 
   // ── Footer ────────────────────────────────────────────────────────────────
@@ -599,48 +589,22 @@ const styles = StyleSheet.create({
     flexDirection:  'row',
     justifyContent: 'space-between',
     alignItems:     'center',
+    marginTop:      2,
   },
   timeAgo: {
     fontSize:     FontSize.xs,
-    marginBottom: 3,   // ← spacing between time and price
+    marginBottom: 2,
   },
   price: {
-    fontSize:      22,
+    fontSize:      20,
     fontFamily:    FONT_BLACK,
     fontWeight:    '900',
     letterSpacing: 0.3,
-    lineHeight:    24,
-  },
-  // ── Lead ID row (Option B: labeled row under header) ─────────────────────
-  leadIdRow: {
-    flexDirection: 'row',
-    alignItems:    'center',
-    gap:           6,
-  },
-  leadIdLabel: {
-    fontSize:      10,
-    fontWeight:    '600',
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
-  },
-  leadIdPill: {
-    backgroundColor: 'rgba(249,115,22,0.12)',
-    borderWidth:      1,
-    borderColor:      'rgba(249,115,22,0.45)',
-    borderRadius:     6,
-    paddingHorizontal: 7,
-    paddingVertical:   2,
-  },
-  leadIdCode: {
-    fontSize:      12,
-    color:         '#f97316',
-    fontFamily:    'Courier',
-    fontWeight:    '700',
-    letterSpacing: 1,
+    lineHeight:    22,
   },
   unlockBtn: {
-    paddingHorizontal: 18,
-    paddingVertical:   10,
+    paddingHorizontal: 16,
+    paddingVertical:   9,
     borderRadius:      Radius.lg,
   },
   unlockText: {
