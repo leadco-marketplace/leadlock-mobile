@@ -32,6 +32,7 @@ import { Input }       from '@/components/Input';
 import { Button }      from '@/components/Button';
 import { ScreenShell } from '@/components/ScreenShell';
 import { Colors, FontSize, Spacing, Radius, Shadow } from '@/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 import {
   categoriesApi,
   leadFieldsApi,
@@ -71,12 +72,13 @@ interface PickerModalProps {
 }
 
 function PickerModal({ visible, title, options, value, onSelect, onClose }: PickerModalProps) {
+  useTheme();
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <TouchableOpacity style={pm.overlay} activeOpacity={1} onPress={onClose} />
-      <View style={pm.sheet}>
-        <View style={pm.handle} />
-        <Text style={pm.title}>{title}</Text>
+      <View style={[pm.sheet, { backgroundColor: Colors.panel, borderColor: Colors.borderOrange }]}>
+        <View style={[pm.handle, { backgroundColor: Colors.muted }]} />
+        <Text style={[pm.title, { color: Colors.foreground }]}>{title}</Text>
         <FlatList
           data={options}
           keyExtractor={(item) => item}
@@ -87,7 +89,7 @@ function PickerModal({ visible, title, options, value, onSelect, onClose }: Pick
               style={[pm.option, value === item && pm.optionActive]}
               onPress={() => { onSelect(item); onClose(); }}
             >
-              <Text style={[pm.optionText, value === item && pm.optionTextActive]}>
+              <Text style={[pm.optionText, { color: Colors.text }, value === item && pm.optionTextActive]}>
                 {item}
               </Text>
               {value === item && <Text style={pm.check}>✓</Text>}
@@ -135,17 +137,18 @@ interface SelectFieldProps {
 }
 
 function SelectField({ label, value, options, required, onChange }: SelectFieldProps) {
+  useTheme();
   const [open, setOpen] = useState(false);
   return (
     <>
       <View style={sf.container}>
-        <Text style={sf.label}>{label}{required ? ' *' : ''}</Text>
+        <Text style={[sf.label, { color: Colors.muted }]}>{label}{required ? ' *' : ''}</Text>
         <TouchableOpacity
-          style={[sf.box, value && sf.boxActive]}
+          style={[sf.box, { backgroundColor: Colors.panel2 }, value && sf.boxActive]}
           onPress={() => setOpen(true)}
           activeOpacity={0.7}
         >
-          <Text style={[sf.text, !value && sf.placeholder]}>
+          <Text style={[sf.text, { color: Colors.foreground }, !value && { color: Colors.placeholder }]}>
             {value || 'Select…'}
           </Text>
           <Text style={sf.arrow}>›</Text>
@@ -216,6 +219,7 @@ function AddressAutocompleteInput({
   const [confirmed,      setConfirmed]      = useState(!!value);
   const [confirmedCity,  setConfirmedCity]  = useState('');
   const [confirmedState, setConfirmedState] = useState('');
+  useTheme();
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // When value is reset externally (form reset), clear local state
@@ -260,10 +264,10 @@ function AddressAutocompleteInput({
 
   return (
     <View style={ac.container}>
-      <Text style={ac.label}>{label}</Text>
-      <View style={[ac.inputRow, confirmed && ac.inputConfirmed]}>
+      <Text style={[ac.label, { color: Colors.muted }]}>{label}</Text>
+      <View style={[ac.inputRow, { backgroundColor: Colors.panel2 }, confirmed && ac.inputConfirmed]}>
         <TextInput
-          style={ac.input}
+          style={[ac.input, { color: Colors.foreground }]}
           value={query}
           onChangeText={handleChangeText}
           placeholder={placeholder}
@@ -284,14 +288,14 @@ function AddressAutocompleteInput({
         </Text>
       )}
       {suggestions.length > 0 && (
-        <View style={[ac.dropdown, { shadowColor: Colors.glowColor }]}>
+        <View style={[ac.dropdown, { backgroundColor: Colors.panel2, shadowColor: Colors.glowColor }]}>
           {suggestions.map((item) => (
             <TouchableOpacity
               key={item.place_id}
               style={ac.suggestion}
               onPress={() => pickSuggestion(item)}
             >
-              <Text style={ac.suggestionText}>{item.description}</Text>
+              <Text style={[ac.suggestionText, { color: Colors.text }]}>{item.description}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -337,10 +341,11 @@ const ac = StyleSheet.create({
 // ── Section Header ─────────────────────────────────────────────────────────────
 
 function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }) {
+  useTheme();
   return (
     <View style={sh.wrap}>
-      <Text style={sh.title}>{title}</Text>
-      {subtitle && <Text style={sh.sub}>{subtitle}</Text>}
+      <Text style={[sh.title, { color: Colors.foreground }]}>{title}</Text>
+      {subtitle && <Text style={[sh.sub, { color: Colors.muted }]}>{subtitle}</Text>}
     </View>
   );
 }
@@ -360,6 +365,7 @@ interface ExtraFieldInputProps {
 }
 
 function ExtraFieldInput({ field, value, onChange }: ExtraFieldInputProps) {
+  useTheme();
   if (field.type === 'select' && field.options) {
     return (
       <SelectField
@@ -374,9 +380,9 @@ function ExtraFieldInput({ field, value, onChange }: ExtraFieldInputProps) {
   if (field.type === 'textarea') {
     return (
       <View style={{ gap: 6 }}>
-        <Text style={sf.label}>{field.label}{field.required ? ' *' : ''}</Text>
+        <Text style={[sf.label, { color: Colors.muted }]}>{field.label}{field.required ? ' *' : ''}</Text>
         <TextInput
-          style={[styles.textarea]}
+          style={[styles.textarea, { backgroundColor: Colors.panel2, color: Colors.foreground }]}
           value={value}
           onChangeText={onChange}
           placeholder={field.placeholder}
@@ -409,6 +415,7 @@ interface CategoryModalProps {
 }
 
 function CategoryModal({ visible, categories, onSelect, onClose }: CategoryModalProps) {
+  useTheme();
   const [query, setQuery] = useState('');
 
   const filtered = query.trim()
@@ -420,21 +427,21 @@ function CategoryModal({ visible, categories, onSelect, onClose }: CategoryModal
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-      <View style={cat.container}>
+      <View style={[cat.container, { backgroundColor: Colors.bg }]}>
         {/* Header */}
         <View style={cat.header}>
           <TouchableOpacity onPress={onClose} style={cat.backBtn}>
-            <Text style={cat.backText}>‹ Back</Text>
+            <Text style={[cat.backText, { color: Colors.orange }]}>‹ Back</Text>
           </TouchableOpacity>
-          <Text style={cat.headerTitle}>Select Category</Text>
+          <Text style={[cat.headerTitle, { color: Colors.foreground }]}>Select Category</Text>
           <View style={{ width: 60 }} />
         </View>
 
         {/* Search */}
-        <View style={cat.searchRow}>
+        <View style={[cat.searchRow, { backgroundColor: Colors.panel2, borderColor: Colors.borderOrange }]}>
           <Text style={cat.searchIcon}>🔍</Text>
           <TextInput
-            style={cat.searchInput}
+            style={[cat.searchInput, { color: Colors.foreground }]}
             value={query}
             onChangeText={setQuery}
             placeholder="Search categories (e.g. Plumbing, Mortgage…)"
@@ -452,14 +459,14 @@ function CategoryModal({ visible, categories, onSelect, onClose }: CategoryModal
           ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
           renderItem={({ item }) => (
             <TouchableOpacity
-              style={[cat.card, { shadowColor: Colors.glowColor }]}
+              style={[cat.card, { backgroundColor: Colors.panel, borderColor: Colors.borderOrange, shadowColor: Colors.glowColor }]}
               onPress={() => { onSelect(item); setQuery(''); }}
               activeOpacity={0.75}
             >
               <View style={{ flex: 1 }}>
-                <Text style={cat.catName}>{item.name}</Text>
+                <Text style={[cat.catName, { color: Colors.foreground }]}>{item.name}</Text>
                 {item.group_name && (
-                  <Text style={cat.groupName}>{item.group_name}</Text>
+                  <Text style={[cat.groupName, { color: Colors.muted }]}>{item.group_name}</Text>
                 )}
               </View>
             </TouchableOpacity>
@@ -506,6 +513,7 @@ const cat = StyleSheet.create({
 // ── Main Screen ───────────────────────────────────────────────────────────────
 
 export function SubmitLeadScreen({ navigation }: any) {
+  useTheme();
   // ── Meta ──
   const [allCategories,  setAllCategories]  = useState<ServiceCategory[]>([]);
   const [catModalOpen,   setCatModalOpen]   = useState(false);
@@ -817,10 +825,10 @@ export function SubmitLeadScreen({ navigation }: any) {
       <ScreenShell scrollable={false}>
         <View style={styles.successWrap}>
           <Text style={{ fontSize: 64 }}>{successLive ? '⚡' : '🎉'}</Text>
-          <Text style={styles.successTitle}>
+          <Text style={[styles.successTitle, { color: Colors.foreground }]}>
             {successLive ? 'Lead Is Live!' : 'Lead Submitted!'}
           </Text>
-          <Text style={styles.successMsg}>
+          <Text style={[styles.successMsg, { color: Colors.muted }]}>
             {successLive
               ? 'Your lead has been published to the marketplace. Contractors are being notified now.'
               : 'Your lead has been received and is pending admin review. Once approved it will go live.'}
@@ -887,23 +895,23 @@ export function SubmitLeadScreen({ navigation }: any) {
         <ScreenShell title="Submit a Lead" subtitle="Fill in the customer's details">
 
           {/* ── Category selector ── */}
-          <View style={[styles.section, { shadowColor: Colors.glowColor }]}>
+          <View style={[styles.section, { backgroundColor: Colors.panel, borderColor: Colors.borderOrange, shadowColor: Colors.glowColor }]}>
             <SectionHeader title="Service Category" />
             <TouchableOpacity
-              style={[styles.catPicker, selectedCat && styles.catPickerActive]}
+              style={[styles.catPicker, { backgroundColor: Colors.panel2 }, selectedCat && styles.catPickerActive]}
               onPress={() => setCatModalOpen(true)}
               activeOpacity={0.75}
             >
               <View style={{ flex: 1 }}>
                 {selectedCat ? (
                   <>
-                    <Text style={styles.catPickerName}>{selectedCat.name}</Text>
+                    <Text style={[styles.catPickerName, { color: Colors.foreground }]}>{selectedCat.name}</Text>
                     {selectedCat.group_name && (
-                      <Text style={styles.catPickerGroup}>{selectedCat.group_name}</Text>
+                      <Text style={[styles.catPickerGroup, { color: Colors.muted }]}>{selectedCat.group_name}</Text>
                     )}
                   </>
                 ) : (
-                  <Text style={styles.catPickerPlaceholder}>Tap to search categories…</Text>
+                  <Text style={[styles.catPickerPlaceholder, { color: Colors.placeholder }]}>Tap to search categories…</Text>
                 )}
               </View>
               <Text style={{ fontSize: 18, color: Colors.orange }}>›</Text>
@@ -920,7 +928,7 @@ export function SubmitLeadScreen({ navigation }: any) {
           {selectedCat && fieldConfig && !configLoading && (
             <>
               {/* ── Service Details ── */}
-              <View style={[styles.section, { shadowColor: Colors.glowColor }]}>
+              <View style={[styles.section, { backgroundColor: Colors.panel, borderColor: Colors.borderOrange, shadowColor: Colors.glowColor }]}>
                 <SectionHeader title="Service Details" />
 
                 {/* Job Type */}
@@ -936,8 +944,8 @@ export function SubmitLeadScreen({ navigation }: any) {
                 {fieldConfig.nationwideEligible && (
                   <View style={styles.toggleRow}>
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.toggleLabel}>🌐 Nationwide lead</Text>
-                      <Text style={styles.toggleSub}>Available to buyers across all US states</Text>
+                      <Text style={[styles.toggleLabel, { color: Colors.foreground }]}>🌐 Nationwide lead</Text>
+                      <Text style={[styles.toggleSub, { color: Colors.muted }]}>Available to buyers across all US states</Text>
                     </View>
                     <Switch
                       value={nationwide}
@@ -951,7 +959,7 @@ export function SubmitLeadScreen({ navigation }: any) {
 
               {/* ── Location ── */}
               {!nationwide && (
-                <View style={[styles.section, { shadowColor: Colors.glowColor }]}>
+                <View style={[styles.section, { backgroundColor: Colors.panel, borderColor: Colors.borderOrange, shadowColor: Colors.glowColor }]}>
                   <SectionHeader
                     title={fieldConfig.needsAddress ? (fieldConfig.addressLabel ?? 'Service Address') : 'Service Location'}
                     subtitle={fieldConfig.needsAddress
@@ -1008,7 +1016,7 @@ export function SubmitLeadScreen({ navigation }: any) {
               )}
 
               {/* ── Customer Contact ── */}
-              <View style={[styles.section, { shadowColor: Colors.glowColor }]}>
+              <View style={[styles.section, { backgroundColor: Colors.panel, borderColor: Colors.borderOrange, shadowColor: Colors.glowColor }]}>
                 <SectionHeader
                   title="Customer Contact"
                   subtitle="At least one of name, phone, or email is required."
@@ -1039,7 +1047,7 @@ export function SubmitLeadScreen({ navigation }: any) {
 
               {/* ── Lead Details (dynamic extra fields) ── */}
               {activeFields.length > 0 && (
-                <View style={[styles.section, { shadowColor: Colors.glowColor }]}>
+                <View style={[styles.section, { backgroundColor: Colors.panel, borderColor: Colors.borderOrange, shadowColor: Colors.glowColor }]}>
                   <SectionHeader title="Lead Details" />
                   {activeFields.map((field) => (
                     <ExtraFieldInput
@@ -1053,13 +1061,13 @@ export function SubmitLeadScreen({ navigation }: any) {
               )}
 
               {/* ── Description ── */}
-              <View style={[styles.section, { shadowColor: Colors.glowColor }]}>
+              <View style={[styles.section, { backgroundColor: Colors.panel, borderColor: Colors.borderOrange, shadowColor: Colors.glowColor }]}>
                 <SectionHeader
                   title="Description *"
                   subtitle="Describe the customer's situation. Shown to buyers — do not include contact info here."
                 />
                 <TextInput
-                  style={styles.textarea}
+                  style={[styles.textarea, { backgroundColor: Colors.panel2, color: Colors.foreground }]}
                   value={summary}
                   onChangeText={setSummary}
                   placeholder={fieldConfig.needsAddress
@@ -1076,7 +1084,7 @@ export function SubmitLeadScreen({ navigation }: any) {
               </View>
 
               {/* ── Pricing ── */}
-              <View style={[styles.section, { shadowColor: Colors.glowColor }]}>
+              <View style={[styles.section, { backgroundColor: Colors.panel, borderColor: Colors.borderOrange, shadowColor: Colors.glowColor }]}>
                 <SectionHeader title="Pricing" />
 
                 <Input
@@ -1098,8 +1106,8 @@ export function SubmitLeadScreen({ navigation }: any) {
                 {/* Decay pricing toggle */}
                 <View style={styles.toggleRow}>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.toggleLabel}>Auto-reduce price if unsold</Text>
-                    <Text style={styles.toggleSub}>Price drops automatically at set intervals</Text>
+                    <Text style={[styles.toggleLabel, { color: Colors.foreground }]}>Auto-reduce price if unsold</Text>
+                    <Text style={[styles.toggleSub, { color: Colors.muted }]}>Price drops automatically at set intervals</Text>
                   </View>
                   <Switch
                     value={decayEnabled}
@@ -1110,21 +1118,21 @@ export function SubmitLeadScreen({ navigation }: any) {
                 </View>
 
                 {decayEnabled && (
-                  <View style={styles.decayBox}>
+                  <View style={[styles.decayBox, { backgroundColor: Colors.panel2 }]}>
                     <View style={styles.decayRow}>
-                      <Text style={styles.decayLabel}>Reduce by</Text>
+                      <Text style={[styles.decayLabel, { color: Colors.muted }]}>Reduce by</Text>
                       <TouchableOpacity
-                        style={styles.decayBtn}
+                        style={[styles.decayBtn, { backgroundColor: Colors.panel, borderColor: Colors.borderOrange }]}
                         onPress={() => setDecayPctOpen(true)}
                       >
-                        <Text style={styles.decayBtnText}>{decayPct}%</Text>
+                        <Text style={[styles.decayBtnText, { color: Colors.orange }]}>{decayPct}%</Text>
                       </TouchableOpacity>
-                      <Text style={styles.decayLabel}>every</Text>
+                      <Text style={[styles.decayLabel, { color: Colors.muted }]}>every</Text>
                       <TouchableOpacity
-                        style={styles.decayBtn}
+                        style={[styles.decayBtn, { backgroundColor: Colors.panel, borderColor: Colors.borderOrange }]}
                         onPress={() => setDecayHrsOpen(true)}
                       >
-                        <Text style={styles.decayBtnText}>
+                        <Text style={[styles.decayBtnText, { color: Colors.orange }]}>
                           {decayHrs === '1' ? '1 hour' : `${decayHrs} hours`}
                         </Text>
                       </TouchableOpacity>
@@ -1211,7 +1219,7 @@ export function SubmitLeadScreen({ navigation }: any) {
           {!selectedCat && !configLoading && (
             <View style={styles.noCatHint}>
               <Text style={{ fontSize: 48, textAlign: 'center' }}>📋</Text>
-              <Text style={styles.noCatText}>Select a category above to start filling in the lead details.</Text>
+              <Text style={[styles.noCatText, { color: Colors.muted }]}>Select a category above to start filling in the lead details.</Text>
             </View>
           )}
 

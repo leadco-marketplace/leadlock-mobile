@@ -7,6 +7,7 @@ import { ScreenShell } from '@/components/ScreenShell';
 import { Button }  from '@/components/Button';
 import { Input }   from '@/components/Input';
 import { Colors, FontSize, Spacing, Radius, Shadow } from '@/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 
 function formatPrice(cents: number) { return `$${(cents / 100).toFixed(2)}`; }
 
@@ -20,7 +21,7 @@ const STATUS_COLORS: Record<string, { bg: string; border: string; text: string }
   available: { bg: 'rgba(34,211,238,0.10)',  border: 'rgba(34,211,238,0.35)',  text: '#22d3ee' },
   reserved:  { bg: 'rgba(251,191,36,0.12)',  border: 'rgba(251,191,36,0.35)',  text: '#fbbf24' },
   sold:      { bg: 'rgba(129,140,248,0.12)', border: 'rgba(129,140,248,0.35)', text: '#818cf8' },
-  archived:  { bg: Colors.panel2,             border: Colors.border,             text: Colors.muted },
+  archived:  { bg: 'rgba(100,116,139,0.10)',  border: 'rgba(100,116,139,0.25)',  text: '#94a3b8' },
   invalid:   { bg: 'rgba(248,113,113,0.10)', border: 'rgba(248,113,113,0.35)', text: Colors.danger },
 };
 
@@ -36,6 +37,7 @@ interface EditPriceSheetProps {
 }
 
 function EditPriceSheet({ lead, onClose, onSaved }: EditPriceSheetProps) {
+  useTheme();
   const [dollars, setDollars] = useState((lead.price_cents / 100).toFixed(2));
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState<string | null>(null);
@@ -56,9 +58,9 @@ function EditPriceSheet({ lead, onClose, onSaved }: EditPriceSheetProps) {
 
   return (
     <View style={sheet.overlay}>
-      <View style={sheet.card}>
-        <Text style={sheet.title}>Update Price</Text>
-        <Text style={sheet.sub}>{lead.service_category} — {lead.job_type}</Text>
+      <View style={[sheet.card, { backgroundColor: Colors.panel, borderColor: Colors.borderOrange }]}>
+        <Text style={[sheet.title, { color: Colors.foreground }]}>Update Price</Text>
+        <Text style={[sheet.sub, { color: Colors.muted }]}>{lead.service_category} — {lead.job_type}</Text>
         <Input
           label="Your asking price ($)"
           value={dollars}
@@ -91,6 +93,7 @@ function SubmissionCard({
   onEdit: () => void;
   onDelete: () => void;
 }) {
+  useTheme();
   const sc = STATUS_COLORS[lead.status] ?? STATUS_COLORS.archived;
   const canEditLead = ['draft', 'available'].includes(lead.status);
 
@@ -101,11 +104,11 @@ function SubmissionCard({
   const dateStr   = lead.sold_at ?? lead.published_at ?? lead.created_at;
 
   return (
-    <View style={[styles.card, { shadowColor: Colors.glowColor }]}>
+    <View style={[styles.card, { backgroundColor: Colors.panel, borderColor: Colors.borderOrange, shadowColor: Colors.glowColor }]}>
       <View style={styles.cardRow}>
         <View style={{ flex: 1, gap: 3 }}>
-          <Text style={styles.category}>{lead.service_category}</Text>
-          <Text style={styles.jobType}>{lead.job_type}</Text>
+          <Text style={[styles.category, { color: Colors.foreground }]}>{lead.service_category}</Text>
+          <Text style={[styles.jobType, { color: Colors.textSecondary }]}>{lead.job_type}</Text>
 
           {/* Lead ID badge — same Option B style as Live Feed */}
           {lead.lead_code && (
@@ -117,13 +120,13 @@ function SubmissionCard({
             </View>
           )}
 
-          <Text style={styles.location}>
+          <Text style={[styles.location, { color: Colors.muted }]}>
             {lead.nationwide ? '🌐 Nationwide' : `${lead.city}, ${lead.state}`}
           </Text>
 
           {/* Date line */}
           {dateStr && (
-            <Text style={styles.dateText}>{dateLabel} · {formatDate(dateStr)}</Text>
+            <Text style={[styles.dateText, { color: Colors.muted }]}>{dateLabel} · {formatDate(dateStr)}</Text>
           )}
         </View>
 
@@ -131,7 +134,7 @@ function SubmissionCard({
           <View style={[styles.badge, { backgroundColor: sc.bg, borderColor: sc.border }]}>
             <Text style={[styles.badgeText, { color: sc.text }]}>{STATUS_LABELS[lead.status] ?? lead.status}</Text>
           </View>
-          <Text style={styles.price}>{formatPrice(lead.price_cents)}</Text>
+          <Text style={[styles.price, { color: Colors.foreground }]}>{formatPrice(lead.price_cents)}</Text>
         </View>
       </View>
 
@@ -146,6 +149,7 @@ function SubmissionCard({
 }
 
 export function MySubmissionsScreen({ navigation }: any) {
+  useTheme();
   const [leads,      setLeads]      = useState<ProviderLead[]>([]);
   const [earnings,   setEarnings]   = useState(0);
   const [soldCount,  setSoldCount]  = useState(0);
@@ -213,9 +217,9 @@ export function MySubmissionsScreen({ navigation }: any) {
           style={styles.earningsCard}
         >
           <View>
-            <Text style={styles.earningsLabel}>Total Earnings</Text>
-            <Text style={styles.earningsValue}>{formatPrice(earnings)}</Text>
-            <Text style={styles.earningsSub}>From {soldCount} sold lead{soldCount !== 1 ? 's' : ''}</Text>
+            <Text style={[styles.earningsLabel, { color: Colors.muted }]}>Total Earnings</Text>
+            <Text style={[styles.earningsValue, { color: Colors.foreground }]}>{formatPrice(earnings)}</Text>
+            <Text style={[styles.earningsSub,   { color: Colors.muted }]}>From {soldCount} sold lead{soldCount !== 1 ? 's' : ''}</Text>
           </View>
           <Button
             label="+ Submit Lead"
@@ -232,9 +236,9 @@ export function MySubmissionsScreen({ navigation }: any) {
             { label: 'Sold',          value: soldCount },
             { label: 'Under Review',  value: leads.filter(l => l.status === 'draft').length },
           ].map(s => (
-            <View key={s.label} style={styles.statPill}>
-              <Text style={styles.statValue}>{s.value}</Text>
-              <Text style={styles.statLabel}>{s.label}</Text>
+            <View key={s.label} style={[styles.statPill, { backgroundColor: Colors.panel }]}>
+              <Text style={[styles.statValue, { color: Colors.orange }]}>{s.value}</Text>
+              <Text style={[styles.statLabel, { color: Colors.muted }]}>{s.label}</Text>
             </View>
           ))}
         </View>
