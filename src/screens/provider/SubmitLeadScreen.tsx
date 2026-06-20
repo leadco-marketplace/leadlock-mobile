@@ -13,6 +13,7 @@
  *  • auto_publish / review flow based on category config
  */
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { getTagsForCategory } from '../../lib/leadTags';
 import {
   View,
   Text,
@@ -498,30 +499,17 @@ const cat = StyleSheet.create({
 
 // ── Lead Context Tags ─────────────────────────────────────────────────────────
 
-const LEAD_TAGS: { emoji: string; label: string }[] = [
-  { emoji: '📦', label: 'Multiple units / locations' },
-  { emoji: '🆕', label: 'New installation — nothing existing' },
-  { emoji: '🔄', label: 'Replacement / upgrade of existing' },
-  { emoji: '🚨', label: 'Emergency — needs ASAP' },
-  { emoji: '🏥', label: 'Insurance claim involved' },
-  { emoji: '🏠', label: 'Residential home' },
-  { emoji: '🏢', label: 'Commercial / business property' },
-  { emoji: '🔑', label: 'Rental property' },
-  { emoji: '📋', label: 'Getting multiple quotes' },
-  { emoji: '✅', label: 'Ready to book — just needs a pro' },
-  { emoji: '📅', label: 'Flexible on timing' },
-];
-
 interface LeadTagChipsProps {
+  tags: { emoji: string; label: string }[];
   selected: string[];
   onToggle: (label: string) => void;
 }
 
-function LeadTagChips({ selected, onToggle }: LeadTagChipsProps) {
+function LeadTagChips({ tags, selected, onToggle }: LeadTagChipsProps) {
   useTheme();
   return (
     <View style={tc.wrap}>
-      {LEAD_TAGS.map(({ emoji, label }) => {
+      {tags.map(({ emoji, label }) => {
         const active = selected.includes(label);
         return (
           <TouchableOpacity
@@ -1115,9 +1103,9 @@ export function SubmitLeadScreen({ navigation }: any) {
               <View style={[styles.section, { backgroundColor: Colors.panel, borderColor: Colors.borderOrange, shadowColor: Colors.glowColor }]}>
                 <SectionHeader
                   title="Lead Context"
-                  subtitle="Select any that apply."
+                  subtitle="Optional — select any that apply."
                 />
-                <LeadTagChips selected={selectedTags} onToggle={toggleTag} />
+                <LeadTagChips tags={getTagsForCategory(selectedCat?.name ?? '')} selected={selectedTags} onToggle={toggleTag} />
                 {selectedTags.length === 0 && (
                   <Text style={{ fontSize: FontSize.xs, color: Colors.muted, marginTop: 8 }}>
                     💡 Adding details increases your chances of the lead getting purchased
