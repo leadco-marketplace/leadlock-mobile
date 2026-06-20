@@ -8,7 +8,7 @@ import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navig
 import { notificationEvents } from '@/lib/notificationEvents';
 import { StackActions } from '@react-navigation/native';
 import { supabase } from '@/lib/supabase';
-import { leadsApi, Lead, BuyerLocation } from '@/lib/api';
+import { leadsApi, preferencesApi, Lead, Preference, BuyerLocation } from '@/lib/api';
 import { LeadCard }      from '@/components/LeadCard';
 import { UnlockModal }   from '@/components/UnlockModal';
 import { ScreenShell }   from '@/components/ScreenShell';
@@ -21,6 +21,17 @@ const WEB_APP = (Constants.expoConfig?.extra?.apiBaseUrl as string) ?? 'https://
 
 // Route params this screen accepts (from push-notification tap or deep link)
 type LiveFeedRouteParams = { highlightLeadId?: string };
+
+/** Returns true if the lead matches ANY of the buyer's saved alert preferences. */
+function matchesPreferences(lead: Lead, prefs: Preference[]): boolean {
+  if (prefs.length === 0) return true; // no prefs set — show everything
+  return prefs.some(pref => {
+    if (pref.service_category.toLowerCase() !== (lead.service_category ?? '').toLowerCase()) return false;
+    const codes = pref.state_codes ?? [];
+    if (codes.length === 0) return true; // category match, no location filter
+    return codes.some(s => s.toLowerCase() === (lead.state ?? '').toLowerCase());
+  });
+}
 
 export function LiveFeedScreen() {
   const { profile, refreshProfile, isGuest, signOut } = useAuth();
@@ -37,6 +48,8 @@ export function LiveFeedScreen() {
   const [buyerLocation, setBuyerLocation] = useState<BuyerLocation>(null);
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const [modalLead,     setModalLead]    = useState<Lead | null>(null);
+  const [showMyMatches, setShowMyMatches] = useState(true);
+  const [preferences,   setPreferences]  = useState<Preference[]>([]);
 
   const flatListRef = useRef<FlatList<Lead>>(null);
   // Always holds the latest `load` so the realtime subscription isn't stale
@@ -49,6 +62,13 @@ export function LiveFeedScreen() {
   // Always points to the latest applyHighlight so the event subscription
   // (set up once with [] deps) never captures a stale closure.
   const applyHighlightRef = useRef<(leadId: string) => void>(() => {});
+
+  // ── Load buyer's alert preferences for "My Matches" filtering ───────────
+  useEffect(() => {
+    if (!isGuest) {
+      preferencesApi.get().then(setPreferences).catch(() => {});
+    }
+  }, [isGuest]);
 
   // ── Location permission ────────────────────────────────────────────────────
   useEffect(() => {
@@ -157,6 +177,20 @@ export function LiveFeedScreen() {
       return aSold - bSold;
     }),
     [leads],
+  );
+
+  // ── "My Matches" filter: only show leads matching any saved alert pref ────
+  const hasPreferences = preferences.length > 0;
+
+  const displayLeads = useMemo(() => {
+    if (!showMyMatches || !hasPreferences) return sortedLeads;
+    return sortedLeads.filter(l => matchesPreferences(l, preferences));
+  }, [sortedLeads, showMyMatches, preferences, hasPreferences]);
+
+  // Count how many leads match regardless of toggle state (for the badge)
+  const matchCount = useMemo(
+    () => sortedLeads.filter(l => matchesPreferences(l, preferences)).length,
+    [sortedLeads, preferences],
   );
 
   // ── Scroll to highlighted lead once (does NOT reset the highlight) ────────
@@ -358,6 +392,30 @@ export function LiveFeedScreen() {
         </View>
       )}
 
+      {/* ── My Matches / All Leads toggle ─────────────────────────── */}
+      {!isGuest && hasPreferences && (
+        <View style={styles.toggleBar}>
+          <TouchableOpacity
+            style={[styles.toggleBtn, !showMyMatches && styles.toggleBtnInactive]}
+            onPress={() => setShowMyMatches(true)}
+            activeOpacity={0.8}
+          >
+            <Text style={[styles.toggleBtnText, !showMyMatches && styles.toggleBtnTextInactive]}>
+              🎯 My Matches{matchCount > 0 ? ` · ${matchCount}` : ''}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.toggleBtn, showMyMatches && styles.toggleBtnInactive]}
+            onPress={() => setShowMyMatches(false)}
+            activeOpacity={0.8}
+          >
+            <Text style={[styles.toggleBtnText, showMyMatches && styles.toggleBtnTextInactive]}>
+              📋 All Leads
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* ── Guest banner ───────────────────────────────────────────── */}
       {isGuest && (
         <TouchableOpacity
@@ -379,13 +437,13 @@ export function LiveFeedScreen() {
 
       <FlatList
         ref={flatListRef}
-        data={sortedLeads}
+        data={displayLeads}
         keyExtractor={(l) => l.id}
         renderItem={renderItem}
         onRefresh={() => { setRefreshing(true); load(); }}
         refreshing={refreshing}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={leads.length === 0 ? styles.emptyContainer : { paddingBottom: Spacing.xxl }}
+        contentContainerStyle={displayLeads.length === 0 ? styles.emptyContainer : { paddingBottom: Spacing.xxl }}
         // ── Scroll performance ─────────────────────────────────────────────
         // removeClippedSubviews: unmount cards far off-screen from the native view tree
         removeClippedSubviews={true}
@@ -404,9 +462,15 @@ export function LiveFeedScreen() {
         }}
         ListEmptyComponent={
           <View style={styles.emptyWrap}>
-            <Text style={styles.emptyIcon}>📭</Text>
-            <Text style={styles.emptyTitle}>No live leads right now</Text>
-            <Text style={styles.emptyDesc}>Pull down to refresh, or check back soon.</Text>
+            <Text style={styles.emptyIcon}>{showMyMatches && hasPreferences ? '🎯' : '📭'}</Text>
+            <Text style={styles.emptyTitle}>
+              {showMyMatches && hasPreferences ? 'No matches yet' : 'No live leads right now'}
+            </Text>
+            <Text style={styles.emptyDesc}>
+              {showMyMatches && hasPreferences
+                ? 'No leads match your alert preferences right now.\nTap "All Leads" to browse everything.'
+                : 'Pull down to refresh, or check back soon.'}
+            </Text>
           </View>
         }
       />
@@ -497,6 +561,37 @@ const styles = StyleSheet.create({
   emptyIcon:    { fontSize: 48 },
   emptyTitle:   { fontSize: FontSize.md, fontWeight: '600', color: Colors.foreground },
   emptyDesc:    { fontSize: FontSize.sm, color: Colors.muted, textAlign: 'center' },
+
+  // ── My Matches / All Leads toggle ──────────────────────────────────────
+  toggleBar: {
+    flexDirection: 'row',
+    backgroundColor: Colors.panel,
+    borderRadius: Radius.xxl,
+    borderWidth: 1,
+    borderColor: Colors.borderOrange,
+    padding: 3,
+    gap: 3,
+    marginBottom: Spacing.sm,
+  },
+  toggleBtn: {
+    flex: 1,
+    borderRadius: Radius.xxl,
+    paddingVertical: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.orange,
+  },
+  toggleBtnInactive: {
+    backgroundColor: 'transparent',
+  },
+  toggleBtnText: {
+    fontSize: FontSize.sm,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  toggleBtnTextInactive: {
+    color: Colors.muted,
+  },
 
   // ── Guest banner ────────────────────────────────────────────────────────
   guestBanner: {
