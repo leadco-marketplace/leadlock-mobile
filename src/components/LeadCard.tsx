@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, Animated, Platform, Image,
+  View, Text, StyleSheet, TouchableOpacity, Animated, Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
@@ -12,93 +12,42 @@ import { Lead } from '@/lib/api';
 const FONT_BLACK = Platform.OS === 'ios' ? 'AvenirNextCondensed-Heavy'    : 'sans-serif-condensed';
 const FONT_BOLD  = Platform.OS === 'ios' ? 'AvenirNextCondensed-DemiBold' : 'sans-serif-condensed';
 
-// ── Category gradient fallbacks ───────────────────────────────────────────────
+// ── Category gradient palette ─────────────────────────────────────────────────
+// One gradient per category — rendered instantly, zero network requests
 const CATEGORY_THUMB: Record<string, { colors: readonly [string, string] }> = {
-  'locksmith':        { colors: ['#1a2a44', '#354a6e'] as const },
-  'real estate':      { colors: ['#5c3a0c', '#906018'] as const },
-  'garage door':      { colors: ['#2a3e52', '#3c5868'] as const },
-  'chimney sweep':    { colors: ['#4a1008', '#7a2012'] as const },
-  'dog walker':       { colors: ['#1a5008', '#308018'] as const },
-  'car dealer':       { colors: ['#080c14', '#141c2c'] as const },
-  'plumbing':         { colors: ['#0e2a5c', '#1c4080'] as const },
-  'electrical':       { colors: ['#5a3a00', '#8a5c00'] as const },
-  'hvac':             { colors: ['#0a3060', '#144888'] as const },
-  'roofing':          { colors: ['#1e1e20', '#2e2e38'] as const },
-  'painting':         { colors: ['#3a1060', '#5a2090'] as const },
-  'cleaning':         { colors: ['#1a4040', '#246060'] as const },
-  'pest control':     { colors: ['#3c2a0a', '#5a3e10'] as const },
-  'landscaping':      { colors: ['#163a0c', '#225c18'] as const },
-  'moving':           { colors: ['#2a1c60', '#42308a'] as const },
-  'appliance repair': { colors: ['#1c3050', '#2c4870'] as const },
-  'handyman':         { colors: ['#3a2010', '#5c3818'] as const },
-  'pool service':     { colors: ['#062040', '#0c3868'] as const },
-  'tree service':     { colors: ['#1a3808', '#2c5a10'] as const },
-  'solar':            { colors: ['#4a3800', '#7a6000'] as const },
+  'locksmith':          { colors: ['#1a2a44', '#354a6e'] as const },
+  'real estate':        { colors: ['#5c3a0c', '#906018'] as const },
+  'real estate agents': { colors: ['#5c3a0c', '#906018'] as const },
+  'garage door':        { colors: ['#2a3e52', '#3c5868'] as const },
+  'chimney sweep':      { colors: ['#4a1008', '#7a2012'] as const },
+  'dog walker':         { colors: ['#1a5008', '#308018'] as const },
+  'car dealer':         { colors: ['#080c14', '#141c2c'] as const },
+  'plumbing':           { colors: ['#0e2a5c', '#1c4080'] as const },
+  'electrical':         { colors: ['#5a3a00', '#8a5c00'] as const },
+  'hvac':               { colors: ['#0a3060', '#144888'] as const },
+  'roofing':            { colors: ['#1e1e20', '#2e2e38'] as const },
+  'painting':           { colors: ['#3a1060', '#5a2090'] as const },
+  'cleaning':           { colors: ['#1a4040', '#246060'] as const },
+  'carpet cleaning':    { colors: ['#2a1c40', '#3e2c60'] as const },
+  'pest control':       { colors: ['#3c2a0a', '#5a3e10'] as const },
+  'landscaping':        { colors: ['#163a0c', '#225c18'] as const },
+  'moving':             { colors: ['#2a1c60', '#42308a'] as const },
+  'appliance repair':   { colors: ['#1c3050', '#2c4870'] as const },
+  'handyman':           { colors: ['#3a2010', '#5c3818'] as const },
+  'pool service':       { colors: ['#062040', '#0c3868'] as const },
+  'tree service':       { colors: ['#1a3808', '#2c5a10'] as const },
+  'solar':              { colors: ['#4a3800', '#7a6000'] as const },
+  'flooring':           { colors: ['#3a2818', '#5a4028'] as const },
+  'windows & doors':    { colors: ['#102838', '#1c3e50'] as const },
+  'air duct cleaning':  { colors: ['#1a2a3a', '#243850'] as const },
+  'auto repair':        { colors: ['#201418', '#381c20'] as const },
+  'financial services': { colors: ['#0a1a30', '#142240'] as const },
+  'legal services':     { colors: ['#1a1428', '#281e3c'] as const },
 };
 const DEFAULT_THUMB = { colors: ['#1e2a3e', '#2a3a52'] as const };
 
 function getCategoryThumb(category: string) {
   return CATEGORY_THUMB[category.toLowerCase().trim()] ?? DEFAULT_THUMB;
-}
-
-// ── Photo mapping (subcategory first, then category) ─────────────────────────
-const U = (id: string) => `https://images.unsplash.com/photo-${id}?w=164&h=164&fit=crop&q=80`;
-
-const JOB_TYPE_PHOTOS: Record<string, string> = {
-  'car lockout':                U('1707296916219-4f2d7529a4c5'),
-  'car lockout / unlock':       U('1707296916330-ae32416d9260'),
-  'home / residential lockout': U('1564767609213-c75ee685263a'),
-  'lock rekey':                 U('1592744254966-58c65cfd2e69'),
-  'lock installation':          U('1614797091730-e2a6121aaa60'),
-  'commercial lockout':         U('1588689653688-9b312cd6bc2b'),
-  'key duplication':            U('1635237393049-55046279ebb8'),
-  'broken spring replacement':  U('1617782674367-341cf5f527c9'),
-  'cable repair / replacement': U('1696992812596-3c0d4d2d1299'),
-  'new garage door install':    U('1605276374104-dee2a0ed3cd6'),
-  'garage door opener repair':  U('1540476547779-348beb642680'),
-  'drain cleaning':             U('1649959738550-ad6254b9bb7e'),
-  'pipe repair':                U('1760571327612-8ab776dcd462'),
-  'leak repair':                U('1693907986952-3cd372e4c9d8'),
-  'water heater':               U('1768321916212-17ae334a3d63'),
-  'house painting':             U('1652829069834-2c05031199c5'),
-  'interior painting':          U('1562259949-e8e7689d7828'),
-  'exterior painting':          U('1574359411659-15573a27fd0c'),
-  'lawn mowing':                U('1458245201577-fc8a130b8829'),
-  'garden maintenance':         U('1689728318937-17d24bc0a65c'),
-  'solar panel install':        U('1613665813446-82a78c468a1d'),
-  'solar panel repair':         U('1658298775754-5839ffd434cc'),
-  'tree trimming':              U('Oq6YnFdXfZ8'),
-  'tree removal':               U('Oq6YnFdXfZ8'),
-  'maintenance / tune-up':      U('Oq6YnFdXfZ8'),
-};
-
-const CATEGORY_PHOTOS: Record<string, string> = {
-  'locksmith':        U('1564767609342-620cb19b2357'),
-  'garage door':      U('1696992812596-3c0d4d2d1299'),
-  'dog walker':       U('1587300003388-59208cc962cb'),
-  'real estate':      U('1560518883-ce09059eeffa'),
-  'plumbing':         U('1760571327612-8ab776dcd462'),
-  'electrical':       U('1621905251918-48416bd8575a'),
-  'hvac':             U('1732395805034-e0bf859665e5'),
-  'roofing':          U('1635424824800-692767998d07'),
-  'painting':         U('1652829069834-2c05031199c5'),
-  'cleaning':         U('1740657254989-42fe9c3b8cce'),
-  'pest control':     U('1593999094742-4f5280054b23'),
-  'landscaping':      U('1458245201577-fc8a130b8829'),
-  'moving':           U('1698917414969-feade59e3343'),
-  'appliance repair': U('1717176876437-490aa75bf9b5'),
-  'handyman':         U('1562259929-b4e1fd3aef09'),
-  'pool service':     U('1558617320-e695f0d420de'),
-  'tree service':     U('Oq6YnFdXfZ8'),
-  'solar':            U('1613665813446-82a78c468a1d'),
-  'car dealer':       U('1643142314913-0cf633d9bbb5'),
-  'chimney sweep':    U('1554332208-9dfebcc48334'),
-};
-
-function getPhotoUrl(category: string, jobType?: string): string | null {
-  const jt  = jobType?.toLowerCase().trim()  ?? '';
-  const cat = category?.toLowerCase().trim() ?? '';
-  return JOB_TYPE_PHOTOS[jt] ?? CATEGORY_PHOTOS[cat] ?? null;
 }
 
 // ── Props ─────────────────────────────────────────────────────────────────────
@@ -126,63 +75,52 @@ function timeAgo(dateStr: string) {
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
-export function LeadCard({ lead, onUnlock, unlocking, purchased, highlighted }: LeadCardProps) {
+// React.memo: re-renders ONLY when this specific lead's data changes.
+// Without this, every setLeads() call (every 30s poll + every realtime event)
+// re-renders ALL cards simultaneously — the #1 cause of scroll jank.
+function LeadCardInner({ lead, onUnlock, unlocking, purchased, highlighted }: LeadCardProps) {
   useTheme();
-
-  const [photoError, setPhotoError] = useState(false);
 
   const price    = lead.buyer_price_cents ?? Math.round(lead.price_cents * 1.125);
   const catThumb = getCategoryThumb(lead.service_category);
-  const photoUrl = getPhotoUrl(lead.service_category, lead.job_type);
   const isSold   = lead.status === 'sold';
 
-  // ── Pulse animation for notification-highlighted card ─────────────────────
-  const pulseAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    if (!highlighted) { pulseAnim.setValue(0); return; }
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 1, duration: 1000, useNativeDriver: false }),
-        Animated.timing(pulseAnim, { toValue: 0, duration: 1000, useNativeDriver: false }),
-      ])
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [highlighted, pulseAnim]);
-
-  // ── LIVE badge orange glow blink ──────────────────────────────────────────
+  // ── LIVE badge fade animation (native driver = GPU, never blocks JS scroll) ─
+  // Only opacity + transform are used — both are native-driver compatible.
+  // Shadow glow on the badge uses a static value (no animated shadow props).
   const liveAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (lead.status !== 'available') { liveAnim.setValue(0); return; }
     const loop = Animated.loop(
       Animated.sequence([
-        Animated.timing(liveAnim, { toValue: 1, duration: 400, useNativeDriver: false }),
-        Animated.timing(liveAnim, { toValue: 0, duration: 400, useNativeDriver: false }),
+        Animated.timing(liveAnim, { toValue: 1, duration: 500, useNativeDriver: true }),
+        Animated.timing(liveAnim, { toValue: 0, duration: 500, useNativeDriver: true }),
       ])
     );
     loop.start();
     return () => loop.stop();
   }, [lead.status, liveAnim]);
 
-  const liveScale        = liveAnim.interpolate({ inputRange: [0, 1], outputRange: [0.95, 1.0] });
-  const liveOpacity      = liveAnim.interpolate({ inputRange: [0, 1], outputRange: [0.0,  1.0] });
-  const liveShadowOp     = liveAnim.interpolate({ inputRange: [0, 1], outputRange: [0.0,  0.8] });
-  const liveShadowRadius = liveAnim.interpolate({ inputRange: [0, 1], outputRange: [0,    20]  });
+  const liveOpacity = liveAnim.interpolate({ inputRange: [0, 1], outputRange: [0.45, 1.0] });
+  const liveScale   = liveAnim.interpolate({ inputRange: [0, 1], outputRange: [0.95, 1.0] });
 
-  const animBorderColor = pulseAnim.interpolate({
-    inputRange:  [0, 1],
-    outputRange: ['#ff9333', '#ff5500'],
-  });
-  const animShadowOpacity = pulseAnim.interpolate({
-    inputRange:  [0, 1],
-    outputRange: [0.25, 0.95],
-  });
-  const animShadowRadius = pulseAnim.interpolate({
-    inputRange:  [0, 1],
-    outputRange: [6, 36],
-  });
+  // ── Highlight pulse animation (native driver) ──────────────────────────────
+  // Pulses the opacity of an overlay View — no borderColor or shadowRadius
+  // animation (those require useNativeDriver:false and block the JS thread).
+  const pulseAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (!highlighted) { pulseAnim.setValue(0); return; }
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1, duration: 900, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 0, duration: 900, useNativeDriver: true }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [highlighted, pulseAnim]);
 
   function handleUnlock() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -197,26 +135,29 @@ export function LeadCard({ lead, onUnlock, unlocking, purchased, highlighted }: 
     : null;
 
   return (
-    <Animated.View style={[
+    // Outer glow wrapper — static shadow when highlighted (no animated shadow props)
+    <View style={[
       styles.glowWrap,
       { backgroundColor: Colors.panel },
-      highlighted && {
-        shadowColor:   '#ff9333',
-        shadowOpacity: animShadowOpacity,
-        shadowRadius:  animShadowRadius,
-        shadowOffset:  { width: 0, height: 0 },
-        elevation:     10,
-      },
+      highlighted && styles.glowWrapHighlighted,
     ]}>
 
-      <Animated.View style={[
+      {/* Pulsing orange overlay — opacity animated on GPU via native driver */}
+      {highlighted && (
+        <Animated.View
+          style={[styles.pulseOverlay, { opacity: pulseAnim }]}
+          pointerEvents="none"
+        />
+      )}
+
+      <View style={[
         styles.card,
         {
           backgroundColor: Colors.panel,
-          borderColor: highlighted ? animBorderColor : Colors.borderOrange,
+          borderColor: highlighted ? '#ff9333' : Colors.borderOrange,
           shadowColor: Colors.glowColor,
         },
-        highlighted && { borderWidth: 2.5 },
+        highlighted && styles.cardHighlighted,
         isSold && styles.cardSold,
       ]}>
 
@@ -230,26 +171,17 @@ export function LeadCard({ lead, onUnlock, unlocking, purchased, highlighted }: 
           </View>
         )}
 
-        {/* ── Card body: full-height thumb column + compact content ──────────── */}
+        {/* ── Card body: full-height gradient column + compact content ──────── */}
         <View style={styles.cardInner}>
 
-          {/* Full-height left thumbnail column — stretches to match content height */}
+          {/* Full-height left gradient column — instant render, zero network */}
           <View style={styles.thumbCol}>
-            {photoUrl && !photoError ? (
-              <Image
-                source={{ uri: photoUrl }}
-                style={StyleSheet.absoluteFillObject}
-                resizeMode="cover"
-                onError={() => setPhotoError(true)}
-              />
-            ) : (
-              <LinearGradient
-                colors={catThumb.colors}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={StyleSheet.absoluteFillObject}
-              />
-            )}
+            <LinearGradient
+              colors={catThumb.colors}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFillObject}
+            />
             <View style={styles.thumbDim} />
             <Text style={styles.thumbName} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.5}>
               {lead.service_category.toUpperCase()}
@@ -266,17 +198,20 @@ export function LeadCard({ lead, onUnlock, unlocking, purchased, highlighted }: 
               </Text>
               <View style={styles.badgeCol}>
                 {lead.status === 'available' ? (
+                  // Animated on GPU: only opacity + scale (both native-driver safe)
                   <Animated.View style={[
                     styles.badge,
                     styles.badgeLive,
                     {
                       opacity:       liveOpacity,
                       transform:     [{ scale: liveScale }],
+                      // Static shadow — animated shadowRadius/shadowOpacity would
+                      // force useNativeDriver:false and block the JS thread
                       shadowColor:   '#f97316',
-                      shadowOpacity: liveShadowOp,
-                      shadowRadius:  liveShadowRadius,
+                      shadowOpacity: 0.55,
+                      shadowRadius:  10,
                       shadowOffset:  { width: 0, height: 0 },
-                      elevation:     8,
+                      elevation:     6,
                     },
                   ]}>
                     <View style={styles.liveDot} />
@@ -373,10 +308,23 @@ export function LeadCard({ lead, onUnlock, unlocking, purchased, highlighted }: 
           </>
         )}
 
-      </Animated.View>
-    </Animated.View>
+      </View>
+    </View>
   );
 }
+
+// Custom comparator: only re-render if data the card actually displays has changed.
+// This prevents the 30-card re-render storm that fires every polling interval.
+export const LeadCard = React.memo(LeadCardInner, (prev, next) =>
+  prev.lead.id          === next.lead.id          &&
+  prev.lead.status      === next.lead.status       &&
+  prev.lead.price_cents === next.lead.price_cents  &&
+  prev.lead.buyer_price_cents === next.lead.buyer_price_cents &&
+  prev.lead.quality_score     === next.lead.quality_score     &&
+  prev.unlocking    === next.unlocking  &&
+  prev.highlighted  === next.highlighted &&
+  prev.purchased    === next.purchased
+);
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 // IMPORTANT: Colors that need to follow theme changes are set as INLINE styles
@@ -384,7 +332,7 @@ export function LeadCard({ lead, onUnlock, unlocking, purchased, highlighted }: 
 // StyleSheet.create(). StyleSheet.create() runs once at module load time and
 // captures the initial dark-theme values — it won't update when the theme changes.
 // Only non-color layout/spacing/radius/font values live here.
-const THUMB_SIZE = 82; // width of the left photo column (matches original)
+const THUMB_SIZE = 82;
 
 const styles = StyleSheet.create({
 
@@ -392,6 +340,22 @@ const styles = StyleSheet.create({
   glowWrap: {
     borderRadius: Radius.xl,
     marginBottom: Spacing.sm + 2,
+  },
+  // Static highlight glow — no animated shadow props (those kill native driver)
+  glowWrapHighlighted: {
+    shadowColor:   '#ff9333',
+    shadowOpacity: 0.55,
+    shadowRadius:  22,
+    shadowOffset:  { width: 0, height: 0 },
+    elevation:     12,
+  },
+
+  // ── Pulsing opacity overlay (native driver, GPU only) ─────────────────────
+  pulseOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius:    Radius.xl,
+    backgroundColor: 'rgba(255,147,51,0.18)',
+    zIndex:          1,
   },
 
   // ── Card shell ────────────────────────────────────────────────────────────
@@ -401,6 +365,10 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
     overflow:      'hidden',
     ...Shadow.card,
+    zIndex:        2,
+  },
+  cardHighlighted: {
+    borderWidth: 2.5,
   },
   cardSold: {
     borderColor: 'rgba(185,28,28,0.45)',
@@ -434,16 +402,14 @@ const styles = StyleSheet.create({
   },
 
   // ── Card inner row (thumb column + content) ──────────────────────────────
-  // alignItems defaults to 'stretch' in RN, so thumbCol fills the full height
-  // of whatever rightCol needs — no fixed height required.
   cardInner: {
     flexDirection: 'row',
   },
 
-  // ── Full-height left thumbnail column ────────────────────────────────────
+  // ── Full-height left gradient column ─────────────────────────────────────
   thumbCol: {
     width:           THUMB_SIZE,
-    alignSelf:       'stretch',   // fills full card height automatically
+    alignSelf:       'stretch',
     alignItems:      'center',
     justifyContent:  'flex-end',
     paddingVertical:   10,
@@ -453,7 +419,7 @@ const styles = StyleSheet.create({
   },
   thumbDim: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.40)',
+    backgroundColor: 'rgba(0,0,0,0.32)',
   },
   thumbName: {
     fontSize:      8,

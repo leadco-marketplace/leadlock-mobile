@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View, Text, FlatList, StyleSheet, ActivityIndicator,
   TouchableOpacity, Linking, Alert,
@@ -122,8 +122,10 @@ export function LiveFeedScreen() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'leads' }, () => loadRef.current(true))
       .subscribe();
 
-    // Polling fallback: refresh every 10 s in case realtime events are blocked
-    const poll = setInterval(() => loadRef.current(true), 10_000);
+    // Polling fallback: refresh every 30 s in case realtime events are blocked.
+    // Supabase realtime handles instant updates; this is just a safety net.
+    // (Was 10 s — reduced to cut unnecessary re-renders during high-lead periods.)
+    const poll = setInterval(() => loadRef.current(true), 30_000);
 
     return () => {
       supabase.removeChannel(channel);
@@ -179,6 +181,20 @@ export function LiveFeedScreen() {
     }, 400);
     return () => clearTimeout(scrollTimer);
   }, [leads, loading, highlightedId]);
+
+  // ── Memoised renderItem ────────────────────────────────────────────────────
+  // useCallback prevents a new function reference on every render, which would
+  // bypass React.memo inside LeadCard and force all cards to re-render.
+  const renderItem = useCallback(({ item }: { item: Lead }) => (
+    <LeadCard
+      lead={item}
+      onUnlock={isGuest || profile?.role === 'admin' || item.status === 'sold' ? undefined : () => handleUnlock(item)}
+      unlocking={unlocking === item.id}
+      highlighted={highlightedId === item.id}
+    />
+  // handleUnlock and highlightedId change rarely; unlocking changes per-unlock action
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  ), [isGuest, profile?.role, unlocking, highlightedId]);
 
   // ── Unlock handler ─────────────────────────────────────────────────────────
   function handleUnlock(lead: Lead) {
@@ -365,19 +381,21 @@ export function LiveFeedScreen() {
         ref={flatListRef}
         data={sortedLeads}
         keyExtractor={(l) => l.id}
-        renderItem={({ item }) => (
-          <LeadCard
-            lead={item}
-            onUnlock={isGuest || profile?.role === 'admin' || item.status === 'sold' ? undefined : () => handleUnlock(item)}
-            unlocking={unlocking === item.id}
-            highlighted={highlightedId === item.id}
-          />
-        )}
+        renderItem={renderItem}
         onRefresh={() => { setRefreshing(true); load(); }}
         refreshing={refreshing}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={leads.length === 0 ? styles.emptyContainer : { paddingBottom: Spacing.xxl }}
-        // Graceful fallback if the item isn't measured yet (e.g. FlatList not fully rendered)
+        // ── Scroll performance ─────────────────────────────────────────────
+        // removeClippedSubviews: unmount cards far off-screen from the native view tree
+        removeClippedSubviews={true}
+        // Render 8 cards per JS batch so the thread isn't locked painting all at once
+        maxToRenderPerBatch={8}
+        // Keep 5 "screens" of cards in memory (2 above + 2 below viewport + current)
+        windowSize={5}
+        // Only mount the first 10 cards synchronously on initial load
+        initialNumToRender={10}
+        // ── Scroll-to-index fallback ───────────────────────────────────────
         onScrollToIndexFailed={(info) => {
           flatListRef.current?.scrollToOffset({
             offset: info.averageItemLength * info.index,
