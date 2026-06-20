@@ -394,22 +394,22 @@ export function LiveFeedScreen() {
 
       {/* ── My Matches / All Leads toggle ─────────────────────────── */}
       {!isGuest && hasPreferences && (
-        <View style={styles.toggleBar}>
+        <View style={[styles.toggleBar, { backgroundColor: Colors.panel, borderColor: Colors.borderOrange }]}>
           <TouchableOpacity
-            style={[styles.toggleBtn, !showMyMatches && styles.toggleBtnInactive]}
+            style={[styles.toggleBtn, { backgroundColor: showMyMatches ? Colors.orange : 'transparent' }]}
             onPress={() => setShowMyMatches(true)}
             activeOpacity={0.8}
           >
-            <Text style={[styles.toggleBtnText, !showMyMatches && styles.toggleBtnTextInactive]}>
+            <Text style={[styles.toggleBtnText, { color: showMyMatches ? '#fff' : Colors.muted }]}>
               🎯 My Matches{matchCount > 0 ? ` · ${matchCount}` : ''}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.toggleBtn, showMyMatches && styles.toggleBtnInactive]}
+            style={[styles.toggleBtn, { backgroundColor: !showMyMatches ? Colors.orange : 'transparent' }]}
             onPress={() => setShowMyMatches(false)}
             activeOpacity={0.8}
           >
-            <Text style={[styles.toggleBtnText, showMyMatches && styles.toggleBtnTextInactive]}>
+            <Text style={[styles.toggleBtnText, { color: !showMyMatches ? '#fff' : Colors.muted }]}>
               📋 All Leads
             </Text>
           </TouchableOpacity>
@@ -563,12 +563,12 @@ const styles = StyleSheet.create({
   emptyDesc:    { fontSize: FontSize.sm, color: Colors.muted, textAlign: 'center' },
 
   // ── My Matches / All Leads toggle ──────────────────────────────────────
+  // NOTE: color properties are intentionally absent — they're applied as
+  // inline styles so they re-read Colors.* on every render (theme-aware).
   toggleBar: {
     flexDirection: 'row',
-    backgroundColor: Colors.panel,
     borderRadius: Radius.xxl,
     borderWidth: 1,
-    borderColor: Colors.borderOrange,
     padding: 3,
     gap: 3,
     marginBottom: Spacing.sm,
@@ -579,18 +579,10 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: Colors.orange,
-  },
-  toggleBtnInactive: {
-    backgroundColor: 'transparent',
   },
   toggleBtnText: {
     fontSize: FontSize.sm,
     fontWeight: '700',
-    color: '#fff',
-  },
-  toggleBtnTextInactive: {
-    color: Colors.muted,
   },
 
   // ── Guest banner ────────────────────────────────────────────────────────
