@@ -1,12 +1,13 @@
 import React, { useEffect, useRef } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, Animated, Platform,
+  View, Text, StyleSheet, TouchableOpacity, Animated, Platform, Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { Colors, Radius, FontSize, Spacing, Shadow } from '@/theme';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Lead } from '@/lib/api';
+import { getLeadImage } from '../assets/categoryImages';
 
 // ── Typography ────────────────────────────────────────────────────────────────
 const FONT_BLACK = Platform.OS === 'ios' ? 'AvenirNextCondensed-Heavy'    : 'sans-serif-condensed';
@@ -81,9 +82,10 @@ function timeAgo(dateStr: string) {
 function LeadCardInner({ lead, onUnlock, unlocking, purchased, highlighted }: LeadCardProps) {
   useTheme();
 
-  const price    = lead.buyer_price_cents ?? Math.round(lead.price_cents * 1.125);
-  const catThumb = getCategoryThumb(lead.service_category);
-  const isSold   = lead.status === 'sold';
+  const price      = lead.buyer_price_cents ?? Math.round(lead.price_cents * 1.125);
+  const catThumb   = getCategoryThumb(lead.service_category);
+  const localImage = getLeadImage(lead.service_category, lead.job_type);
+  const isSold     = lead.status === 'sold';
 
   // ── LIVE badge fade animation (native driver = GPU, never blocks JS scroll) ─
   // Only opacity + transform are used — both are native-driver compatible.
@@ -174,14 +176,23 @@ function LeadCardInner({ lead, onUnlock, unlocking, purchased, highlighted }: Le
         {/* ── Card body: full-height gradient column + compact content ──────── */}
         <View style={styles.cardInner}>
 
-          {/* Full-height left gradient column — instant render, zero network */}
+          {/* Full-height left thumbnail — bundled local image (instant, no network)
+               Falls back to LinearGradient for unrecognised categories        */}
           <View style={styles.thumbCol}>
-            <LinearGradient
-              colors={catThumb.colors}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={StyleSheet.absoluteFillObject}
-            />
+            {localImage ? (
+              <Image
+                source={localImage}
+                style={StyleSheet.absoluteFillObject}
+                resizeMode="cover"
+              />
+            ) : (
+              <LinearGradient
+                colors={catThumb.colors}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={StyleSheet.absoluteFillObject}
+              />
+            )}
             <View style={styles.thumbDim} />
             <Text style={styles.thumbName} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.5}>
               {lead.service_category.toUpperCase()}
