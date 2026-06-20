@@ -378,21 +378,7 @@ function ExtraFieldInput({ field, value, onChange }: ExtraFieldInputProps) {
     );
   }
   if (field.type === 'textarea') {
-    return (
-      <View style={{ gap: 6 }}>
-        <Text style={[sf.label, { color: Colors.muted }]}>{field.label}{field.required ? ' *' : ''}</Text>
-        <TextInput
-          style={[styles.textarea, { backgroundColor: Colors.panel2, color: Colors.foreground }]}
-          value={value}
-          onChangeText={onChange}
-          placeholder={field.placeholder}
-          placeholderTextColor={Colors.placeholder}
-          multiline
-          numberOfLines={3}
-          textAlignVertical="top"
-        />
-      </View>
-    );
+    return null; // Free-text descriptions removed — chip selector handles context
   }
   return (
     <Input
@@ -510,6 +496,71 @@ const cat = StyleSheet.create({
   groupName: { fontSize: FontSize.xs, color: Colors.muted, marginTop: 2 },
 });
 
+// ── Lead Context Tags ─────────────────────────────────────────────────────────
+
+const LEAD_TAGS: { emoji: string; label: string }[] = [
+  { emoji: '📦', label: 'Multiple units / locations' },
+  { emoji: '🆕', label: 'New installation — nothing existing' },
+  { emoji: '🔄', label: 'Replacement / upgrade of existing' },
+  { emoji: '🚨', label: 'Emergency — needs ASAP' },
+  { emoji: '🏥', label: 'Insurance claim involved' },
+  { emoji: '🏠', label: 'Residential home' },
+  { emoji: '🏢', label: 'Commercial / business property' },
+  { emoji: '🔑', label: 'Rental property' },
+  { emoji: '📋', label: 'Getting multiple quotes' },
+  { emoji: '✅', label: 'Ready to book — just needs a pro' },
+  { emoji: '📅', label: 'Flexible on timing' },
+];
+
+interface LeadTagChipsProps {
+  selected: string[];
+  onToggle: (label: string) => void;
+}
+
+function LeadTagChips({ selected, onToggle }: LeadTagChipsProps) {
+  useTheme();
+  return (
+    <View style={tc.wrap}>
+      {LEAD_TAGS.map(({ emoji, label }) => {
+        const active = selected.includes(label);
+        return (
+          <TouchableOpacity
+            key={label}
+            style={[tc.chip, active && tc.chipActive]}
+            onPress={() => onToggle(label)}
+            activeOpacity={0.7}
+          >
+            <Text style={tc.chipEmoji}>{emoji}</Text>
+            <Text style={[tc.chipText, active && tc.chipTextActive]}>{label}</Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+}
+
+const tc = StyleSheet.create({
+  wrap:          { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chip: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    gap:               5,
+    paddingHorizontal: 10,
+    paddingVertical:   7,
+    borderRadius:      20,
+    borderWidth:       1.5,
+    borderColor:       'rgba(59,130,246,0.28)',
+    backgroundColor:   'rgba(59,130,246,0.06)',
+  },
+  chipActive: {
+    borderColor:     Colors.orange,
+    backgroundColor: 'rgba(249,115,22,0.12)',
+  },
+  chipEmoji:     { fontSize: 13 },
+  chipText:      { fontSize: 13, color: Colors.muted, fontWeight: '500' },
+  chipTextActive:{ color: Colors.orange, fontWeight: '600' },
+});
+
 // ── Main Screen ───────────────────────────────────────────────────────────────
 
 export function SubmitLeadScreen({ navigation }: any) {
@@ -542,8 +593,8 @@ export function SubmitLeadScreen({ navigation }: any) {
   const [customerEmail,  setCustomerEmail]  = useState('');
   // Extra fields
   const [extraValues,    setExtraValues]    = useState<Record<string, string>>({});
-  // Description + price
-  const [summary,        setSummary]        = useState('');
+  // Lead context chips + price
+  const [selectedTags,   setSelectedTags]   = useState<string[]>([]);
   const [price,          setPrice]          = useState('');
   // Decay pricing
   const [decayEnabled,   setDecayEnabled]   = useState(false);
@@ -600,13 +651,19 @@ export function SubmitLeadScreen({ navigation }: any) {
     setStreetAddress(''); setAddrCity(''); setAddrState(''); setAddrLat(null); setAddrLng(null);
     setCityInput(''); setStateInput(''); setCityLat(null); setCityLng(null);
     setCustomerName(''); setCustomerPhone(''); setCustomerEmail('');
-    setExtraValues({}); setSummary(''); setPrice('');
+    setExtraValues({}); setSelectedTags([]); setPrice('');
     setDecayEnabled(false); setDecayFloor('');
     setError(null); setDuplicateInfo(null);
   }
 
   function setExtra(key: string, val: string) {
     setExtraValues(prev => ({ ...prev, [key]: val }));
+  }
+
+  function toggleTag(label: string) {
+    setSelectedTags(prev =>
+      prev.includes(label) ? prev.filter(t => t !== label) : [...prev, label]
+    );
   }
 
   // ── Submit ──
@@ -651,12 +708,6 @@ export function SubmitLeadScreen({ navigation }: any) {
       return;
     }
 
-    // Description
-    if (!summary.trim() || summary.trim().length < 20) {
-      setError('Please add a description of at least 20 characters.');
-      return;
-    }
-
     // Price
     const priceCents = Math.round(parseFloat(price) * 100);
     if (!price || isNaN(priceCents) || priceCents <= 0) {
@@ -673,9 +724,9 @@ export function SubmitLeadScreen({ navigation }: any) {
       }
     }
 
-    // Required extra fields
+    // Required extra fields (skip textarea — replaced by chip selector)
     for (const field of activeFields) {
-      if (field.required && !extraValues[field.key]?.trim()) {
+      if (field.required && field.type !== 'textarea' && !extraValues[field.key]?.trim()) {
         setError(`"${field.label}" is required.`);
         return;
       }
@@ -714,7 +765,7 @@ export function SubmitLeadScreen({ navigation }: any) {
           city:              submitCity,
           state:             submitState,
           nationwide,
-          public_summary:    summary.trim(),
+          public_summary:    selectedTags.join(' · '),
           exact_address:     submitExactAddress,
           exact_address_lat: submitLat,
           exact_address_lng: submitLng,
@@ -782,7 +833,7 @@ export function SubmitLeadScreen({ navigation }: any) {
           city:              submitCity,
           state:             submitState,
           nationwide,
-          public_summary:    summary.trim(),
+          public_summary:    selectedTags.join(' · '),
           exact_address:     submitExactAddress,
           exact_address_lat: isNeedsAddress && !nationwide ? addrLat : null,
           exact_address_lng: isNeedsAddress && !nationwide ? addrLng : null,
@@ -814,7 +865,7 @@ export function SubmitLeadScreen({ navigation }: any) {
     setStreetAddress(''); setAddrCity(''); setAddrState(''); setAddrLat(null); setAddrLng(null);
     setCityInput(''); setStateInput(''); setCityLat(null); setCityLng(null);
     setCustomerName(''); setCustomerPhone(''); setCustomerEmail('');
-    setExtraValues({}); setSummary(''); setPrice('');
+    setExtraValues({}); setSelectedTags([]); setPrice('');
     setDecayEnabled(false); setDecayFloor('');
     setError(null); setDuplicateInfo(null);
   }
@@ -1060,27 +1111,18 @@ export function SubmitLeadScreen({ navigation }: any) {
                 </View>
               )}
 
-              {/* ── Description ── */}
+              {/* ── Lead Context (chips) ── */}
               <View style={[styles.section, { backgroundColor: Colors.panel, borderColor: Colors.borderOrange, shadowColor: Colors.glowColor }]}>
                 <SectionHeader
-                  title="Description *"
-                  subtitle="Describe the customer's situation. Shown to buyers — do not include contact info here."
+                  title="Lead Context"
+                  subtitle="Select any that apply."
                 />
-                <TextInput
-                  style={[styles.textarea, { backgroundColor: Colors.panel2, color: Colors.foreground }]}
-                  value={summary}
-                  onChangeText={setSummary}
-                  placeholder={fieldConfig.needsAddress
-                    ? 'e.g. Homeowner needs emergency plumbing repair, pipe burst under kitchen sink…'
-                    : 'e.g. Business owner seeking a $150k working capital loan, good credit, 3 years in business…'}
-                  placeholderTextColor={Colors.placeholder}
-                  multiline
-                  numberOfLines={4}
-                  textAlignVertical="top"
-                />
-                <Text style={[styles.charCount, summary.length < 20 && summary.length > 0 && { color: Colors.danger }]}>
-                  {summary.length} chars{summary.length < 20 ? ` (need ${20 - summary.length} more)` : ' ✓'}
-                </Text>
+                <LeadTagChips selected={selectedTags} onToggle={toggleTag} />
+                {selectedTags.length === 0 && (
+                  <Text style={{ fontSize: FontSize.xs, color: Colors.muted, marginTop: 8 }}>
+                    💡 Adding details increases your chances of the lead getting purchased
+                  </Text>
+                )}
               </View>
 
               {/* ── Pricing ── */}
