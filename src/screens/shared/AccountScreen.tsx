@@ -77,26 +77,29 @@ export function AccountScreen() {
     }
   }
 
-  // ── Add credits ──────────────────────────────────────────────────────────
+  // ── Add funds (bank/ACH or card) ──────────────────────────────────────────
+  // Routes through /api/wallet/deposit (NOT the legacy card-only top-up) so the
+  // checkout offers bank transfer (ACH) + card, and funds are credited only
+  // once the payment settles — safe for ACH's multi-day clearing.
   async function handleAddCredits(amountCents: number) {
     setBuyingCredits(amountCents);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
       if (!token) { Alert.alert('Error', 'Please sign in again.'); return; }
-      const res = await fetch(`${WEB_APP}/api/credits/mobile-checkout`, {
+      const res = await fetch(`${WEB_APP}/api/wallet/deposit`, {
         method:  'POST',
         headers: {
           'Content-Type':  'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({ amountCents }),
+        body: JSON.stringify({ amountCents, mobile: true }),
       });
       const body = await res.json();
       if (res.ok && body.checkoutUrl) {
         await Linking.openURL(body.checkoutUrl);
       } else {
-        Alert.alert('Error', body.error ?? 'Could not open checkout. Please try again.');
+        Alert.alert('Error', body.detail ?? body.error ?? 'Could not open checkout. Please try again.');
       }
     } catch (e: any) {
       Alert.alert('Error', e.message ?? 'Network error. Please try again.');
@@ -296,9 +299,9 @@ export function AccountScreen() {
       {/* ── Add credits (buyers only) ─────────────────────────── */}
       {isBuyer && (
         <View style={[styles.creditCard, { backgroundColor: Colors.panel, borderColor: Colors.borderOrange, shadowColor: Colors.glowColor }]}>
-          <Text style={[styles.sectionTitle, { color: Colors.foreground }]}>💰  Add Credits</Text>
+          <Text style={[styles.sectionTitle, { color: Colors.foreground }]}>💰  Add Funds</Text>
           <Text style={[styles.creditsHint, { color: Colors.muted, marginTop: Spacing.xs }]}>
-            Select an amount to top up your balance. You'll be taken to a secure checkout page.
+            Pick an amount, then pay by linked bank account (ACH — lowest fees) or card on a secure checkout page. Bank transfers take 1–4 business days to clear; card is instant.
           </Text>
           <View style={{ marginTop: Spacing.sm, gap: Spacing.sm }}>
             {([
