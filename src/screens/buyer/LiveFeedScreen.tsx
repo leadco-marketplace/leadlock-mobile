@@ -110,6 +110,10 @@ export function LiveFeedScreen() {
   applyHighlightRef.current = (leadId: string) => {
     if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
     setHighlightedId(leadId);
+    // Turn OFF the "My Matches" filter so a notified lead is never hidden —
+    // dispatch notifies by area/radius, which is looser than the feed's
+    // category/state match. Without this the highlighted card won't render.
+    setShowMyMatches(false);
     highlightScrolledRef.current = null; // allow scroll to re-fire for this ID
     load(false, buyerLocation ?? undefined);
     highlightTimerRef.current = setTimeout(() => setHighlightedId(null), 5 * 60 * 1000);
@@ -198,10 +202,12 @@ export function LiveFeedScreen() {
   // but scrolls only ONCE per notification ID via highlightScrolledRef — so the
   // 10-second feed poll never triggers a duplicate scroll.
   useEffect(() => {
-    if (!highlightedId || leads.length === 0 || loading) return;
+    if (!highlightedId || displayLeads.length === 0 || loading) return;
     if (highlightScrolledRef.current === highlightedId) return; // already scrolled
 
-    const idx = sortedLeads.findIndex((l) => l.id === highlightedId);
+    // Find the index in the RENDERED list (displayLeads), not the unfiltered
+    // list, so scrollToIndex targets the correct row.
+    const idx = displayLeads.findIndex((l) => l.id === highlightedId);
     if (idx < 0) {
       setError('The lead from your notification is no longer available in the feed.');
       const t = setTimeout(() => setError(null), 4000);
@@ -214,7 +220,7 @@ export function LiveFeedScreen() {
       flatListRef.current?.scrollToIndex({ index: idx, animated: true, viewPosition: 0.3 });
     }, 400);
     return () => clearTimeout(scrollTimer);
-  }, [leads, loading, highlightedId]);
+  }, [displayLeads, loading, highlightedId]);
 
   // ── Memoised renderItem ────────────────────────────────────────────────────
   // useCallback prevents a new function reference on every render, which would
