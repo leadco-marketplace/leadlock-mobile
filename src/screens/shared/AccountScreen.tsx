@@ -301,7 +301,7 @@ export function AccountScreen() {
         <View style={[styles.creditCard, { backgroundColor: Colors.panel, borderColor: Colors.borderOrange, shadowColor: Colors.glowColor }]}>
           <Text style={[styles.sectionTitle, { color: Colors.foreground }]}>💰  Add Funds</Text>
           <Text style={[styles.creditsHint, { color: Colors.muted, marginTop: Spacing.xs }]}>
-            Pick an amount, then connect your bank to deposit (ACH) on a secure checkout page. Bank transfers take 1–4 business days to clear. You can move any unused balance back to your bank anytime.
+            Pick an amount and deposit on a secure checkout page. New here? Your first few deposits (up to $200) can be paid instantly with Cash App; after that, deposits use your bank (ACH) and take 1–4 business days to clear. You can move any unused balance back to where it came from anytime.
           </Text>
           <View style={{ marginTop: Spacing.sm, gap: Spacing.sm }}>
             {([
