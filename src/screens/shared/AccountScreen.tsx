@@ -301,7 +301,7 @@ export function AccountScreen() {
         <View style={[styles.creditCard, { backgroundColor: Colors.panel, borderColor: Colors.borderOrange, shadowColor: Colors.glowColor }]}>
           <Text style={[styles.sectionTitle, { color: Colors.foreground }]}>💰  Add Funds</Text>
           <Text style={[styles.creditsHint, { color: Colors.muted, marginTop: Spacing.xs }]}>
-            Pick an amount, then pay by linked bank account (ACH — lowest fees) or card on a secure checkout page. Bank transfers take 1–4 business days to clear; card is instant.
+            Pick an amount, then connect your bank to deposit (ACH) on a secure checkout page. Bank transfers take 1–4 business days to clear. You can move any unused balance back to your bank anytime.
           </Text>
           <View style={{ marginTop: Spacing.sm, gap: Spacing.sm }}>
             {([
