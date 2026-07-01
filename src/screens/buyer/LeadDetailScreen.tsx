@@ -60,14 +60,16 @@ function CallPanel({ purchaseId }: { purchaseId: string }) {
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState<string | null>(null);
 
-  async function fetchPin() {
+  // forceNew=true → "Get a new extension": server expires the current PIN and
+  // issues a fresh one. Without it, prepare returns the existing PIN unchanged.
+  async function fetchPin(forceNew = false) {
     setLoading(true);
     setError(null);
     try {
       const headers = await authHeaders();
       const res  = await fetch(`${BASE}/api/call/prepare`, {
         method: 'POST', headers,
-        body: JSON.stringify({ purchaseId }),
+        body: JSON.stringify({ purchaseId, forceNew }),
       });
       const body = await res.json();
       if (!res.ok) throw new Error(body.error ?? 'Failed to load extension');
@@ -94,7 +96,7 @@ function CallPanel({ purchaseId }: { purchaseId: string }) {
     return (
       <View style={[callStyles.box, { backgroundColor: Colors.panel2 }]}>
         <Text style={callStyles.errorText}>⚠️ {error}</Text>
-        <TouchableOpacity onPress={fetchPin} style={callStyles.retryBtn}>
+        <TouchableOpacity onPress={() => fetchPin()} style={callStyles.retryBtn}>
           <Text style={callStyles.retryText}>Try again</Text>
         </TouchableOpacity>
       </View>
@@ -128,7 +130,7 @@ function CallPanel({ purchaseId }: { purchaseId: string }) {
         Call the number above, then enter extension{' '}
         <Text style={{ fontWeight: '700', color: Colors.accent }}>{pinData.pin}</Text> when prompted.
       </Text>
-      <TouchableOpacity onPress={fetchPin}>
+      <TouchableOpacity onPress={() => fetchPin(true)}>
         <Text style={[callStyles.refreshText, { color: Colors.muted }]}>↻ Get a new extension</Text>
       </TouchableOpacity>
     </View>
