@@ -93,6 +93,21 @@ function CallPanel({ purchaseId }: { purchaseId: string }) {
   }
 
   if (error) {
+    // A lead with no phone on file can't be called — retrying won't help.
+    // Show a clear message (buyer can reach out by email instead) rather than a
+    // raw error code + Try again button.
+    const noPhone = error === 'no_phone' || /no[_ ]?phone/i.test(error);
+    if (noPhone) {
+      return (
+        <View style={[callStyles.box, { backgroundColor: Colors.panel2 }]}>
+          <Text style={[callStyles.sectionLabel, { color: Colors.warn ?? '#b45309' }]}>📞  No phone on file</Text>
+          <Text style={[callStyles.hint, { color: Colors.muted }]}>
+            This lead was submitted without a phone number. Use the customer's
+            email (shown above) to reach them.
+          </Text>
+        </View>
+      );
+    }
     return (
       <View style={[callStyles.box, { backgroundColor: Colors.panel2 }]}>
         <Text style={callStyles.errorText}>⚠️ {error}</Text>

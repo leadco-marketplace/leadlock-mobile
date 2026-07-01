@@ -126,6 +126,10 @@ export function LiveFeedScreen() {
   useFocusEffect(
     React.useCallback(() => {
       load(true, buyerLocation ?? undefined);
+      // Refresh the wallet balance too — a deposit may have settled while the
+      // user was on another tab / in the Stripe checkout. Without this the
+      // balance chip only updated after an unrelated action.
+      refreshProfile();
       // Pick up a highlight that was emitted before this screen got focus
       // (cold-start: emit fires before LiveFeedScreen subscribes).
       const pending = notificationEvents.consume();

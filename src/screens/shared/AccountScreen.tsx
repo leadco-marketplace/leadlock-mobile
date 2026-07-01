@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
   Alert, Switch, Linking, ScrollView, TextInput,
-  ActivityIndicator,
+  ActivityIndicator, AppState,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { profileApi, phoneVerifyApi } from '@/lib/api';
@@ -23,6 +24,19 @@ export function AccountScreen() {
   const [saving,        setSaving]        = useState(false);
   const [deleting,      setDeleting]      = useState(false);
   const [buyingCredits, setBuyingCredits] = useState<number | null>(null); // amountCents in flight
+
+  // Keep the wallet balance current: refresh when this screen gains focus and
+  // whenever the app returns to the foreground (e.g. back from the Stripe
+  // deposit checkout). Fixes the balance not updating right after a deposit.
+  useFocusEffect(
+    React.useCallback(() => { refreshProfile(); }, [])
+  );
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (s) => {
+      if (s === 'active') refreshProfile();
+    });
+    return () => sub.remove();
+  }, []);
 
   // ── Phone verification state ──────────────────────────────────────────────
   const [phoneStep,    setPhoneStep]    = useState<PhoneStep>('idle');
