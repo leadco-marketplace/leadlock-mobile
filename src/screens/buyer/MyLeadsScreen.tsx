@@ -33,6 +33,9 @@ function PurchasedCard({ lead }: { lead: PurchasedLead }) {
         <View style={{ alignItems: 'flex-end' }}>
           <Text style={[styles.price, { color: Colors.foreground }]}>{formatPrice(lead.buyer_price_cents || Math.round(lead.price_cents * 1.125))}</Text>
           <Text style={[styles.unlockedLabel, { color: Colors.accent }]}>✓ Unlocked</Text>
+          {lead.is_old && (
+            <Text style={[styles.oldLeadBadge, { color: Colors.warn ?? '#b45309', borderColor: Colors.warn ?? '#b45309' }]}>Old Lead</Text>
+          )}
           {lead.lead_code && (
             <Text style={[styles.leadCode, { color: Colors.orange }]}>#{lead.lead_code}</Text>
           )}
@@ -234,6 +237,7 @@ const styles = StyleSheet.create({
   price:        { fontSize: FontSize.md,   fontWeight: '700', color: Colors.foreground, textAlign: 'right', fontVariant: ['tabular-nums'] },
   unlockedLabel:{ fontSize: FontSize.xs,   color: Colors.accent, textAlign: 'right', marginTop: 2 },
   leadCode:     { fontSize: FontSize.xs - 1, fontFamily: 'Courier', fontWeight: '700', textAlign: 'right', marginTop: 2, letterSpacing: 1 },
+  oldLeadBadge: { fontSize: FontSize.xs - 2, fontWeight: '700', textAlign: 'right', marginTop: 2, borderWidth: 1, borderRadius: Radius.sm, paddingHorizontal: 5, paddingVertical: 1, overflow: 'hidden' },
   tapHint:      { fontSize: FontSize.xs - 1, color: Colors.muted, textAlign: 'right', marginTop: 4 },
   notesBox: {
     backgroundColor: Colors.panel2,

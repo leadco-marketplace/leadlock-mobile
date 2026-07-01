@@ -257,62 +257,18 @@ export function LiveFeedScreen() {
       navigation.dispatch(StackActions.push('LeadDetail', { leadId: lead.id, purchaseId: purchase_id }));
     } catch (e: any) {
       if (e.message === 'insufficient_credits') {
-        // Not enough credits — create a Stripe checkout for this specific lead
-        // then open it in Safari. After payment, Stripe redirects to /mobile-return
-        // which fires leadco://my-leads back into the app.
-        try {
-          const { data: { session } } = await (await import('@/lib/supabase')).supabase.auth.getSession();
-          const token = session?.access_token;
-          if (!token) {
-            Alert.alert('Not Logged In', 'Please sign out and sign back in, then try again.');
-            return;
-          }
-
-          const res = await fetch(`${WEB_APP}/api/leads/${lead.id}/mobile-unlock-checkout`, {
-            method:  'POST',
-            headers: {
-              'Content-Type':  'application/json',
-              'Authorization': `Bearer ${token}`,
-            },
-          });
-          const body = await res.json().catch(() => ({}));
-
-          if (res.ok && body.checkoutUrl) {
-            Alert.alert(
-              '💳 Add Credits to Unlock',
-              'You\'ll be taken to a secure payment page. After completing payment, tap "Open LeadCo App" to return here.',
-              [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                  text: 'Go to Payment',
-                  onPress: () => Linking.openURL(body.checkoutUrl).catch((err: any) =>
-                    Alert.alert('Could Not Open Browser', err?.message ?? String(err))
-                  ),
-                },
-              ]
-            );
-          } else if (body.error === 'already_sold') {
-            setLeads(prev => prev.map(l =>
-              l.id === lead.id ? { ...l, status: 'sold', sold_at: new Date().toISOString() } : l
-            ));
-            Alert.alert(
-              '🔒 Lead Just Sold',
-              'Another buyer purchased this lead a moment before you.',
-              [{ text: 'OK' }]
-            );
-            load(true);
-          } else {
-            Alert.alert(
-              '⚠️ Checkout Error',
-              `Could not create checkout session.\n\nStatus: ${res.status}\nError: ${body.error ?? 'unknown'}`
-            );
-          }
-        } catch (checkoutErr: any) {
-          Alert.alert(
-            '⚠️ Network Error',
-            `Could not reach the server.\n\n${checkoutErr?.message ?? String(checkoutErr)}`
-          );
-        }
+        // Wallet model: unlocking a lead spends wallet credits only. If the
+        // balance is short, send the buyer to Add Funds — no per-lead card
+        // checkout (that path created dangling "pending" purchases that never
+        // reached My Leads).
+        Alert.alert(
+          'Not enough credits',
+          "You don't have enough wallet credits to unlock this lead. Add funds to your wallet, then try again.",
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Add Funds', onPress: () => navigation.navigate('Account') },
+          ]
+        );
       } else if (e.message === 'already_sold') {
         setLeads(prev => prev.map(l =>
           l.id === lead.id ? { ...l, status: 'sold', sold_at: new Date().toISOString() } : l

@@ -799,10 +799,29 @@ export function LeadDetailScreen() {
         )}
 
         {/* ── Call panel ──────────────────────────────── */}
-        <CallPanel purchaseId={lead.purchase_id} />
+        {/* Aging: once a lead passes the phone-expiry window its number is
+            removed. Calling is no longer possible, so we hide the call/signal
+            panels and show a notice. All other details stay on record. */}
+        {lead.is_old ? (
+          <View style={[styles.section, { backgroundColor: Colors.panel, shadowColor: Colors.glowColor }]}>
+            <Text style={[styles.sectionTitle, { color: Colors.foreground }]}>📞  Contact</Text>
+            <Text style={[styles.description, { color: Colors.warn ?? '#b45309', fontWeight: '600' }]}>
+              Old lead — phone number removed
+            </Text>
+            <Text style={[styles.description, { color: Colors.muted, marginTop: 4 }]}>
+              This lead is more than two weeks old. The customer's number has been
+              removed to prevent misdirected calls, but the rest of the lead stays
+              here for your records.
+            </Text>
+          </View>
+        ) : (
+          <>
+            <CallPanel purchaseId={lead.purchase_id} />
 
-        {/* ── Signal panel ─────────────────────────────── */}
-        <SignalPanel purchaseId={lead.purchase_id} />
+            {/* ── Signal panel ─────────────────────────────── */}
+            <SignalPanel purchaseId={lead.purchase_id} />
+          </>
+        )}
 
         {/* ── Private notes ────────────────────────────── */}
         {lead.private_notes && (

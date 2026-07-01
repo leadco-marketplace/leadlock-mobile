@@ -65,6 +65,10 @@ export type PurchasedLead = Lead & {
   contact_phone: string | null;
   contact_email: string | null;
   private_notes: string | null;
+  // Aging: true once the lead passes the phone-expiry window. All info is kept
+  // for the buyer's records, but the phone number has been removed.
+  is_old?: boolean;
+  phone_scrubbed_at?: string | null;
 };
 
 export type BuyerLocation = { lat: number; lng: number } | null;
