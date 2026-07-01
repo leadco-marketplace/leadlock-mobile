@@ -235,6 +235,9 @@ export type LeadFieldConfig = {
   categoryJobTypes:        Record<string, string[]>;
   autoPublish:             boolean;
   nationwideEligible:      boolean;
+  // On-site categories: one location + radius, never nationwide/multi-area.
+  locationLocked?:         boolean;
+  serviceRadius?:          { min: number; max: number; default: number };
   extraFields:             LeadExtraField[];
   categoryExtraFields:     Record<string, LeadExtraField[]>;
   jobTypeFields:           Record<string, LeadExtraField[]>;

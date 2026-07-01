@@ -564,6 +564,7 @@ export function SubmitLeadScreen({ navigation }: any) {
   const [jobType,        setJobType]        = useState('');
   const [jtModalOpen,    setJtModalOpen]    = useState(false);
   const [nationwide,     setNationwide]     = useState(false);
+  const [radiusMiles,    setRadiusMiles]    = useState(25);
   // For needsAddress categories:
   const [streetAddress,  setStreetAddress]  = useState('');
   const [addrCity,       setAddrCity]       = useState('');
@@ -623,6 +624,9 @@ export function SubmitLeadScreen({ navigation }: any) {
       .catch(() => {})
       .finally(() => setConfigLoading(false));
   }, [selectedCat]);
+
+  // On-site categories: one location + radius, never nationwide.
+  const locationLocked = !!fieldConfig?.locationLocked;
 
   // ── Active job types and fields ──
   const activeJobTypes = fieldConfig ? resolveJobTypes(fieldConfig, selectedCat?.name ?? '') : [];
@@ -728,8 +732,10 @@ export function SubmitLeadScreen({ navigation }: any) {
     const submitExactAddress = isNeedsAddress && !nationwide
       ? (streetAddress ? `${streetAddress}, ${addrCity}, ${addrState}` : `${addrCity}, ${addrState}`)
       : null;
-    const submitLat = isNeedsAddress && !nationwide ? addrLat : null;
-    const submitLng = isNeedsAddress && !nationwide ? addrLng : null;
+    // Anchor coords: exact address for needsAddress categories, else the
+    // selected city's coordinates (needed for the single-location radius model).
+    const submitLat = nationwide ? null : (isNeedsAddress ? addrLat : cityLat);
+    const submitLng = nationwide ? null : (isNeedsAddress ? addrLng : cityLng);
 
     setLoading(true);
     try {
@@ -762,6 +768,8 @@ export function SubmitLeadScreen({ navigation }: any) {
           customer_email:    customerEmail || null,
           price_cents:       priceCents,
           auto_publish:      fieldConfig.autoPublish,
+          service_radius_miles: locationLocked ? radiusMiles : null,
+          location_precision:   locationLocked ? (isNeedsAddress ? 'address' : 'city') : null,
           metadata: {
             nationwide,
             ...decayConfig,
@@ -823,13 +831,15 @@ export function SubmitLeadScreen({ navigation }: any) {
           nationwide,
           public_summary:    selectedTags.join(' · '),
           exact_address:     submitExactAddress,
-          exact_address_lat: isNeedsAddress && !nationwide ? addrLat : null,
-          exact_address_lng: isNeedsAddress && !nationwide ? addrLng : null,
+          exact_address_lat: nationwide ? null : (isNeedsAddress ? addrLat : cityLat),
+          exact_address_lng: nationwide ? null : (isNeedsAddress ? addrLng : cityLng),
           customer_name:     customerName  || null,
           customer_phone:    customerPhone || null,
           customer_email:    customerEmail || null,
           price_cents:       priceCents,
           auto_publish:      fieldConfig.autoPublish,
+          service_radius_miles: locationLocked ? radiusMiles : null,
+          location_precision:   locationLocked ? (isNeedsAddress ? 'address' : 'city') : null,
           metadata:          { nationwide, ...extraValues },
           request_review:    true,
           existing_lead_id:  duplicateInfo.existingLeadId,
@@ -979,8 +989,8 @@ export function SubmitLeadScreen({ navigation }: any) {
                   onChange={(v) => { setJobType(v); setExtraValues({}); }}
                 />
 
-                {/* Nationwide toggle — only for eligible categories */}
-                {fieldConfig.nationwideEligible && (
+                {/* Nationwide toggle — only for eligible categories (never on-site) */}
+                {fieldConfig.nationwideEligible && !locationLocked && (
                   <View style={styles.toggleRow}>
                     <View style={{ flex: 1 }}>
                       <Text style={[styles.toggleLabel, { color: Colors.foreground }]}>🌐 Nationwide lead</Text>
@@ -1044,6 +1054,35 @@ export function SubmitLeadScreen({ navigation }: any) {
                       }}
                       onClear={() => { setCityInput(''); setStateInput(''); setCityLat(null); setCityLng(null); }}
                     />
+                  )}
+
+                  {/* Service radius — on-site categories only */}
+                  {locationLocked && (
+                    <View style={{ marginTop: Spacing.md }}>
+                      <Text style={[styles.toggleLabel, { color: Colors.foreground, marginBottom: 6 }]}>
+                        Service radius: <Text style={{ color: Colors.orange }}>{radiusMiles} miles</Text>
+                      </Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                        <TouchableOpacity
+                          onPress={() => setRadiusMiles(r => Math.max((fieldConfig.serviceRadius?.min ?? 5), r - 5))}
+                          style={styles.radiusBtn}
+                        >
+                          <Text style={styles.radiusBtnText}>−</Text>
+                        </TouchableOpacity>
+                        <View style={styles.radiusValueBox}>
+                          <Text style={styles.radiusValueText}>{radiusMiles} mi</Text>
+                        </View>
+                        <TouchableOpacity
+                          onPress={() => setRadiusMiles(r => Math.min((fieldConfig.serviceRadius?.max ?? 100), r + 5))}
+                          style={styles.radiusBtn}
+                        >
+                          <Text style={styles.radiusBtnText}>+</Text>
+                        </TouchableOpacity>
+                      </View>
+                      <Text style={[styles.toggleSub, { color: Colors.muted, marginTop: 6 }]}>
+                        Buyers within {radiusMiles} miles of this location will see the lead.
+                      </Text>
+                    </View>
                   )}
                 </View>
               )}
@@ -1294,6 +1333,10 @@ const styles = StyleSheet.create({
   },
   toggleLabel: { fontSize: FontSize.sm, fontWeight: '600', color: Colors.foreground },
   toggleSub:   { fontSize: FontSize.xs, color: Colors.muted, marginTop: 2 },
+  radiusBtn:   { width: 44, height: 44, borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.borderOrange, alignItems: 'center', justifyContent: 'center' },
+  radiusBtnText: { fontSize: FontSize.xl, color: Colors.orange, fontWeight: '700' },
+  radiusValueBox: { flex: 1, height: 44, borderRadius: Radius.md, backgroundColor: Colors.panel2, alignItems: 'center', justifyContent: 'center' },
+  radiusValueText: { fontSize: FontSize.base, fontWeight: '700', color: Colors.foreground },
   infoBox: {
     backgroundColor: 'rgba(59,130,246,0.08)',
     borderColor:     'rgba(59,130,246,0.35)',
