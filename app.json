@@ -23,7 +23,10 @@
         "UIBackgroundModes": [
           "remote-notification"
         ],
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCameraUsageDescription": "LeadCo Marketplace uses the camera to scan your card when you add a payment method.",
+        "NSPhotoLibraryUsageDescription": "LeadCo Marketplace needs photo access if you choose an image while adding payment details.",
+        "NSFaceIDUsageDescription": "LeadCo Marketplace uses Face ID to help verify your identity during secure payments."
       }
     },
     "android": {
