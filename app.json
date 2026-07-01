@@ -56,12 +56,21 @@
         {
           "googleMapsApiKey": ""
         }
+      ],
+      [
+        "@stripe/stripe-react-native",
+        {
+          "merchantIdentifier": "merchant.com.leadco.marketplace",
+          "enableGooglePay": false
+        }
       ]
     ],
     "extra": {
       "supabaseUrl": "https://eyzcxxctjukrcawjrkvx.supabase.co",
       "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5emN4eGN0anVrcmNhd2pya3Z4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1ODI2NTcsImV4cCI6MjA5MjE1ODY1N30.JL-h9Wd_2JXVukNuDom2ea1ZGHhNeIBHCeJGtjiAkak",
       "apiBaseUrl": "https://leadco-marketplace-p5zj.vercel.app",
+      "stripePublishableKey": "",
+      "stripeMerchantId": "merchant.com.leadco.marketplace",
       "eas": {
         "projectId": "3e1c2994-e789-4f94-9291-5495b4b74f2b"
       }

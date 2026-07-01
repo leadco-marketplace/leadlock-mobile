@@ -6,6 +6,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
+import { StripeProvider } from '@stripe/stripe-react-native';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { AppNavigator, navigationRef } from '@/navigation/AppNavigator';
@@ -219,21 +220,28 @@ function PushResponseHandler() {
   return null;
 }
 
+// Stripe publishable key (public — safe to ship). Set app.json →
+// extra.stripePublishableKey to your pk_test_… / pk_live_… value.
+const STRIPE_PK = (Constants.expoConfig?.extra?.stripePublishableKey as string) ?? '';
+const STRIPE_MERCHANT_ID = (Constants.expoConfig?.extra?.stripeMerchantId as string) ?? 'merchant.com.leadco.marketplace';
+
 export default function App() {
   useEffect(() => {
     SplashScreen.hideAsync();
   }, []);
 
   return (
-    <SafeAreaProvider>
-      <ThemeProvider>
-        <AuthProvider>
-          <StatusBar style="auto" />
-          <PushRegistrar />
-          <PushResponseHandler />
-          <AppNavigator />
-        </AuthProvider>
-      </ThemeProvider>
-    </SafeAreaProvider>
+    <StripeProvider publishableKey={STRIPE_PK} merchantIdentifier={STRIPE_MERCHANT_ID}>
+      <SafeAreaProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            <StatusBar style="auto" />
+            <PushRegistrar />
+            <PushResponseHandler />
+            <AppNavigator />
+          </AuthProvider>
+        </ThemeProvider>
+      </SafeAreaProvider>
+    </StripeProvider>
   );
 }

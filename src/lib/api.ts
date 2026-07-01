@@ -91,6 +91,25 @@ export const leadsApi = {
   unlock: (id: string)                 => request<{ success: boolean; purchase_id: string }>(`/api/leads/${id}/unlock`, { method: 'POST' }),
 };
 
+// ── In-app card intro purchase ──────────────────────────────────────────────
+// First 3 leads may be bought directly with a debit card / Apple Pay via the
+// native PaymentSheet. Throws Error('card_intro_exhausted') once the trial is
+// used up (caller then routes to ACH Add Funds), or Error('already_sold').
+export type CardIntent = {
+  clientSecret:   string;
+  ephemeralKey:   string;
+  customerId:     string;
+  publishableKey: string | null;
+  purchaseId:     string;
+  amountCents:    number;
+  introRemaining: number;
+};
+
+export const paymentsApi = {
+  createCardIntent: (leadId: string) =>
+    request<CardIntent>(`/api/leads/${leadId}/card-intent`, { method: 'POST' }),
+};
+
 // ── Lead Rating ───────────────────────────────────────────────────────────────
 export type RatingThumb = 'up' | 'down';
 

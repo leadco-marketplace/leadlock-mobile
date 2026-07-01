@@ -8,7 +8,8 @@ import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navig
 import { notificationEvents } from '@/lib/notificationEvents';
 import { StackActions } from '@react-navigation/native';
 import { supabase } from '@/lib/supabase';
-import { leadsApi, preferencesApi, Lead, Preference, BuyerLocation } from '@/lib/api';
+import { leadsApi, paymentsApi, preferencesApi, Lead, Preference, BuyerLocation } from '@/lib/api';
+import { useStripe, initStripe } from '@stripe/stripe-react-native';
 import { LeadCard }      from '@/components/LeadCard';
 import { UnlockModal }   from '@/components/UnlockModal';
 import { ScreenShell }   from '@/components/ScreenShell';
@@ -35,6 +36,7 @@ function matchesPreferences(lead: Lead, prefs: Preference[]): boolean {
 
 export function LiveFeedScreen() {
   const { profile, refreshProfile, isGuest, signOut } = useAuth();
+  const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const navigation  = useNavigation<any>();
   const route       = useRoute<RouteProp<{ LiveFeed: LiveFeedRouteParams }, 'LiveFeed'>>();
 
@@ -257,18 +259,11 @@ export function LiveFeedScreen() {
       navigation.dispatch(StackActions.push('LeadDetail', { leadId: lead.id, purchaseId: purchase_id }));
     } catch (e: any) {
       if (e.message === 'insufficient_credits') {
-        // Wallet model: unlocking a lead spends wallet credits only. If the
-        // balance is short, send the buyer to Add Funds — no per-lead card
-        // checkout (that path created dangling "pending" purchases that never
-        // reached My Leads).
-        Alert.alert(
-          'Not enough credits',
-          "You don't have enough wallet credits to unlock this lead. Add funds to your wallet, then try again.",
-          [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Add Funds', onPress: () => navigation.navigate('Account') },
-          ]
-        );
+        // Not enough credits. New buyers get an in-app debit-card / Apple Pay
+        // trial for their first 3 leads (native PaymentSheet — no browser).
+        // Once the trial is used up the server returns card_intro_exhausted and
+        // we route them to ACH Add Funds.
+        await tryCardIntroPurchase(lead);
       } else if (e.message === 'already_sold') {
         setLeads(prev => prev.map(l =>
           l.id === lead.id ? { ...l, status: 'sold', sold_at: new Date().toISOString() } : l
@@ -285,6 +280,77 @@ export function LiveFeedScreen() {
       }
     } finally {
       setUnlocking(null);
+    }
+  }
+
+  // ── In-app debit-card / Apple Pay purchase (first 3 leads) ─────────────────
+  // Opens Stripe's native PaymentSheet. On success the Stripe webhook finalizes
+  // the purchase (debit-only check, mark sold, credit provider); we then open
+  // the lead. If the intro trial is exhausted, route to ACH Add Funds.
+  async function tryCardIntroPurchase(lead: Lead) {
+    try {
+      const intent = await paymentsApi.createCardIntent(lead.id);
+
+      // If the app config has no publishable key yet, use the one the server
+      // returned so PaymentSheet can still initialize.
+      if (intent.publishableKey) {
+        try {
+          await initStripe({
+            publishableKey: intent.publishableKey,
+            merchantIdentifier: (Constants.expoConfig?.extra?.stripeMerchantId as string) ?? 'merchant.com.leadco.marketplace',
+          });
+        } catch { /* provider already initialized — fine */ }
+      }
+
+      const { error: initErr } = await initPaymentSheet({
+        merchantDisplayName: 'LeadCo Marketplace',
+        customerId: intent.customerId,
+        customerEphemeralKeySecret: intent.ephemeralKey,
+        paymentIntentClientSecret: intent.clientSecret,
+        applePay: { merchantCountryCode: 'US' },
+        allowsDelayedPaymentMethods: false,
+      });
+      if (initErr) {
+        Alert.alert('Payment error', initErr.message ?? 'Could not start payment.');
+        return;
+      }
+
+      const { error: payErr } = await presentPaymentSheet();
+      if (payErr) {
+        // User cancelling the sheet is not an error we should surface loudly.
+        if (payErr.code !== 'Canceled') {
+          Alert.alert('Payment not completed', payErr.message ?? 'Please try again.');
+        }
+        return;
+      }
+
+      // Payment succeeded. The webhook finalizes the purchase; LeadDetail polls
+      // for it. Note: a credit card would be auto-refunded server-side.
+      await refreshProfile();
+      Alert.alert(
+        '✅ Payment received',
+        "We're unlocking your lead now. If you paid with a credit card, it will be refunded — this trial is debit-card only.",
+      );
+      navigation.dispatch(StackActions.push('LeadDetail', { leadId: lead.id, purchaseId: intent.purchaseId }));
+    } catch (ce: any) {
+      if (ce.message === 'card_intro_exhausted') {
+        Alert.alert(
+          'Add funds to continue',
+          "You've used your 3 card purchases. Add funds by bank (ACH) to keep buying leads — it's cheaper and unlocks instantly from your balance.",
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Add Funds', onPress: () => navigation.navigate('Account') },
+          ]
+        );
+      } else if (ce.message === 'already_sold' || ce.message === 'already_purchased') {
+        setLeads(prev => prev.map(l =>
+          l.id === lead.id ? { ...l, status: 'sold', sold_at: new Date().toISOString() } : l
+        ));
+        Alert.alert('🔒 Lead Just Sold', 'Another buyer purchased this lead a moment before you.');
+        load(true);
+      } else {
+        Alert.alert('Payment error', ce.message ?? 'Something went wrong. Please try again.');
+      }
     }
   }
 
