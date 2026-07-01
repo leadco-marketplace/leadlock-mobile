@@ -307,7 +307,10 @@ export function LiveFeedScreen() {
         customerId: intent.customerId,
         customerEphemeralKeySecret: intent.ephemeralKey,
         paymentIntentClientSecret: intent.clientSecret,
-        applePay: { merchantCountryCode: 'US' },
+        // Apple Pay is disabled until the Apple Merchant ID is created (see
+        // Card-Intro-Setup.md). Card payments work without it. To re-enable,
+        // restore `applePay: { merchantCountryCode: 'US' }` and the
+        // merchantIdentifier in app.json, then rebuild.
         allowsDelayedPaymentMethods: false,
       });
       if (initErr) {
