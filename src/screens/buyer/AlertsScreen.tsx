@@ -9,9 +9,11 @@ import {
   ServiceArea, ServiceCategory, Preference,
 } from '@/lib/api';
 import { ScreenShell } from '@/components/ScreenShell';
+import { CreditPill } from '@/components/CreditPill';
 import { Button } from '@/components/Button';
 import { Colors, FontSize, Spacing, Radius, Shadow } from '@/theme';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 const DEFAULT_RADIUS = 25;
 
@@ -36,6 +38,7 @@ const STATE_NAMES: Record<string, string> = {
 export function AlertsScreen() {
   useTheme(); // re-render when theme changes so inline Colors.* picks up new values
   const navigation = useNavigation<any>();
+  const { refreshProfile } = useAuth();
 
   const [areas,       setAreas]       = useState<ServiceArea[]>([]);
   const [categories,  setCategories]  = useState<ServiceCategory[]>([]);
@@ -66,8 +69,8 @@ export function AlertsScreen() {
     }
   }, []);
 
-  // Reload every time the tab comes into focus
-  useFocusEffect(useCallback(() => { load(); }, [load]));
+  // Reload every time the tab comes into focus (+ refresh the credit balance chip)
+  useFocusEffect(useCallback(() => { load(); refreshProfile(); }, [load]));
 
   function resetForm() {
     setSelCategory(null);
@@ -160,7 +163,7 @@ export function AlertsScreen() {
   }, [filteredCats]);
 
   return (
-    <ScreenShell title="Lead Alerts" subtitle="Get notified when matching leads go live" scrollable>
+    <ScreenShell title="Lead Alerts" subtitle="Get notified when matching leads go live" rightElement={<CreditPill />} scrollable>
 
       {/* ── Saved alerts ─────────────────────────────────────────────── */}
       <Text style={[styles.sectionLabel, { color: Colors.textSecondary }]}>Your Alerts</Text>

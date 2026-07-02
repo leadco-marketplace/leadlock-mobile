@@ -7,8 +7,10 @@ import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/nativ
 import { StackActions } from '@react-navigation/native';
 import { leadsApi, PurchasedLead } from '@/lib/api';
 import { ScreenShell } from '@/components/ScreenShell';
+import { CreditPill } from '@/components/CreditPill';
 import { Colors, FontSize, Spacing, Radius, Shadow } from '@/theme';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useAuth } from '@/contexts/AuthContext';
 function formatPrice(cents: number) { return `$${(cents / 100).toFixed(2)}`; }
 
 
@@ -52,6 +54,7 @@ function PurchasedCard({ lead }: { lead: PurchasedLead }) {
 
 export function MyLeadsScreen() {
   useTheme(); // re-render on theme change
+  const { refreshProfile } = useAuth();
   const route = useRoute<any>();
   const loadRef    = useRef<((silent?: boolean) => Promise<void>) | null>(null);
   // Anchor lead: after a fresh purchase is found via polling, keep it in the
@@ -95,6 +98,7 @@ export function MyLeadsScreen() {
   // replica yet by the time the first load fires).
   useFocusEffect(useCallback(() => {
     load(false);
+    refreshProfile(); // keep the credit balance chip current
     const retry = setTimeout(() => loadRef.current?.(true), 2000);
     return () => clearTimeout(retry);
   }, [load]));
@@ -174,6 +178,7 @@ export function MyLeadsScreen() {
     <ScreenShell
       title="My Leads"
       subtitle={`${leads.length} lead${leads.length !== 1 ? 's' : ''} unlocked`}
+      rightElement={<CreditPill />}
       scrollable={false}
     >
       {error && (
