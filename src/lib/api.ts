@@ -52,6 +52,9 @@ export type Lead = {
   // Proximity fields — present when buyer location was sent to the API
   distance_miles?: number | null;
   distance_minutes?: number | null;
+  // True when this lead matches the buyer's alert preferences (computed
+  // server-side with the same logic as the alert engine). Drives "My Matches".
+  is_match?: boolean;
   // Provider AI score fields
   provider_ai_score?: number | null;
   provider_ai_answer_rate?: number | null;

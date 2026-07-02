@@ -194,12 +194,19 @@ export function LiveFeedScreen() {
 
   const displayLeads = useMemo(() => {
     if (!showMyMatches || !hasPreferences) return sortedLeads;
-    return sortedLeads.filter(l => matchesPreferences(l, preferences));
+    // Use the server-computed is_match flag (same logic as the alert engine)
+    // so anything that triggered an alert also appears under My Matches.
+    // Fall back to the local category/state check only if the flag is absent
+    // (older API responses).
+    return sortedLeads.filter(l =>
+      typeof l.is_match === 'boolean' ? l.is_match : matchesPreferences(l, preferences)
+    );
   }, [sortedLeads, showMyMatches, preferences, hasPreferences]);
 
   // Count how many leads match regardless of toggle state (for the badge)
   const matchCount = useMemo(
-    () => sortedLeads.filter(l => matchesPreferences(l, preferences)).length,
+    () => sortedLeads.filter(l =>
+      typeof l.is_match === 'boolean' ? l.is_match : matchesPreferences(l, preferences)).length,
     [sortedLeads, preferences],
   );
 
