@@ -57,9 +57,11 @@ export function MyLeadsScreen() {
   const { refreshProfile } = useAuth();
   const route = useRoute<any>();
   const loadRef    = useRef<((silent?: boolean) => Promise<void>) | null>(null);
-  // Anchor lead: after a fresh purchase is found via polling, keep it in the
-  // list even if the first full-refresh returns a stale response (DB replica lag).
-  const anchorLead = useRef<PurchasedLead | null>(null);
+  // Anchor leads: every lead purchased in THIS session, kept visible even if a
+  // full refresh returns a response that's momentarily missing some of them
+  // (DB replica lag / caching). Keyed by purchase_id. Previously this held only
+  // ONE lead, so buying a second lead could drop the first from the list.
+  const anchors = useRef<Map<string, PurchasedLead>>(new Map());
 
   const [leads,      setLeads]      = useState<PurchasedLead[]>([]);
   const [loading,    setLoading]    = useState(true);
@@ -72,16 +74,21 @@ export function MyLeadsScreen() {
     setError(null);
     try {
       const data = await leadsApi.getPurchased();
-      // If the server response doesn't yet include a recently-purchased lead
-      // (DB replica lag), keep it visible by prepending the cached copy.
-      // Clear the anchor once the server confirms the lead is in the response.
-      const anchor = anchorLead.current;
-      if (anchor && !data.some((l: PurchasedLead) => l.purchase_id === anchor.purchase_id)) {
-        setLeads([anchor, ...data]);
-      } else {
-        if (anchor) anchorLead.current = null; // server has it — no longer needed
-        setLeads(data);
+      // Union the server response with every lead purchased this session, keyed
+      // by purchase_id, so an earlier purchase is NEVER dropped just because a
+      // refresh momentarily didn't include it. Server rows win (freshest data);
+      // session anchors fill any gaps.
+      const byId = new Map<string, PurchasedLead>();
+      for (const l of data) byId.set(l.purchase_id, l);
+      for (const [pid, l] of anchors.current) {
+        if (!byId.has(pid)) byId.set(pid, l);
       }
+      const merged = Array.from(byId.values()).sort((a, b) => {
+        const ta = new Date(a.purchased_at ?? 0).getTime();
+        const tb = new Date(b.purchased_at ?? 0).getTime();
+        return tb - ta; // newest first
+      });
+      setLeads(merged);
     } catch (e: any) {
       setError(e?.message ?? 'Could not load leads. Pull down to retry.');
     } finally {
@@ -144,16 +151,17 @@ export function MyLeadsScreen() {
         if (cancelled) return;
         const newLead = results.find((r) => r.purchase_id === awaitPurchaseId);
         if (newLead) {
-          // Pin this lead so that even if the next full-refresh returns a stale
-          // list (DB replica lag), the newly-purchased lead stays visible.
-          anchorLead.current = newLead;
+          // Pin this lead so that even if a later full-refresh returns a stale
+          // list (DB replica lag), it — and every other lead bought this
+          // session — stays visible.
+          anchors.current.set(newLead.purchase_id, newLead);
           // Immediately surface in the list
           setLeads((prev) => {
             const exists = prev.some((l) => l.purchase_id === awaitPurchaseId);
             if (exists) return prev;
             return [newLead, ...prev];
           });
-          // Silently refresh — load() will respect anchorLead if needed
+          // Silently refresh — load() merges in the session anchors if needed
           loadRef.current?.(true);
           return;
         }

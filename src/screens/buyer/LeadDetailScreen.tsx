@@ -800,6 +800,34 @@ export function LeadDetailScreen() {
           </View>
         )}
 
+        {/* ── Customer contact (revealed after unlock) ──── */}
+        {(lead.contact_name || lead.contact_email || lead.contact_phone) && (
+          <View style={[styles.section, { backgroundColor: Colors.panel, shadowColor: Colors.glowColor }]}>
+            <Text style={[styles.sectionTitle, { color: Colors.foreground }]}>👤  Customer Contact</Text>
+            {lead.contact_name && (
+              <Text style={[styles.description, { color: Colors.text }]}>
+                <Text style={{ color: Colors.muted }}>Name: </Text>{lead.contact_name}
+              </Text>
+            )}
+            {lead.contact_email && (
+              <Text
+                style={[styles.description, { color: Colors.accent }]}
+                onPress={() => Linking.openURL(`mailto:${lead.contact_email}`)}
+              >
+                <Text style={{ color: Colors.muted }}>Email: </Text>{lead.contact_email}
+              </Text>
+            )}
+            {lead.contact_phone && (
+              <Text
+                style={[styles.description, { color: Colors.accent }]}
+                onPress={() => Linking.openURL(`tel:${lead.contact_phone}`)}
+              >
+                <Text style={{ color: Colors.muted }}>Phone: </Text>{lead.contact_phone}
+              </Text>
+            )}
+          </View>
+        )}
+
         {/* ── Lead details (metadata fields) ──────────── */}
         {metaEntries.length > 0 && (
           <View style={[styles.section, { backgroundColor: Colors.panel, shadowColor: Colors.glowColor }]}>

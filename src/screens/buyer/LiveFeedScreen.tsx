@@ -112,10 +112,10 @@ export function LiveFeedScreen() {
   applyHighlightRef.current = (leadId: string) => {
     if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
     setHighlightedId(leadId);
-    // Turn OFF the "My Matches" filter so a notified lead is never hidden —
-    // dispatch notifies by area/radius, which is looser than the feed's
-    // category/state match. Without this the highlighted card won't render.
-    setShowMyMatches(false);
+    // NOTE: we no longer force "My Matches" off here. A notified lead now carries
+    // the server `is_match` flag (same logic as the alert engine), so it appears
+    // under My Matches on its own — flipping the toggle used to silently reset the
+    // user's filter choice and leave it stuck on All Leads.
     highlightScrolledRef.current = null; // allow scroll to re-fire for this ID
     load(false, buyerLocation ?? undefined);
     highlightTimerRef.current = setTimeout(() => setHighlightedId(null), 5 * 60 * 1000);
