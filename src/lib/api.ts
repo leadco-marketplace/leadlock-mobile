@@ -306,6 +306,36 @@ export const phoneVerifyApi = {
     }),
 };
 
+// ── Onboarding ─────────────────────────────────────────────────────────────
+// Same endpoint the web /onboarding flow uses: saves profile fields, marks
+// onboarding_complete=true, and upserts contractor_preferences.
+export const onboardingApi = {
+  complete: (body: {
+    firstName:         string;
+    lastName:          string;
+    companyName?:      string;
+    phone:             string;
+    serviceCategories: string[];
+    states:            string[];
+    cities:            string[];
+    areaNames:         string[];
+  }) =>
+    request<{ ok: boolean }>('/api/onboarding/complete', {
+      method: 'POST', body: JSON.stringify(body),
+    }),
+};
+
+// ── Wallet deposits ────────────────────────────────────────────────────────
+// Routes through /api/wallet/deposit (ACH + Cash App intro window) — same
+// endpoint the Account screen uses. mobile:true → checkout redirects back
+// into the app via leadco:// deep links.
+export const walletApi = {
+  depositCheckout: (amountCents: number) =>
+    request<{ checkoutUrl: string }>('/api/wallet/deposit', {
+      method: 'POST', body: JSON.stringify({ amountCents, mobile: true }),
+    }),
+};
+
 // ── Push token registration ────────────────────────────────────────────────
 export const pushApi = {
   register: (token: string, platform: string) =>

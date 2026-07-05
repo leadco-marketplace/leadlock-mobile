@@ -6,6 +6,7 @@ import { AuthNavigator }      from './AuthNavigator';
 import { BuyerNavigator }     from './BuyerNavigator';
 import { ProviderNavigator }  from './ProviderNavigator';
 import { AdminNavigator }     from './AdminNavigator';
+import { OnboardingScreen }   from '@/screens/onboarding/OnboardingScreen';
 import { Colors } from '@/theme';
 
 /**
@@ -66,6 +67,15 @@ export function AppNavigator() {
         <ActivityIndicator color={Colors.orange} size="large" />
       </View>
     );
+  }
+
+  // Buyers must finish onboarding (profile + verified phone + services +
+  // areas) before entering the app — mirrors the web /onboarding middleware
+  // gate. Rendered outside NavigationContainer: it's a single screen with
+  // no navigation of its own; when refreshProfile() picks up
+  // onboarding_complete=true this component re-renders into BuyerNavigator.
+  if (session && !isGuest && profile && profile.role === 'buyer' && !profile.onboarding_complete) {
+    return <OnboardingScreen />;
   }
 
   return (
