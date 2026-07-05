@@ -8,6 +8,8 @@ import { AlertsScreen }      from '@/screens/buyer/AlertsScreen';
 import { AccountScreen }     from '@/screens/shared/AccountScreen';
 import { LeadDetailScreen }  from '@/screens/buyer/LeadDetailScreen';
 import { AreaPickerScreen }  from '@/screens/buyer/AreaPickerScreen';
+import { GuestLockedScreen } from '@/screens/shared/GuestLockedScreen';
+import { useAuth }           from '@/contexts/AuthContext';
 import { Colors, FontSize }  from '@/theme';
 
 const Tab   = createBottomTabNavigator();
@@ -25,8 +27,16 @@ function TabIcon({ emoji, focused }: { emoji: string; focused: boolean }) {
   );
 }
 
-/** The four-tab buyer bottom bar */
+// Guest teaser wrappers — Tab.Screen needs stable component references,
+// so define them once at module level rather than inline closures.
+const GuestMyLeads = () => <GuestLockedScreen tab="myleads" />;
+const GuestAlerts  = () => <GuestLockedScreen tab="alerts"  />;
+const GuestAccount = () => <GuestLockedScreen tab="account" />;
+
+/** The four-tab buyer bottom bar. Guests see all tabs, but My Leads /
+ *  Alerts / Account open teaser screens with a Sign Up CTA instead. */
 function BuyerTabs() {
+  const { isGuest } = useAuth();
   return (
     <Tab.Navigator
       screenOptions={{
@@ -64,7 +74,7 @@ function BuyerTabs() {
       />
       <Tab.Screen
         name="MyLeads"
-        component={MyLeadsScreen}
+        component={isGuest ? GuestMyLeads : MyLeadsScreen}
         options={{
           title: 'My Leads',
           tabBarIcon: ({ focused }) => <TabIcon emoji="🔓" focused={focused} />,
@@ -72,7 +82,7 @@ function BuyerTabs() {
       />
       <Tab.Screen
         name="Alerts"
-        component={AlertsScreen}
+        component={isGuest ? GuestAlerts : AlertsScreen}
         options={{
           title: 'Alerts',
           tabBarIcon: ({ focused }) => <TabIcon emoji="🔔" focused={focused} />,
@@ -80,7 +90,7 @@ function BuyerTabs() {
       />
       <Tab.Screen
         name="Account"
-        component={AccountScreen}
+        component={isGuest ? GuestAccount : AccountScreen}
         options={{
           title: 'Account',
           tabBarIcon: ({ focused }) => <TabIcon emoji="👤" focused={focused} />,

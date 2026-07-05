@@ -35,7 +35,7 @@ function matchesPreferences(lead: Lead, prefs: Preference[]): boolean {
 }
 
 export function LiveFeedScreen() {
-  const { profile, refreshProfile, isGuest, signOut } = useAuth();
+  const { profile, refreshProfile, isGuest, signOut, exitGuestToSignup } = useAuth();
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const navigation  = useNavigation<any>();
   const route       = useRoute<RouteProp<{ LiveFeed: LiveFeedRouteParams }, 'LiveFeed'>>();
@@ -241,7 +241,15 @@ export function LiveFeedScreen() {
   const renderItem = useCallback(({ item }: { item: Lead }) => (
     <LeadCard
       lead={item}
-      onUnlock={isGuest || profile?.role === 'admin' || item.status === 'sold' ? undefined : () => handleUnlock(item)}
+      // Guests see the unlock button too — tapping it exits guest mode
+      // straight to the Signup page (any action requires an account).
+      onUnlock={
+        profile?.role === 'admin' || item.status === 'sold'
+          ? undefined
+          : isGuest
+            ? () => exitGuestToSignup()
+            : () => handleUnlock(item)
+      }
       unlocking={unlocking === item.id}
       highlighted={highlightedId === item.id}
     />
@@ -462,11 +470,11 @@ export function LiveFeedScreen() {
       {isGuest && (
         <TouchableOpacity
           style={styles.guestBanner}
-          onPress={() => { signOut(); }}
+          onPress={() => { exitGuestToSignup(); }}
           activeOpacity={0.8}
         >
           <Text style={styles.guestBannerText}>
-            👋 Browsing as guest — <Text style={{ fontWeight: '700', textDecorationLine: 'underline' }}>Sign in to unlock leads</Text>
+            👋 Browsing as guest — <Text style={{ fontWeight: '700', textDecorationLine: 'underline' }}>Sign up free to unlock leads</Text>
           </Text>
         </TouchableOpacity>
       )}

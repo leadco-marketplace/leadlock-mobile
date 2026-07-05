@@ -9,10 +9,15 @@ type AuthContextValue = {
   profile:  Profile | null;
   loading:  boolean;
   isGuest:  boolean;
+  /** Which auth screen to land on when logged out — 'Signup' after a guest
+   *  taps an action (unlock, banner), 'Login' otherwise. */
+  authStart: 'Login' | 'Signup';
   signIn:   (email: string, password: string) => Promise<string | null>;
   signUp:   (email: string, password: string, role: 'buyer' | 'provider') => Promise<string | null>;
   signOut:  () => Promise<void>;
   signInAsGuest: () => void;
+  /** Guest tapped an action — exit guest mode straight into the Signup page. */
+  exitGuestToSignup: () => void;
   refreshProfile: () => Promise<void>;
 };
 
@@ -23,6 +28,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile]   = useState<Profile | null>(null);
   const [loading, setLoading]   = useState(true);
   const [isGuest, setIsGuest]   = useState(false);
+  const [authStart, setAuthStart] = useState<'Login' | 'Signup'>('Login');
 
   async function loadProfile() {
     try {
@@ -81,13 +87,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   function signInAsGuest() {
+    setAuthStart('Login');
     setIsGuest(true);
+  }
+
+  function exitGuestToSignup() {
+    setAuthStart('Signup');
+    setIsGuest(false);
   }
 
   async function signOut() {
     await supabase.auth.signOut();
     setProfile(null);
     setIsGuest(false);
+    setAuthStart('Login');
   }
 
   async function refreshProfile() {
@@ -101,10 +114,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       profile,
       loading,
       isGuest,
+      authStart,
       signIn,
       signUp,
       signOut,
       signInAsGuest,
+      exitGuestToSignup,
       refreshProfile,
     }}>
       {children}

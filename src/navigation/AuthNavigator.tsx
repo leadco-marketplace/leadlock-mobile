@@ -13,9 +13,10 @@ export type AuthStackParamList = {
 
 const Stack = createNativeStackNavigator<AuthStackParamList>();
 
-export function AuthNavigator() {
+export function AuthNavigator({ initialRouteName = 'Login' }: { initialRouteName?: 'Login' | 'Signup' }) {
   return (
     <Stack.Navigator
+      initialRouteName={initialRouteName}
       screenOptions={{
         headerShown:   false,
         contentStyle:  { backgroundColor: Colors.bg },
@@ -24,6 +25,7 @@ export function AuthNavigator() {
     >
       <Stack.Screen name="Login"          component={LoginScreen}  />
       <Stack.Screen name="Signup"         component={SignupScreen} />
+      <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
     </Stack.Navigator>
   );
 }

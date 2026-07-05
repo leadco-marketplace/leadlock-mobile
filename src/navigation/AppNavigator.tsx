@@ -59,7 +59,7 @@ const linking: LinkingOptions<any> = {
 };
 
 export function AppNavigator() {
-  const { session, profile, loading, isGuest } = useAuth();
+  const { session, profile, loading, isGuest, authStart } = useAuth();
 
   if (loading) {
     return (
@@ -81,7 +81,7 @@ export function AppNavigator() {
   return (
     <NavigationContainer ref={navigationRef} theme={NavTheme} linking={linking}>
       {!session && !isGuest
-        ? <AuthNavigator />
+        ? <AuthNavigator initialRouteName={authStart} />
         : isGuest
           ? <BuyerNavigator />
           : profile?.role === 'admin'
