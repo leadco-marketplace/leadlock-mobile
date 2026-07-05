@@ -92,13 +92,14 @@ export function OnboardingScreen() {
     return Array.from(map.entries());
   }, [categories]);
 
+  // Suggestions appear only while the user is typing — no full browse list.
   const areaSuggestions = useMemo(() => {
     const q = areaQuery.trim().toLowerCase();
-    const avail = areas.filter(a => !selectedAreas.includes(a.name));
-    const list = q.length === 0
-      ? avail
-      : avail.filter(a => a.name.toLowerCase().includes(q));
-    return list.sort((a, b) => a.name.localeCompare(b.name)).slice(0, 25);
+    if (q.length === 0) return [];
+    return areas
+      .filter(a => !selectedAreas.includes(a.name) && a.name.toLowerCase().includes(q))
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .slice(0, 25);
   }, [areas, areaQuery, selectedAreas]);
 
   // ── Phone helpers ──────────────────────────────────────────────────────
@@ -156,6 +157,7 @@ export function OnboardingScreen() {
         states:            [...new Set(picked.map(a => a.state).filter(Boolean))],
         cities:            [...new Set(picked.map(a => a.city).filter(Boolean))],
         areaNames:         picked.map(a => a.name),
+        areaIds:           picked.map(a => a.id),
       });
       setSaved(true);
       return true;
@@ -406,23 +408,28 @@ export function OnboardingScreen() {
             autoCorrect={false}
           />
 
-          <ScrollView style={styles.suggestionBox} nestedScrollEnabled keyboardShouldPersistTaps="handled">
-            {areaSuggestions.length === 0 && (
-              <Text style={[styles.cardHint, { padding: Spacing.md }]}>
-                {areaQuery.trim() ? `No areas matching "${areaQuery}"` : 'No more areas to add'}
-              </Text>
-            )}
-            {areaSuggestions.map(a => (
-              <TouchableOpacity
-                key={a.id}
-                style={styles.suggestionRow}
-                onPress={() => { setSelectedAreas(p => [...p, a.name]); setAreaQuery(''); }}
-              >
-                <Text style={{ color: Colors.foreground, fontSize: FontSize.sm }}>{a.name}</Text>
-                <Text style={{ color: Colors.muted, fontSize: FontSize.xs }}>{a.state}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+          {areaQuery.trim().length > 0 && (
+            <ScrollView style={styles.suggestionBox} nestedScrollEnabled keyboardShouldPersistTaps="handled">
+              {areaSuggestions.length === 0 && (
+                <Text style={[styles.cardHint, { padding: Spacing.md }]}>
+                  No areas matching &quot;{areaQuery}&quot;
+                </Text>
+              )}
+              {areaSuggestions.map(a => (
+                <TouchableOpacity
+                  key={a.id}
+                  style={styles.suggestionRow}
+                  onPress={() => { setSelectedAreas(p => [...p, a.name]); setAreaQuery(''); }}
+                >
+                  <Text style={{ color: Colors.foreground, fontSize: FontSize.sm }}>{a.name}</Text>
+                  <Text style={{ color: Colors.muted, fontSize: FontSize.xs }}>{a.state}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          )}
+          {selectedAreas.length === 0 && areaQuery.trim().length === 0 && (
+            <Text style={styles.cardHint}>Start typing above to find your areas.</Text>
+          )}
         </View>
       )}
 

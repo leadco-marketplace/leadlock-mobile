@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { View, Text, TextInput, StyleSheet, TextInputProps, TouchableOpacity } from 'react-native';
 import { Colors, Radius, FontSize, Spacing } from '@/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface InputProps extends TextInputProps {
   label?: string;
@@ -10,6 +11,11 @@ interface InputProps extends TextInputProps {
 
 export function Input({ label, error, secureToggle, style, ...props }: InputProps) {
   const [showPassword, setShowPassword] = useState(false);
+  // Rebuild styles when the theme changes — applyTheme() mutates Colors, so a
+  // module-level StyleSheet would freeze the import-time (dark) palette and
+  // render dark fields on light-mode screens.
+  const { mode } = useTheme();
+  const styles = useMemo(makeStyles, [mode]);
 
   return (
     <View style={styles.container}>
@@ -33,7 +39,7 @@ export function Input({ label, error, secureToggle, style, ...props }: InputProp
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = () => StyleSheet.create({
   container: { gap: 6 },
   label: {
     fontSize:   FontSize.xs,

@@ -319,6 +319,7 @@ export const onboardingApi = {
     states:            string[];
     cities:            string[];
     areaNames:         string[];
+    areaIds:           string[];  // preferred by the server — exact area rows
   }) =>
     request<{ ok: boolean }>('/api/onboarding/complete', {
       method: 'POST', body: JSON.stringify(body),
