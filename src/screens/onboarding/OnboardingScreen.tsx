@@ -6,6 +6,7 @@ import { ScreenShell } from '@/components/ScreenShell';
 import { Input } from '@/components/Input';
 import { Button } from '@/components/Button';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import {
   categoriesApi, areasApi, phoneVerifyApi, onboardingApi, walletApi,
   ServiceCategory, ServiceArea,
@@ -35,6 +36,13 @@ const GREEN = '#4ade80';
 
 export function OnboardingScreen() {
   const { user, profile, refreshProfile } = useAuth();
+
+  // Styles must be rebuilt when the theme changes: applyTheme() mutates the
+  // Colors object, so a module-level StyleSheet.create would freeze whatever
+  // theme was active at import time (dark) — causing dark cards + invisible
+  // text in light mode.
+  const { mode } = useTheme();
+  const styles = useMemo(makeStyles, [mode]);
 
   const [step,  setStep]  = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -505,7 +513,7 @@ export function OnboardingScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = () => StyleSheet.create({
   stepBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
