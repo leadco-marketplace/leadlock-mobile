@@ -10,7 +10,7 @@ import { Colors, FontSize, Spacing, Radius, Shadow } from '@/theme';
 import { useTheme } from '@/contexts/ThemeContext';
 import Constants from 'expo-constants';
 import { supabase } from '@/lib/supabase';
-import { Linking, Alert } from 'react-native';
+import { Linking, Alert, Share } from 'react-native';
 
 const BASE = (Constants.expoConfig?.extra?.apiBaseUrl as string) ?? 'https://leadcomarketplace.com';
 
@@ -136,7 +136,42 @@ function CallPanel({ purchaseId }: { purchaseId: string }) {
       </View>
       <TouchableOpacity
         style={callStyles.callBtn}
-        onPress={() => Linking.openURL(`tel:${pinData.dialIn}`)}
+        onPress={() => {
+          // Let the buyer choose HOW to place the call. The dial-in bridge is
+          // a regular US number, so internet-calling apps (Skype, Google
+          // Voice) can reach it from anywhere in the world — essential for
+          // buyers travelling or based outside the US.
+          const num = pinData.dialIn;
+          Alert.alert(
+            'Call Customer',
+            `Dial ${formatPhone(num)}, then enter extension ${pinData.pin}.`,
+            [
+              {
+                text: '📱 Phone app',
+                onPress: () => Linking.openURL(`tel:${num}`).catch(() => {}),
+              },
+              {
+                text: '💬 Skype',
+                onPress: () =>
+                  Linking.openURL(`skype:${num}?call`).catch(() =>
+                    Alert.alert('Skype not installed', 'Install Skype, or use another option.')
+                  ),
+              },
+              {
+                text: '🌐 Google Voice',
+                onPress: () =>
+                  Linking.openURL(
+                    `https://voice.google.com/u/0/calls?a=nc,${encodeURIComponent(num)}`
+                  ).catch(() => {}),
+              },
+              {
+                text: '📋 Share / copy number',
+                onPress: () => Share.share({ message: `${num} (extension ${pinData.pin})` }).catch(() => {}),
+              },
+              { text: 'Cancel', style: 'cancel' },
+            ]
+          );
+        }}
         activeOpacity={0.8}
       >
         <Text style={callStyles.callBtnText}>📞  Call Customer Now</Text>

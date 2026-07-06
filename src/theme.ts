@@ -6,12 +6,14 @@ export type ThemeMode = 'dark' | 'light' | 'inner-light';
 // Near-black navy backgrounds, sapphire blue as the primary action color.
 // Inspired by Wolt's clean premium dark UI.
 const DarkColors = {
-  bg:      '#040c1e',   // deepest navy — almost black with a blue soul
-  panel:   '#081630',   // deep sapphire card surface
-  panel2:  '#0d1d3a',   // inner card / nested surface
-  panel3:  '#122248',   // subtle tertiary surface
-  border:  '#182e52',   // quiet border
-  border2: '#1f3a68',   // visible border
+  // 2026-07 refresh: navy family lightened 10% (OKLab mix toward white).
+  // Previous values in git history.
+  bg:      '#162031',   // deepest navy — almost black with a blue soul
+  panel:   '#1c2a43',   // deep sapphire card surface
+  panel2:  '#21304c',   // inner card / nested surface
+  panel3:  '#253659',   // subtle tertiary surface
+  border:  '#2c4162',   // quiet border
+  border2: '#334c77',   // visible border
   borderOrange: 'rgba(59,130,246,0.70)',  // sapphire-tinted accent border
   glowColor: '#3b82f6',
   glowBg:   'rgba(59,130,246,0.15)',      // pill/capsule background tint
@@ -55,8 +57,8 @@ const InnerLightColors = {
   textSecondary: '#475569',
   muted:         '#94a3b8',
   placeholder:   '#94a3b8',
-  // Keep bg deep navy
-  bg: '#040c1e',
+  // Keep bg deep navy (10%-lightened family, matches DarkColors.bg)
+  bg: '#162031',
   // Header text stays light — it renders on the dark navy bg, not inside a card.
   headerText:    '#e8f4ff',
   headerSubText: '#8ba3c7',
