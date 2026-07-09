@@ -73,7 +73,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password, role }),
+          // termsAccepted: the Signup screen gates this call behind the
+          // required Terms of Use checkbox, so acceptance is always true here.
+          body: JSON.stringify({ email, password, role, termsAccepted: true }),
         }
       );
       const body = await res.json();

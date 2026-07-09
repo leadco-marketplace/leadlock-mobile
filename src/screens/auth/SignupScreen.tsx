@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, KeyboardAvoidingView,
-  Platform, ScrollView,
+  Platform, ScrollView, Linking,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth }  from '@/contexts/AuthContext';
@@ -19,10 +19,16 @@ export function SignupScreen({ navigation }: Props) {
   const [role,     setRole]     = useState<'buyer' | 'provider'>('buyer');
   const [loading,  setLoading]  = useState(false);
   const [error,    setError]    = useState<string | null>(null);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+
+  const termsUrl = role === 'provider'
+    ? 'https://www.leadcomarketplace.com/terms/lead-provider'
+    : 'https://www.leadcomarketplace.com/terms/service-provider';
 
   async function handleSignup() {
     if (!email.trim() || !password) { setError('Please fill in all fields.'); return; }
     if (password.length < 8)        { setError('Password must be at least 8 characters.'); return; }
+    if (!termsAccepted)             { setError('Please accept the Terms of Use to continue.'); return; }
     setError(null);
     setLoading(true);
     const err = await signUp(email.trim().toLowerCase(), password, role);
@@ -86,6 +92,26 @@ export function SignupScreen({ navigation }: Props) {
               secureToggle
             />
           </View>
+
+          {/* Terms of Use acceptance — required, role-specific document */}
+          <TouchableOpacity
+            style={styles.termsRow}
+            onPress={() => setTermsAccepted(v => !v)}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.checkbox, termsAccepted && styles.checkboxOn]}>
+              {termsAccepted && <Text style={styles.checkmark}>✓</Text>}
+            </View>
+            <Text style={styles.termsRowText}>
+              I have read and agree to the{' '}
+              <Text
+                style={styles.termsLink}
+                onPress={() => Linking.openURL(termsUrl)}
+              >
+                {role === 'provider' ? 'Lead Provider' : 'Service Provider'} Terms of Use
+              </Text>
+            </Text>
+          </TouchableOpacity>
 
           {error && (
             <View style={styles.errorBox}>
@@ -155,6 +181,20 @@ const styles = StyleSheet.create({
   },
   errorText: { fontSize: FontSize.sm, color: Colors.danger },
   terms: { fontSize: FontSize.xs, color: Colors.muted, textAlign: 'center', lineHeight: 16 },
+  termsRow: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm,
+    backgroundColor: Colors.panel2, borderWidth: 1, borderColor: Colors.border,
+    borderRadius: Radius.md, padding: Spacing.md,
+  },
+  checkbox: {
+    width: 20, height: 20, borderRadius: 5, borderWidth: 1.5,
+    borderColor: Colors.border2, alignItems: 'center', justifyContent: 'center',
+    marginTop: 1,
+  },
+  checkboxOn: { backgroundColor: Colors.accent, borderColor: Colors.accent },
+  checkmark:  { color: '#fff', fontSize: 13, fontWeight: '700', lineHeight: 15 },
+  termsRowText: { flex: 1, fontSize: FontSize.xs, color: Colors.text, lineHeight: 17 },
+  termsLink: { color: Colors.accent, textDecorationLine: 'underline', fontWeight: '600' },
   footer: { flexDirection: 'row', justifyContent: 'center', flexWrap: 'wrap' },
   footerText: { fontSize: FontSize.sm, color: Colors.textSecondary },
 });
