@@ -241,6 +241,7 @@ export function OnboardingScreen() {
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Your Profile</Text>
           <Text style={styles.cardHint}>This info will be visible to homeowners after you unlock a lead.</Text>
+          <Text style={styles.cardHint}>Use your real name — payouts and account verification can only be completed for a matching verified identity.</Text>
 
           <View style={styles.row}>
             <View style={{ flex: 1 }}>
