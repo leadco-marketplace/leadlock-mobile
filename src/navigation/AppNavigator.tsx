@@ -1,4 +1,4 @@
-import React, { createRef } from 'react';
+import React, { createRef, useEffect } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { NavigationContainer, DefaultTheme, LinkingOptions, NavigationContainerRef } from '@react-navigation/native';
 import { useAuth }            from '@/contexts/AuthContext';
@@ -7,6 +7,7 @@ import { BuyerNavigator }     from './BuyerNavigator';
 import { ProviderNavigator }  from './ProviderNavigator';
 import { AdminNavigator }     from './AdminNavigator';
 import { OnboardingScreen }   from '@/screens/onboarding/OnboardingScreen';
+import { useTheme } from '@/contexts/ThemeContext';
 import { Colors } from '@/theme';
 
 /**
@@ -60,6 +61,20 @@ const linking: LinkingOptions<any> = {
 
 export function AppNavigator() {
   const { session, profile, loading, isGuest, authStart } = useAuth();
+  const { setPreDashboard } = useTheme();
+
+  // Pre-dashboard surfaces (launch, login, signup, onboarding) are always
+  // DARK. The user's saved theme preference only kicks in once they reach
+  // the app proper (guest feed counts as "in the app").
+  const preDashboard =
+    loading ||
+    (!session && !isGuest) ||
+    (!!session && !isGuest && profile?.role === 'buyer' && !profile?.onboarding_complete);
+
+  useEffect(() => {
+    setPreDashboard(preDashboard);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preDashboard]);
 
   if (loading) {
     return (
