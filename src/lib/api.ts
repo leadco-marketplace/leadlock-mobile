@@ -17,6 +17,13 @@ async function request<T>(path: string, opts?: RequestInit): Promise<T> {
   const headers = await authHeaders();
   // Force a network trip on every call — prevents iOS NSURLSession from
   // serving a stale cached response (e.g. old My Leads list right after a purchase).
+  // Cache-Control alone is NOT enough on iOS: every GET also gets a unique
+  // ?_t= timestamp param. (My Submissions was stuck on a cached empty list
+  // forever because only /api/my-leads had the buster.)
+  const method = (opts?.method ?? 'GET').toUpperCase();
+  if (method === 'GET') {
+    path += (path.includes('?') ? '&' : '?') + `_t=${Date.now()}`;
+  }
   const res = await fetch(`${BASE}${path}`, {
     ...opts,
     headers: {
