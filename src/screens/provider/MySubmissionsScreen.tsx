@@ -155,16 +155,21 @@ export function MySubmissionsScreen({ navigation }: any) {
   const [soldCount,  setSoldCount]  = useState(0);
   const [loading,    setLoading]    = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadError,  setLoadError]  = useState<string | null>(null);
   const [editTarget, setEditTarget] = useState<ProviderLead | null>(null);
 
-  async function load(silent = false) {
-    if (!silent) setLoading(prev => prev);   // keep existing loading state on focus refresh
+  async function load() {
     try {
       const data = await providerApi.getSubmissions();
-      setLeads(data.leads);
-      setEarnings(data.totalEarningsCents);
-      setSoldCount(data.soldCount);
-    } catch {}
+      setLeads(data.leads ?? []);
+      setEarnings(data.totalEarningsCents ?? 0);
+      setSoldCount(data.soldCount ?? 0);
+      setLoadError(null);
+    } catch (e: any) {
+      // NEVER swallow this silently — an auth/network/server failure used to
+      // render as a fake "No leads yet", hiding real problems.
+      setLoadError(e?.message ?? 'Network error');
+    }
     finally { setLoading(false); setRefreshing(false); }
   }
 
@@ -259,11 +264,20 @@ export function MySubmissionsScreen({ navigation }: any) {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={leads.length === 0 ? { flex: 1 } : { paddingBottom: Spacing.xxl }}
           ListEmptyComponent={
-            <View style={{ flex: 1, alignItems: 'center', paddingTop: 60, gap: Spacing.sm }}>
-              <Text style={{ fontSize: 40 }}>📋</Text>
-              <Text style={{ fontSize: FontSize.md, fontWeight: '600', color: Colors.foreground }}>No leads yet</Text>
-              <Text style={{ fontSize: FontSize.sm, color: Colors.muted }}>Tap "+ Submit Lead" to get started.</Text>
-            </View>
+            loadError ? (
+              <View style={{ flex: 1, alignItems: 'center', paddingTop: 60, gap: Spacing.sm, paddingHorizontal: Spacing.lg }}>
+                <Text style={{ fontSize: 40 }}>⚠️</Text>
+                <Text style={{ fontSize: FontSize.md, fontWeight: '600', color: Colors.foreground }}>Couldn't Load Your Leads</Text>
+                <Text style={{ fontSize: FontSize.sm, color: Colors.muted, textAlign: 'center' }}>{loadError}</Text>
+                <Button label="Retry" onPress={() => { setLoading(true); load(); }} style={{ marginTop: Spacing.sm }} />
+              </View>
+            ) : (
+              <View style={{ flex: 1, alignItems: 'center', paddingTop: 60, gap: Spacing.sm }}>
+                <Text style={{ fontSize: 40 }}>📋</Text>
+                <Text style={{ fontSize: FontSize.md, fontWeight: '600', color: Colors.foreground }}>No leads yet</Text>
+                <Text style={{ fontSize: FontSize.sm, color: Colors.muted }}>Tap "+ Submit Lead" to get started.</Text>
+              </View>
+            )
           }
         />
       </ScreenShell>
