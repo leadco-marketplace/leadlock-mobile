@@ -13,6 +13,7 @@
  *  • auto_publish / review flow based on category config
  */
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { getTagsForCategory } from '../../lib/leadTags';
 import {
   View,
@@ -414,7 +415,10 @@ function CategoryModal({ visible, categories, onSelect, onClose }: CategoryModal
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-      <View style={[cat.container, { backgroundColor: Colors.bg }]}>
+      {/* SafeAreaView: without it the header renders under the iPhone status
+          bar/notch — the Back button ended up beneath the system clock and
+          was untappable. edges=['top'] matches ScreenShell. */}
+      <SafeAreaView edges={['top']} style={[cat.container, { backgroundColor: Colors.bg }]}>
         {/* Header */}
         <View style={cat.header}>
           <TouchableOpacity onPress={onClose} style={cat.backBtn}>
@@ -467,14 +471,14 @@ function CategoryModal({ visible, categories, onSelect, onClose }: CategoryModal
             </View>
           }
         />
-      </View>
+      </SafeAreaView>
     </Modal>
   );
 }
 
 const cat = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bg },
-  header:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing.md, paddingTop: Spacing.xl, paddingBottom: Spacing.md },
+  header:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing.md, paddingTop: Spacing.sm, paddingBottom: Spacing.md },
   backBtn:   { width: 60 },
   backText:  { fontSize: FontSize.sm, color: Colors.orange, fontWeight: '600' },
   headerTitle: { fontSize: FontSize.md, fontWeight: '700', color: Colors.foreground },
