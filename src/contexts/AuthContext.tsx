@@ -32,26 +32,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isGuest, setIsGuest]   = useState(false);
   const [authStart, setAuthStart] = useState<'Login' | 'Signup'>('Login');
 
-  async function loadProfile() {
+  async function loadProfile(): Promise<Profile | null> {
     try {
       const p = await profileApi.get();
       setProfile(p);
+      return p;
     } catch {
       setProfile(null);
+      return null;
     }
   }
 
   useEffect(() => {
-    // COLD-START POLICY: the app always opens at the Login page. Any session
-    // persisted from a previous run is cleared when the process starts fresh.
-    // (Backgrounding the app does NOT re-run this — only a full close/reopen.)
-    // scope:'local' clears only THIS device — it never logs the user out of
-    // the website or other devices.
+    // COLD-START POLICY:
+    //  • Logged-in, fully onboarded account → session persists, open the app
+    //    (live feed). Push-alert taps keep working without re-login.
+    //  • Logged out → Login page.
+    //  • HALF-FINISHED signup (buyer who never completed onboarding) → sign
+    //    out (this device only) so reopening never lands on the onboarding
+    //    form uninvited; the user logs in and resumes onboarding.
     supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session) {
-        try { await supabase.auth.signOut({ scope: 'local' }); } catch { /* offline — local storage is still cleared */ }
+      if (!session) { setLoading(false); return; }
+      setSession(session);
+      const p = await loadProfile();
+      if (p && p.role === 'buyer' && !p.onboarding_complete) {
+        try { await supabase.auth.signOut({ scope: 'local' }); } catch { /* offline — local session still cleared */ }
+        setSession(null);
+        setProfile(null);
       }
-      setSession(null);
       setLoading(false);
     });
 
