@@ -2,7 +2,8 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ThemeMode, applyTheme, Colors, DarkColors, LightColors, InnerLightColors } from '@/theme';
 
-const STORAGE_KEY = '@leadco/theme';
+export const THEME_STORAGE_KEY = '@leadco/theme';
+const STORAGE_KEY = THEME_STORAGE_KEY;
 
 interface ThemeContextValue {
   mode: ThemeMode;

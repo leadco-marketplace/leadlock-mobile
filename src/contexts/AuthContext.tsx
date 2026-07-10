@@ -1,7 +1,9 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '@/lib/supabase';
 import { Profile, profileApi } from '@/lib/api';
+import { THEME_STORAGE_KEY } from '@/contexts/ThemeContext';
 
 type AuthContextValue = {
   session:  Session | null;
@@ -40,11 +42,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   useEffect(() => {
-    // Initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      if (session) loadProfile().finally(() => setLoading(false));
-      else         setLoading(false);
+    // COLD-START POLICY: the app always opens at the Login page. Any session
+    // persisted from a previous run is cleared when the process starts fresh.
+    // (Backgrounding the app does NOT re-run this — only a full close/reopen.)
+    // scope:'local' clears only THIS device — it never logs the user out of
+    // the website or other devices.
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session) {
+        try { await supabase.auth.signOut({ scope: 'local' }); } catch { /* offline — local storage is still cleared */ }
+      }
+      setSession(null);
+      setLoading(false);
     });
 
     // Auth state changes
@@ -80,6 +88,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       );
       const body = await res.json();
       if (!res.ok) return body.error ?? 'Signup failed';
+      // A brand-new account always starts in DARK mode: clear any theme
+      // preference a previous user/account left saved on this device.
+      AsyncStorage.removeItem(THEME_STORAGE_KEY).catch(() => {});
       // Sign in immediately after
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       return error?.message ?? null;
