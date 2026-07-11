@@ -457,6 +457,7 @@ const styles = StyleSheet.create({
     gap:            6,
   },
   jobTypeMain: {
+    textTransform: 'capitalize',
     flex:          1,
     fontSize:      15,
     fontFamily:    FONT_BOLD,

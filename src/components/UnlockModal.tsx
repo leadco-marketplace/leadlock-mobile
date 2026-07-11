@@ -167,6 +167,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   subtitle: {
+    textTransform: 'capitalize',
     fontSize: FontSize.sm,
     marginTop: 2,
   },

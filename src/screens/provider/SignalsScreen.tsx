@@ -217,7 +217,7 @@ const cardStyles = StyleSheet.create({
   },
   leadSection:  { gap: 2 },
   category:     { fontSize: FontSize.base, fontWeight: '700' },
-  jobType:      { fontSize: FontSize.sm,   color: '#8ba3c7'  },
+  jobType:      { fontSize: FontSize.sm,   color: '#8ba3c7', textTransform: 'capitalize' },
   location:     { fontSize: FontSize.xs,   color: '#6080a8'  },
   contact:      { fontSize: FontSize.xs,   marginTop: 3      },
   badgeRow:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },

@@ -20,7 +20,7 @@ const CONTENT: Record<TabKey, {
   myleads: {
     emoji:    '🔓',
     title:    'My Leads',
-    headline: 'Your unlocked leads live here',
+    headline: 'Your Unlocked Leads Live Here',
     desc:     'Every lead you purchase appears here with everything you need to win the job:',
     bullets:  [
       "Customer's name, phone, and address",
@@ -31,7 +31,7 @@ const CONTENT: Record<TabKey, {
   alerts: {
     emoji:    '🔔',
     title:    'Alerts',
-    headline: 'Never miss a lead again',
+    headline: 'Never Miss A Lead Again',
     desc:     'Tell us what you do and where you work — we handle the rest:',
     bullets:  [
       'Pick your services and coverage areas',
@@ -42,7 +42,7 @@ const CONTENT: Record<TabKey, {
   account: {
     emoji:    '👤',
     title:    'Account',
-    headline: 'Your account & wallet',
+    headline: 'Your Account & Wallet',
     desc:     'Everything about your business in one place:',
     bullets:  [
       'Credits wallet — deposit once, unlock leads instantly',

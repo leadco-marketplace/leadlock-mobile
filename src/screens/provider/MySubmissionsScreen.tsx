@@ -380,7 +380,7 @@ const styles = StyleSheet.create({
   },
   cardRow:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   category:   { fontSize: FontSize.base, fontWeight: '700', color: Colors.foreground },
-  jobType:    { fontSize: FontSize.xs, color: Colors.textSecondary },
+  jobType:    { fontSize: FontSize.xs, color: Colors.textSecondary, textTransform: 'capitalize' },
   location:   { fontSize: FontSize.xs, color: Colors.muted },
   dateText:   { fontSize: FontSize.xs - 1, color: Colors.muted },
   badge:      { paddingHorizontal: 8, paddingVertical: 3, borderRadius: Radius.sm, borderWidth: 1 },

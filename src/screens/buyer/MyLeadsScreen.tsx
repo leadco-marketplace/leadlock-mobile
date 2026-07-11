@@ -245,7 +245,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   category:     { fontSize: FontSize.base, fontWeight: '700', color: Colors.foreground },
-  jobType:      { fontSize: FontSize.xs,   color: Colors.textSecondary, marginTop: 2 },
+  jobType:      { fontSize: FontSize.xs,   color: Colors.textSecondary, marginTop: 2, textTransform: 'capitalize' },
   location:     { fontSize: FontSize.xs,   color: Colors.muted },
   price:        { fontSize: FontSize.md,   fontWeight: '700', color: Colors.foreground, textAlign: 'right', fontVariant: ['tabular-nums'] },
   unlockedLabel:{ fontSize: FontSize.xs,   color: Colors.accent, textAlign: 'right', marginTop: 2 },
