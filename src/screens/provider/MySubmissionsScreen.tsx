@@ -30,25 +30,56 @@ const STATUS_LABELS: Record<string, string> = {
   sold: 'Sold ✓', archived: 'Archived', invalid: 'Invalid',
 };
 
-interface EditPriceSheetProps {
+// AI call-analysis outcome → provider-facing label + color
+const OUTCOME_META: Record<string, { label: string; color: string; bg: string }> = {
+  job_booked:            { label: '✓ Job Booked',        color: '#34d399', bg: 'rgba(52,211,153,0.12)' },
+  appointment_scheduled: { label: '📅 Appt Scheduled',   color: '#34d399', bg: 'rgba(52,211,153,0.10)' },
+  connected:             { label: '💬 Spoke To Customer', color: '#22d3ee', bg: 'rgba(34,211,238,0.10)' },
+  callback_requested:    { label: '↩︎ Callback Requested', color: '#fbbf24', bg: 'rgba(251,191,36,0.10)' },
+  declined:              { label: 'Not Interested',       color: '#94a3b8', bg: 'rgba(148,163,184,0.10)' },
+  voicemail:             { label: 'Voicemail',            color: '#94a3b8', bg: 'rgba(148,163,184,0.10)' },
+  no_answer:             { label: 'No Answer',            color: '#94a3b8', bg: 'rgba(148,163,184,0.10)' },
+};
+
+interface EditLeadSheetProps {
   lead: ProviderLead;
   onClose: () => void;
-  onSaved: (id: string, cents: number) => void;
+  onSaved: () => void;
 }
 
-function EditPriceSheet({ lead, onClose, onSaved }: EditPriceSheetProps) {
+/**
+ * Edit sheet: price (pre-sale only) + customer contact + description.
+ * Contact/description stay editable AFTER the lead is sold, so a wrong
+ * phone number can be corrected — the buyer is notified automatically.
+ */
+function EditLeadSheet({ lead, onClose, onSaved }: EditLeadSheetProps) {
   useTheme();
+  const priceEditable = ['draft', 'available'].includes(lead.status);
   const [dollars, setDollars] = useState((lead.price_cents / 100).toFixed(2));
+  const [name,    setName]    = useState(lead.customer_name  ?? '');
+  const [phone,   setPhone]   = useState(lead.customer_phone ?? '');
+  const [email,   setEmail]   = useState(lead.customer_email ?? '');
+  const [summary, setSummary] = useState(lead.public_summary ?? '');
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState<string | null>(null);
-  const newCents = Math.round(parseFloat(dollars || '0') * 100);
 
   async function save() {
-    if (!newCents || newCents <= 0) { setError('Enter a valid price.'); return; }
+    const newCents = Math.round(parseFloat(dollars || '0') * 100);
+    if (priceEditable && (!newCents || newCents <= 0)) { setError('Enter a valid price.'); return; }
+    if (!name.trim() && !phone.trim() && !email.trim()) {
+      setError('At least one customer contact (name, phone, or email) is required.');
+      return;
+    }
     setError(null); setLoading(true);
     try {
-      await providerApi.updatePrice(lead.id, newCents);
-      onSaved(lead.id, newCents);
+      await providerApi.updateDetails(lead.id, {
+        ...(priceEditable ? { price_cents: newCents } : {}),
+        customer_name:  name.trim()  || null,
+        customer_phone: phone.trim() || null,
+        customer_email: email.trim() || null,
+        public_summary: summary.trim() || null,
+      });
+      onSaved();
       onClose();
     } catch (e: any) {
       setError(e.message);
@@ -59,14 +90,20 @@ function EditPriceSheet({ lead, onClose, onSaved }: EditPriceSheetProps) {
   return (
     <View style={sheet.overlay}>
       <View style={[sheet.card, { backgroundColor: Colors.panel, borderColor: Colors.borderOrange }]}>
-        <Text style={[sheet.title, { color: Colors.foreground }]}>Update Price</Text>
+        <Text style={[sheet.title, { color: Colors.foreground }]}>Edit Lead Details</Text>
         <Text style={[sheet.sub, { color: Colors.muted }]}>{lead.service_category} — {lead.job_type}</Text>
-        <Input
-          label="Your asking price ($)"
-          value={dollars}
-          onChangeText={setDollars}
-          keyboardType="decimal-pad"
-        />
+        {priceEditable ? (
+          <Input label="Your asking price ($)" value={dollars} onChangeText={setDollars} keyboardType="decimal-pad" />
+        ) : (
+          <Text style={[sheet.sub, { color: Colors.muted }]}>
+            This lead is sold — the price is locked, but you can still correct the
+            customer's contact details. The buyer will be notified of the fix.
+          </Text>
+        )}
+        <Input label="Customer name"  value={name}  onChangeText={setName}  autoCapitalize="words" />
+        <Input label="Customer phone" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
+        <Input label="Customer email" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
+        <Input label="Job description" value={summary} onChangeText={setSummary} multiline />
         {error && <Text style={{ color: Colors.danger, fontSize: FontSize.sm }}>{error}</Text>}
         <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
           <Button label="Cancel" onPress={onClose} variant="secondary" style={{ flex: 1 }} />
@@ -128,6 +165,15 @@ function SubmissionCard({
           {dateStr && (
             <Text style={[styles.dateText, { color: Colors.muted }]}>{dateLabel} · {formatDate(dateStr)}</Text>
           )}
+
+          {/* AI call outcome — what happened when the buyer called */}
+          {lead.last_call_outcome && OUTCOME_META[lead.last_call_outcome] && (
+            <View style={[styles.outcomePill, { backgroundColor: OUTCOME_META[lead.last_call_outcome].bg, borderColor: OUTCOME_META[lead.last_call_outcome].color + '55' }]}>
+              <Text style={[styles.outcomeText, { color: OUTCOME_META[lead.last_call_outcome].color }]}>
+                Call Result: {OUTCOME_META[lead.last_call_outcome].label}
+              </Text>
+            </View>
+          )}
         </View>
 
         <View style={{ alignItems: 'flex-end', gap: 6 }}>
@@ -138,10 +184,14 @@ function SubmissionCard({
         </View>
       </View>
 
-      {canEditLead && (
+      {/* Edit Details is available on live AND sold leads (fix a wrong
+          number after the buyer reports it); Delete only pre-sale. */}
+      {(canEditLead || lead.status === 'sold') && (
         <View style={styles.actions}>
-          <Button label="Edit Price" onPress={onEdit} variant="secondary" style={{ flex: 1 }} />
-          <Button label="Delete" onPress={onDelete} variant="danger" style={{ flex: 1 }} />
+          <Button label="Edit Details" onPress={onEdit} variant="secondary" style={{ flex: 1 }} />
+          {canEditLead && (
+            <Button label="Delete" onPress={onDelete} variant="danger" style={{ flex: 1 }} />
+          )}
         </View>
       )}
     </View>
@@ -283,12 +333,12 @@ export function MySubmissionsScreen({ navigation }: any) {
       </ScreenShell>
 
       {editTarget && (
-        <EditPriceSheet
+        <EditLeadSheet
           lead={editTarget}
           onClose={() => setEditTarget(null)}
-          onSaved={(id, cents) => {
-            setLeads(ls => ls.map(l => l.id === id ? { ...l, price_cents: cents } : l));
+          onSaved={() => {
             setEditTarget(null);
+            load(); // refetch — server is the source of truth after an edit
           }}
         />
       )}
@@ -349,4 +399,14 @@ const styles = StyleSheet.create({
     paddingVertical:   1,
   },
   leadIdCode: { fontSize: FontSize.xs, color: '#f97316', fontFamily: 'Courier', fontWeight: '700', letterSpacing: 1 },
+  // ── AI call outcome pill ──────────────────────────────────────────────────
+  outcomePill: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: Radius.sm,
+    borderWidth: 1,
+    marginTop: 2,
+  },
+  outcomeText: { fontSize: FontSize.xs - 1, fontWeight: '700' },
 });

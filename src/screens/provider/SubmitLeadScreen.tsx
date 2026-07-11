@@ -13,7 +13,6 @@
  *  • auto_publish / review flow based on category config
  */
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { getTagsForCategory } from '../../lib/leadTags';
 import {
   View,
@@ -414,18 +413,19 @@ function CategoryModal({ visible, categories, onSelect, onClose }: CategoryModal
     : categories;
 
   return (
-    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-      {/* SafeAreaView: without it the header renders under the iPhone status
-          bar/notch — the Back button ended up beneath the system clock and
-          was untappable. edges=['top'] matches ScreenShell. */}
-      <SafeAreaView edges={['top']} style={[cat.container, { backgroundColor: Colors.bg }]}>
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      {/* Compact bottom sheet (~78% height) — NOT a full-screen takeover.
+          Dimmed backdrop closes on tap; content scrolls inside the sheet. */}
+      <TouchableOpacity style={cat.backdrop} activeOpacity={1} onPress={onClose} />
+      <View style={[cat.sheet, { backgroundColor: Colors.bg, borderColor: Colors.borderOrange }]}>
+        <View style={cat.grabber} />
         {/* Header */}
         <View style={cat.header}>
-          <TouchableOpacity onPress={onClose} style={cat.backBtn}>
-            <Text style={[cat.backText, { color: Colors.orange }]}>‹ Back</Text>
-          </TouchableOpacity>
-          <Text style={[cat.headerTitle, { color: Colors.foreground }]}>Select Category</Text>
           <View style={{ width: 60 }} />
+          <Text style={[cat.headerTitle, { color: Colors.foreground }]}>Select Category</Text>
+          <TouchableOpacity onPress={onClose} style={cat.backBtn}>
+            <Text style={[cat.backText, { color: Colors.orange, textAlign: 'right' }]}>Close</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Search */}
@@ -471,13 +471,25 @@ function CategoryModal({ visible, categories, onSelect, onClose }: CategoryModal
             </View>
           }
         />
-      </SafeAreaView>
+      </View>
     </Modal>
   );
 }
 
 const cat = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.bg },
+  backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)' },
+  sheet: {
+    position: 'absolute', left: 0, right: 0, bottom: 0,
+    height: '78%',
+    borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    borderWidth: 1, borderBottomWidth: 0,
+    paddingTop: 8,
+    overflow: 'hidden',
+  },
+  grabber: {
+    alignSelf: 'center', width: 40, height: 4, borderRadius: 2,
+    backgroundColor: 'rgba(148,163,184,0.4)', marginBottom: 4,
+  },
   header:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing.md, paddingTop: Spacing.sm, paddingBottom: Spacing.md },
   backBtn:   { width: 60 },
   backText:  { fontSize: FontSize.sm, color: Colors.orange, fontWeight: '600' },

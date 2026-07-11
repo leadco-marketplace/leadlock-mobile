@@ -163,6 +163,15 @@ export type ProviderLead = {
   created_at: string;
   published_at: string | null;
   sold_at?: string | null;      // when the lead was marked sold
+  /** Latest AI call-analysis outcome for this lead (job_booked,
+   *  appointment_scheduled, connected, callback_requested, declined,
+   *  voicemail, no_answer) — null until a buyer's call is analyzed. */
+  last_call_outcome?: string | null;
+  last_call_outcome_at?: string | null;
+  // Own-lead customer contact (the provider submitted these — editable)
+  customer_name?: string | null;
+  customer_phone?: string | null;
+  customer_email?: string | null;
 };
 
 export const providerApi = {
@@ -171,6 +180,13 @@ export const providerApi = {
     request<ProviderLead>(`/api/provider/leads/${id}`, {
       method: 'PATCH',
       body: JSON.stringify({ price_cents: cents }),
+    }),
+  /** Edit customer contact + description. Allowed even after the lead is
+   *  sold (fixing a wrong number); sold-lead contact edits notify the buyer. */
+  updateDetails: (id: string, fields: { customer_name?: string | null; customer_phone?: string | null; customer_email?: string | null; public_summary?: string | null; price_cents?: number }) =>
+    request<{ ok: boolean }>(`/api/provider/leads/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(fields),
     }),
   deleteLead: (id: string)             => request<{ success: boolean }>(`/api/provider/leads/${id}`, { method: 'DELETE' }),
 };
