@@ -74,6 +74,10 @@ export type PurchasedLead = Lead & {
   contact_name: string | null;
   contact_phone: string | null;
   contact_email: string | null;
+  /** true while the masked-number window is active — phone/email withheld
+   *  server-side and contact_name is the customer's first name only. */
+  contact_hidden?: boolean;
+  contact_reveals_at?: string | null;
   private_notes: string | null;
   // Aging: true once the lead passes the phone-expiry window. All info is kept
   // for the buyer's records, but the phone number has been removed.

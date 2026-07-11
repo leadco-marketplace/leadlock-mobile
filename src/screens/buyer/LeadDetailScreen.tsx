@@ -835,8 +835,11 @@ export function LeadDetailScreen() {
           </View>
         )}
 
-        {/* ── Customer contact (revealed after unlock) ──── */}
-        {(lead.contact_name || lead.contact_email || lead.contact_phone) && (
+        {/* ── Customer contact ────────────────────────────
+            While the masked number is active (14 days after purchase) the
+            server sends FIRST NAME ONLY — phone/email arrive only after the
+            window ends (contact_hidden=false). */}
+        {(lead.contact_name || lead.contact_email || lead.contact_phone || lead.contact_hidden) && (
           <View style={[styles.section, { backgroundColor: Colors.panel, shadowColor: Colors.glowColor }]}>
             <Text style={[styles.sectionTitle, { color: Colors.foreground }]}>👤  Customer Contact</Text>
             {lead.contact_name && (
@@ -844,21 +847,34 @@ export function LeadDetailScreen() {
                 <Text style={{ color: Colors.muted }}>Name: </Text>{lead.contact_name}
               </Text>
             )}
-            {lead.contact_email && (
-              <Text
-                style={[styles.description, { color: Colors.accent }]}
-                onPress={() => Linking.openURL(`mailto:${lead.contact_email}`)}
-              >
-                <Text style={{ color: Colors.muted }}>Email: </Text>{lead.contact_email}
+            {lead.contact_hidden ? (
+              <Text style={[styles.description, { color: Colors.muted }]}>
+                🔒 Direct phone & email unlock{' '}
+                {lead.contact_reveals_at
+                  ? `on ${new Date(lead.contact_reveals_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}`
+                  : 'when the call window ends'}
+                . Until then, reach the customer with the Call button below — your
+                calls are recorded and protected by the dispute guarantee.
               </Text>
-            )}
-            {lead.contact_phone && (
-              <Text
-                style={[styles.description, { color: Colors.accent }]}
-                onPress={() => Linking.openURL(`tel:${lead.contact_phone}`)}
-              >
-                <Text style={{ color: Colors.muted }}>Phone: </Text>{lead.contact_phone}
-              </Text>
+            ) : (
+              <>
+                {lead.contact_email && (
+                  <Text
+                    style={[styles.description, { color: Colors.accent }]}
+                    onPress={() => Linking.openURL(`mailto:${lead.contact_email}`)}
+                  >
+                    <Text style={{ color: Colors.muted }}>Email: </Text>{lead.contact_email}
+                  </Text>
+                )}
+                {lead.contact_phone && (
+                  <Text
+                    style={[styles.description, { color: Colors.accent }]}
+                    onPress={() => Linking.openURL(`tel:${lead.contact_phone}`)}
+                  >
+                    <Text style={{ color: Colors.muted }}>Phone: </Text>{lead.contact_phone}
+                  </Text>
+                )}
+              </>
             )}
           </View>
         )}
@@ -953,7 +969,7 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   category:  { fontSize: FontSize.lg, fontWeight: '700', color: Colors.foreground },
-  jobType:   { fontSize: FontSize.sm, color: Colors.textSecondary, marginTop: 2 },
+  jobType:   { fontSize: FontSize.sm, color: Colors.textSecondary, marginTop: 2, textTransform: 'capitalize' },
   location:  { fontSize: FontSize.xs, color: Colors.muted, marginTop: 2 },
   priceBadge: { alignItems: 'flex-end' },
   priceLabel: { fontSize: FontSize.xs - 1, color: Colors.muted, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.6 },
