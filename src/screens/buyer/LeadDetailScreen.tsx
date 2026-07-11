@@ -609,6 +609,17 @@ const ratingStyles = StyleSheet.create({
 
 // ── Main screen ────────────────────────────────────────────────────────────
 
+// AI call-analysis outcome → buyer-facing label + color
+const BUYER_OUTCOME_META: Record<string, { label: string; color: string; bg: string }> = {
+  job_booked:            { label: '⚡ Job Booked — Validated', color: '#34d399', bg: 'rgba(52,211,153,0.12)' },
+  appointment_scheduled: { label: '📅 Appointment Scheduled — Validated', color: '#34d399', bg: 'rgba(52,211,153,0.10)' },
+  connected:             { label: '✅ Valid Conversation', color: '#22d3ee', bg: 'rgba(34,211,238,0.10)' },
+  callback_requested:    { label: '🔔 Callback Requested', color: '#fbbf24', bg: 'rgba(251,191,36,0.10)' },
+  declined:              { label: '❌ Customer Declined', color: '#f87171', bg: 'rgba(248,113,113,0.10)' },
+  voicemail:             { label: '📵 Voicemail', color: '#94a3b8', bg: 'rgba(148,163,184,0.10)' },
+  no_answer:             { label: '📞 No Answer', color: '#94a3b8', bg: 'rgba(148,163,184,0.10)' },
+};
+
 export function LeadDetailScreen() {
   useTheme(); // re-render on theme change so inline Colors.* picks up new values
   const navigation = useNavigation<any>();
@@ -688,6 +699,33 @@ export function LeadDetailScreen() {
     loadLead();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [leadId, purchaseId]);
+
+  // ── Live outcome polling — NO manual refresh needed ─────────────────────
+  // After a call, the AI takes ~1-2 min to classify it. While this screen is
+  // open and there's no outcome yet, quietly re-check every 8s and update in
+  // place the moment the result lands.
+  useEffect(() => {
+    if (!lead || lead.call_outcome) return;
+    const timer = setInterval(async () => {
+      try {
+        const results = lead.purchase_id
+          ? await leadsApi.getPurchaseByPurchaseId(lead.purchase_id)
+          : await leadsApi.getPurchased();
+        const found =
+          results.find((r) => r.purchase_id === lead.purchase_id) ??
+          results.find((r) => r.id === lead.id);
+        if (
+          found &&
+          (found.call_outcome !== lead.call_outcome ||
+            found.call_analysis_status !== lead.call_analysis_status)
+        ) {
+          setLead(found);
+        }
+      } catch { /* transient network error — next tick retries */ }
+    }, 8000);
+    return () => clearInterval(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lead?.purchase_id, lead?.call_outcome, lead?.call_analysis_status]);
 
   // When this screen was opened after a fresh purchase (purchaseId is set),
   // intercept ANY back navigation — including iOS swipe-back gesture — and
@@ -910,6 +948,39 @@ export function LeadDetailScreen() {
           </View>
         ) : (
           <>
+            {/* ── AI Call Result — updates live after each call ── */}
+            {(lead.call_outcome || lead.call_analysis_status) && (
+              <View style={[styles.section, { backgroundColor: Colors.panel, shadowColor: Colors.glowColor }]}>
+                <Text style={[styles.sectionTitle, { color: Colors.foreground }]}>📊  Call Result</Text>
+                {lead.call_outcome && BUYER_OUTCOME_META[lead.call_outcome] ? (
+                  <>
+                    <View style={{
+                      alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 5,
+                      borderRadius: 8, borderWidth: 1, marginBottom: 6,
+                      backgroundColor: BUYER_OUTCOME_META[lead.call_outcome].bg,
+                      borderColor: BUYER_OUTCOME_META[lead.call_outcome].color + '55',
+                    }}>
+                      <Text style={{ fontSize: FontSize.sm, fontWeight: '700', color: BUYER_OUTCOME_META[lead.call_outcome].color }}>
+                        {BUYER_OUTCOME_META[lead.call_outcome].label}
+                      </Text>
+                    </View>
+                    {lead.call_outcome_summary && (
+                      <Text style={[styles.description, { color: Colors.muted }]}>{lead.call_outcome_summary}</Text>
+                    )}
+                  </>
+                ) : lead.call_analysis_status === 'failed' ? (
+                  <Text style={[styles.description, { color: Colors.muted }]}>
+                    Call analysis unavailable for the last call.
+                  </Text>
+                ) : (
+                  <Text style={[styles.description, { color: Colors.muted }]}>
+                    ⏳ Analyzing your call — the result will appear here automatically
+                    (usually 1–2 minutes).
+                  </Text>
+                )}
+              </View>
+            )}
+
             <CallPanel purchaseId={lead.purchase_id} />
 
             {/* ── Signal panel ─────────────────────────────── */}

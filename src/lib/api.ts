@@ -78,6 +78,11 @@ export type PurchasedLead = Lead & {
    *  server-side and contact_name is the customer's first name only. */
   contact_hidden?: boolean;
   contact_reveals_at?: string | null;
+  /** Latest AI call analysis for this purchase (null until a call is analyzed).
+   *  call_analysis_status: transcribing | analyzing | done | failed */
+  call_outcome?: string | null;
+  call_outcome_summary?: string | null;
+  call_analysis_status?: string | null;
   private_notes: string | null;
   // Aging: true once the lead passes the phone-expiry window. All info is kept
   // for the buyer's records, but the phone number has been removed.
