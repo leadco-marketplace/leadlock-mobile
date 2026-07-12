@@ -56,7 +56,14 @@ function resolveJobTypes(config: LeadFieldConfig, categoryName: string): string[
 
 /** Resolve extra fields for a specific category + job type. */
 function resolveExtraFields(config: LeadFieldConfig, jobType: string, categoryName: string): LeadExtraField[] {
-  if (jobType && config.jobTypeFields?.[jobType]) return config.jobTypeFields[jobType];
+  if (jobType && config.jobTypeFields) {
+    // Exact match first, then case-insensitive — job type labels are Title
+    // Case but some jobTypeFields keys predate the casing change.
+    if (config.jobTypeFields[jobType]) return config.jobTypeFields[jobType];
+    const lower = jobType.toLowerCase();
+    const ciKey = Object.keys(config.jobTypeFields).find(k => k.toLowerCase() === lower);
+    if (ciKey) return config.jobTypeFields[ciKey];
+  }
   if (categoryName && config.categoryExtraFields?.[categoryName]) return config.categoryExtraFields[categoryName];
   return config.extraFields;
 }
@@ -363,10 +370,66 @@ interface ExtraFieldInputProps {
   field:    LeadExtraField;
   value:    string;
   onChange: (v: string) => void;
+  allValues?: Record<string, string>;
 }
 
-function ExtraFieldInput({ field, value, onChange }: ExtraFieldInputProps) {
+/** Searchable dropdown: type-to-filter suggestions with free text allowed
+ *  (anything typed that isn't in the list is accepted — "Other" is implicit).
+ *  Used for long lists like vehicle makes/models; model options depend on
+ *  the selected make via dependsOn/optionsByParent. */
+function SearchSelectField({ field, value, onChange, allValues }: ExtraFieldInputProps) {
   useTheme();
+  const [focused, setFocused] = useState(false);
+  const parentValue = field.dependsOn ? (allValues?.[field.dependsOn] ?? '') : '';
+  const options: string[] = field.optionsByParent
+    ? (field.optionsByParent[parentValue] ?? [])
+    : (field.options ?? []);
+  const q = value.trim().toLowerCase();
+  const matches = q
+    ? options.filter(o => o.toLowerCase().includes(q) && o.toLowerCase() !== q).slice(0, 6)
+    : options.slice(0, 6);
+
+  return (
+    <View>
+      <Input
+        label={field.label + (field.required ? ' *' : '')}
+        value={value}
+        onChangeText={onChange}
+        placeholder={field.placeholder ?? 'Start typing to search…'}
+        autoCapitalize="words"
+        onFocus={() => setFocused(true)}
+        onBlur={() => setTimeout(() => setFocused(false), 200)}
+      />
+      {focused && matches.length > 0 && (
+        <View style={{
+          borderWidth: 1, borderColor: 'rgba(148,163,184,0.35)', borderRadius: 10,
+          marginTop: -6, marginBottom: 8, overflow: 'hidden', backgroundColor: Colors.panel2,
+        }}>
+          {matches.map(o => (
+            <TouchableOpacity
+              key={o}
+              onPress={() => { onChange(o); setFocused(false); }}
+              style={{ paddingVertical: 10, paddingHorizontal: 12, borderBottomWidth: 0.5, borderBottomColor: 'rgba(148,163,184,0.2)' }}
+            >
+              <Text style={{ fontSize: FontSize.sm, color: Colors.foreground }}>{o}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
+      {field.dependsOn && !parentValue && (
+        <Text style={{ fontSize: FontSize.xs - 1, color: Colors.muted, marginTop: -4, marginBottom: 8 }}>
+          Pick the make first for model suggestions — or just type it.
+        </Text>
+      )}
+    </View>
+  );
+}
+
+function ExtraFieldInput({ field, value, onChange, allValues }: ExtraFieldInputProps) {
+  useTheme();
+  if (field.searchable) {
+    return <SearchSelectField field={field} value={value} onChange={onChange} allValues={allValues} />;
+  }
   if (field.type === 'select' && field.options) {
     return (
       <SelectField
@@ -1149,6 +1212,7 @@ export function SubmitLeadScreen({ navigation }: any) {
                       field={field}
                       value={extraValues[field.key] ?? ''}
                       onChange={(v) => setExtra(field.key, v)}
+                      allValues={extraValues}
                     />
                   ))}
                 </View>

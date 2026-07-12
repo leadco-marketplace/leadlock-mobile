@@ -279,6 +279,12 @@ export type LeadExtraField = {
   required:     boolean;
   options?:     string[];
   placeholder?: string;
+  /** Render as searchable dropdown (type-to-filter, free text allowed). */
+  searchable?:  boolean;
+  /** Sibling field key whose value selects this field's options. */
+  dependsOn?:   string;
+  /** Options keyed by the dependsOn field's value (e.g. models per make). */
+  optionsByParent?: Record<string, string[]>;
 };
 
 export type LeadFieldConfig = {
