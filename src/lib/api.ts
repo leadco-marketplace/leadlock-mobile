@@ -107,8 +107,28 @@ export const leadsApi = {
   /** Fetch the single purchase for a specific lead after unlock (uses purchase_id for direct lookup) */
   getPurchaseByPurchaseId: (purchaseId: string) =>
     request<PurchasedLead[]>(`/api/my-leads?purchase_id=${encodeURIComponent(purchaseId)}`),
+  /** Full call log for a purchase — every bridge call + its AI analysis. */
+  getCalls: (purchaseId: string) =>
+    request<CallLogEntry[]>(`/api/my-leads/calls?purchase_id=${encodeURIComponent(purchaseId)}`),
   unlock: (id: string)                 => request<{ success: boolean; purchase_id: string }>(`/api/leads/${id}/unlock`, { method: 'POST' }),
 };
+
+// ── Call log ────────────────────────────────────────────────────────────────
+export interface CallLogEntry {
+  id: string;
+  status: string;
+  duration_seconds: number | null;
+  started_at: string;
+  ended_at: string | null;
+  has_recording: boolean;
+  analysis: {
+    status: string;
+    outcome: string | null;
+    confidence: number | null;
+    summary: string | null;
+    appointment_details: string | null;
+  } | null;
+}
 
 // ── In-app card intro purchase ──────────────────────────────────────────────
 // First 3 leads may be bought directly with a debit card / Apple Pay via the

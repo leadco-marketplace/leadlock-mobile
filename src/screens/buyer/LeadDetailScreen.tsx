@@ -4,7 +4,7 @@ import {
   TouchableOpacity, ScrollView,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { leadsApi, rateApi, signalsApi, PurchasedLead, RatingThumb, LeadSignal, THUMBS_UP_REASONS, THUMBS_DOWN_REASONS } from '@/lib/api';
+import { leadsApi, rateApi, signalsApi, PurchasedLead, RatingThumb, LeadSignal, CallLogEntry, THUMBS_UP_REASONS, THUMBS_DOWN_REASONS } from '@/lib/api';
 import { ScreenShell } from '@/components/ScreenShell';
 import { Colors, FontSize, Spacing, Radius, Shadow } from '@/theme';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -609,6 +609,85 @@ const ratingStyles = StyleSheet.create({
 
 // ── Main screen ────────────────────────────────────────────────────────────
 
+// ── Call History — every bridge call with recording + AI analysis ───────────
+function CallHistory({ purchaseId }: { purchaseId: string }) {
+  useTheme();
+  const [calls, setCalls] = useState<CallLogEntry[]>([]);
+
+  useEffect(() => {
+    let alive = true;
+    async function load() {
+      try {
+        const data = await leadsApi.getCalls(purchaseId);
+        if (alive) setCalls(data);
+      } catch { /* transient — next poll retries */ }
+    }
+    load();
+    // Poll while the screen is open so new calls + fresh analyses appear
+    // WITHOUT any manual refresh.
+    const timer = setInterval(load, 8000);
+    return () => { alive = false; clearInterval(timer); };
+  }, [purchaseId]);
+
+  async function playRecording(callId: string) {
+    // Recordings stream through our authenticated proxy; the system player
+    // can't send headers, so we pass the user's own short-lived token.
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    if (!token) return;
+    Linking.openURL(`${BASE}/api/call/recording?callId=${encodeURIComponent(callId)}&t=${encodeURIComponent(token)}`);
+  }
+
+  if (calls.length === 0) return null;
+
+  return (
+    <View style={[styles.section, { backgroundColor: Colors.panel, shadowColor: Colors.glowColor }]}>
+      <Text style={[styles.sectionTitle, { color: Colors.foreground }]}>📞  Call History</Text>
+      {calls.map((c) => {
+        const meta = c.analysis?.outcome ? BUYER_OUTCOME_META[c.analysis.outcome] : null;
+        const mins = c.duration_seconds != null
+          ? `${Math.floor(c.duration_seconds / 60)}:${String(c.duration_seconds % 60).padStart(2, '0')}`
+          : null;
+        return (
+          <View key={c.id} style={{
+            borderWidth: 1, borderColor: 'rgba(148,163,184,0.25)', borderRadius: 10,
+            padding: 10, marginTop: 8, gap: 5,
+          }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+              <Text style={{ fontSize: FontSize.sm, fontWeight: '600', color: Colors.foreground }}>
+                {new Date(c.started_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+              </Text>
+              {mins && <Text style={{ fontSize: FontSize.xs, color: Colors.muted }}>· {mins} min</Text>}
+              <Text style={{ fontSize: FontSize.xs, color: Colors.muted }}>· {c.status}</Text>
+            </View>
+            {meta ? (
+              <View style={{
+                alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 3,
+                borderRadius: 6, borderWidth: 1, backgroundColor: meta.bg, borderColor: meta.color + '55',
+              }}>
+                <Text style={{ fontSize: FontSize.xs, fontWeight: '700', color: meta.color }}>{meta.label}</Text>
+              </View>
+            ) : c.analysis && c.analysis.status !== 'failed' ? (
+              <Text style={{ fontSize: FontSize.xs, color: Colors.muted }}>⏳ Analyzing this call…</Text>
+            ) : null}
+            {c.analysis?.summary && (
+              <Text style={{ fontSize: FontSize.xs, color: Colors.muted }}>{c.analysis.summary}</Text>
+            )}
+            {c.has_recording && (
+              <Text
+                style={{ fontSize: FontSize.sm, fontWeight: '600', color: Colors.accent }}
+                onPress={() => playRecording(c.id)}
+              >
+                ▶︎ Play Recording
+              </Text>
+            )}
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
 // AI call-analysis outcome → buyer-facing label + color
 const BUYER_OUTCOME_META: Record<string, { label: string; color: string; bg: string }> = {
   job_booked:            { label: '⚡ Job Booked — Validated', color: '#34d399', bg: 'rgba(52,211,153,0.12)' },
@@ -982,6 +1061,9 @@ export function LeadDetailScreen() {
             )}
 
             <CallPanel purchaseId={lead.purchase_id} />
+
+            {/* ── Call History — every call, recording, analysis ── */}
+            <CallHistory purchaseId={lead.purchase_id} />
 
             {/* ── Signal panel ─────────────────────────────── */}
             <SignalPanel purchaseId={lead.purchase_id} />
