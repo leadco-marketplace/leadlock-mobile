@@ -19,7 +19,9 @@ function fmt(cents: number) {
 
 export function UnlockModal({ lead, visible, onCancel, onConfirm }: UnlockModalProps) {
   const [accepted, setAccepted] = useState(false);
-  useTheme(); // re-render on theme change
+  const { mode } = useTheme(); // re-render on theme change
+  // Vehicle tag: brand orange in dark mode, near-black in light modes.
+  const vehicleColor = mode === 'dark' ? '#f97316' : '#111827';
 
   if (!lead) return null;
 
@@ -55,8 +57,12 @@ export function UnlockModal({ lead, visible, onCancel, onConfirm }: UnlockModalP
               <Text style={[styles.subtitle, { color: Colors.textSecondary }]}>
                 {lead.service_category}
                 {lead.job_type ? ` · ${lead.job_type}` : ''}
-                {lead.vehicle ? ` · 🚗 ${lead.vehicle}` : ''}
               </Text>
+              {lead.vehicle ? (
+                <Text style={[styles.subtitle, { color: vehicleColor, fontWeight: '700' }]} numberOfLines={1}>
+                  🚗 {lead.vehicle}
+                </Text>
+              ) : null}
             </View>
             <TouchableOpacity onPress={handleCancel} style={styles.closeBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
               <Text style={[styles.closeText, { color: Colors.muted }]}>✕</Text>

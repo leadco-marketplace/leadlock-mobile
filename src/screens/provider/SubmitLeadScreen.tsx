@@ -14,6 +14,7 @@
  */
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { getTagsForCategory } from '../../lib/leadTags';
+import { validateUSPhone } from '../../lib/validate-phone';
 import {
   View,
   Text,
@@ -773,9 +774,10 @@ export function SubmitLeadScreen({ navigation }: any) {
       }
     }
 
-    // Contact validation
-    if (!customerName && !customerPhone && !customerEmail) {
-      setError('At least one customer contact (name, phone, or email) is required.');
+    // Contact validation — customer phone is MANDATORY on every lead.
+    const phoneCheck = validateUSPhone(customerPhone);
+    if (!phoneCheck.ok) {
+      setError(phoneCheck.reason);
       return;
     }
 
@@ -1180,7 +1182,7 @@ export function SubmitLeadScreen({ navigation }: any) {
               <View style={[styles.section, { backgroundColor: Colors.panel, borderColor: Colors.borderOrange, shadowColor: Colors.glowColor }]}>
                 <SectionHeader
                   title="Customer Contact"
-                  subtitle="At least one of name, phone, or email is required."
+                  subtitle="A valid customer phone number is required — buyers need a way to reach the customer."
                 />
                 <Input
                   label="Full name"
@@ -1190,7 +1192,7 @@ export function SubmitLeadScreen({ navigation }: any) {
                   autoCapitalize="words"
                 />
                 <Input
-                  label="Phone"
+                  label="Phone *"
                   value={customerPhone}
                   onChangeText={(v) => { setCustomerPhone(v); setDuplicateInfo(null); }}
                   placeholder="(555) 000-0000"
