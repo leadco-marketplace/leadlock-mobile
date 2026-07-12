@@ -797,6 +797,10 @@ export function SubmitLeadScreen({ navigation }: any) {
 
     // Required extra fields (skip textarea — replaced by chip selector)
     for (const field of activeFields) {
+      if (field.strict && field.options && extraValues[field.key]?.trim() && !field.options.includes(extraValues[field.key].trim())) {
+        Alert.alert('Pick From The List', `"${extraValues[field.key]}" isn't a valid ${field.label.toLowerCase()} — please pick one from the list (choose "Other" for rare ones).`);
+        return;
+      }
       if (field.required && field.type !== 'textarea' && !extraValues[field.key]?.trim()) {
         setError(`"${field.label}" is required.`);
         return;
@@ -1206,7 +1210,9 @@ export function SubmitLeadScreen({ navigation }: any) {
               {activeFields.length > 0 && (
                 <View style={[styles.section, { backgroundColor: Colors.panel, borderColor: Colors.borderOrange, shadowColor: Colors.glowColor }]}>
                   <SectionHeader title="Lead Details" />
-                  {activeFields.map((field) => (
+                  {activeFields
+                    .filter((field) => field.key !== 'vehicle_make_custom' || extraValues['vehicle_make'] === 'Other')
+                    .map((field) => (
                     <ExtraFieldInput
                       key={field.key}
                       field={field}
@@ -1224,7 +1230,7 @@ export function SubmitLeadScreen({ navigation }: any) {
                   title="Lead Context"
                   subtitle="Optional — select any that apply."
                 />
-                <LeadTagChips tags={getTagsForCategory(selectedCat?.name ?? '')} selected={selectedTags} onToggle={toggleTag} />
+                <LeadTagChips tags={getTagsForCategory(selectedCat?.name ?? '', jobType)} selected={selectedTags} onToggle={toggleTag} />
                 {selectedTags.length === 0 && (
                   <Text style={{ fontSize: FontSize.xs, color: Colors.muted, marginTop: 8 }}>
                     💡 Adding details increases your chances of the lead getting purchased

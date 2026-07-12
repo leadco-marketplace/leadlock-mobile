@@ -207,6 +207,11 @@ function LeadCardInner({ lead, onUnlock, unlocking, purchased, highlighted }: Le
               <Text style={[styles.jobTypeMain, { color: Colors.foreground }]} numberOfLines={2}>
                 {lead.job_type}
               </Text>
+              {lead.vehicle ? (
+                <Text style={{ fontSize: 12, fontWeight: '700', color: '#22d3ee', marginTop: 2 }} numberOfLines={1}>
+                  🚗 {lead.vehicle}
+                </Text>
+              ) : null}
               <View style={styles.badgeCol}>
                 {lead.status === 'available' ? (
                   // Animated on GPU: only opacity + scale (both native-driver safe)

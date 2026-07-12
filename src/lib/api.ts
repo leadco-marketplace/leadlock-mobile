@@ -42,6 +42,8 @@ async function request<T>(path: string, opts?: RequestInit): Promise<T> {
 export type Lead = {
   id: string;
   lead_code?: string | null;
+  /** "2019 BMW X7" for automotive leads — public, shown pre-purchase. */
+  vehicle?: string | null;
   service_category: string;
   job_type: string;
   city: string;
@@ -281,6 +283,8 @@ export type LeadExtraField = {
   placeholder?: string;
   /** Render as searchable dropdown (type-to-filter, free text allowed). */
   searchable?:  boolean;
+  /** Value MUST be one of options — free text rejected (client + server). */
+  strict?:      boolean;
   /** Sibling field key whose value selects this field's options. */
   dependsOn?:   string;
   /** Options keyed by the dependsOn field's value (e.g. models per make). */
