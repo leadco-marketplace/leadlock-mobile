@@ -124,7 +124,7 @@ const pm = StyleSheet.create({
     paddingTop: Spacing.md,
   },
   handle:   { width: 36, height: 4, borderRadius: 2, backgroundColor: Colors.muted, alignSelf: 'center', marginBottom: Spacing.sm },
-  title:    { fontSize: FontSize.md, fontWeight: '700', color: Colors.foreground, marginBottom: Spacing.md, textAlign: 'center' },
+  title:    { fontSize: FontSize.md, fontWeight: '700', color: Colors.foreground, marginBottom: Spacing.md, textAlign: 'center', textTransform: 'capitalize' },
   sep:      { height: 1, backgroundColor: Colors.border, marginHorizontal: -Spacing.lg },
   option:   { paddingVertical: Spacing.sm + 4, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   optionActive: { backgroundColor: 'rgba(249,115,22,0.06)', borderRadius: Radius.md, paddingHorizontal: Spacing.sm, marginHorizontal: -Spacing.sm },

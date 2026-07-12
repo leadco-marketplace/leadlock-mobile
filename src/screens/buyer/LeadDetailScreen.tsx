@@ -9,6 +9,7 @@ import { ScreenShell } from '@/components/ScreenShell';
 import { Colors, FontSize, Spacing, Radius, Shadow } from '@/theme';
 import { useTheme } from '@/contexts/ThemeContext';
 import Constants from 'expo-constants';
+import { Audio } from 'expo-av';
 import { supabase } from '@/lib/supabase';
 import { Linking, Alert, Share } from 'react-native';
 
@@ -613,6 +614,12 @@ const ratingStyles = StyleSheet.create({
 function CallHistory({ purchaseId }: { purchaseId: string }) {
   useTheme();
   const [calls, setCalls] = useState<CallLogEntry[]>([]);
+  const [playingId, setPlayingId] = useState<string | null>(null);
+  const [loadingId, setLoadingId] = useState<string | null>(null);
+  const soundRef = React.useRef<Audio.Sound | null>(null);
+
+  // Unload audio when leaving the screen
+  useEffect(() => () => { soundRef.current?.unloadAsync().catch(() => {}); }, []);
 
   useEffect(() => {
     let alive = true;
@@ -630,12 +637,47 @@ function CallHistory({ purchaseId }: { purchaseId: string }) {
   }, [purchaseId]);
 
   async function playRecording(callId: string) {
-    // Recordings stream through our authenticated proxy; the system player
-    // can't send headers, so we pass the user's own short-lived token.
-    const { data: { session } } = await supabase.auth.getSession();
-    const token = session?.access_token;
-    if (!token) return;
-    Linking.openURL(`${BASE}/api/call/recording?callId=${encodeURIComponent(callId)}&t=${encodeURIComponent(token)}`);
+    // In-app playback via expo-av — streams through the authenticated proxy
+    // with the Bearer token, no leaving the app.
+    try {
+      // Tapping the playing call again stops it
+      if (playingId === callId) {
+        await soundRef.current?.stopAsync().catch(() => {});
+        await soundRef.current?.unloadAsync().catch(() => {});
+        soundRef.current = null;
+        setPlayingId(null);
+        return;
+      }
+      setLoadingId(callId);
+      await soundRef.current?.unloadAsync().catch(() => {});
+      soundRef.current = null;
+
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) { setLoadingId(null); return; }
+
+      await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
+      const { sound } = await Audio.Sound.createAsync(
+        {
+          uri: `${BASE}/api/call/recording?callId=${encodeURIComponent(callId)}`,
+          headers: { Authorization: `Bearer ${token}` },
+        },
+        { shouldPlay: true }
+      );
+      soundRef.current = sound;
+      setPlayingId(callId);
+      sound.setOnPlaybackStatusUpdate((st) => {
+        if (st.isLoaded && st.didJustFinish) {
+          setPlayingId(null);
+          sound.unloadAsync().catch(() => {});
+          if (soundRef.current === sound) soundRef.current = null;
+        }
+      });
+    } catch {
+      Alert.alert('Playback Error', 'Could not play the recording. Try again.');
+    } finally {
+      setLoadingId(null);
+    }
   }
 
   if (calls.length === 0) return null;
@@ -675,10 +717,10 @@ function CallHistory({ purchaseId }: { purchaseId: string }) {
             )}
             {c.has_recording && (
               <Text
-                style={{ fontSize: FontSize.sm, fontWeight: '600', color: Colors.accent }}
+                style={{ fontSize: FontSize.sm, fontWeight: '600', color: playingId === c.id ? '#f87171' : Colors.accent }}
                 onPress={() => playRecording(c.id)}
               >
-                ▶︎ Play Recording
+                {loadingId === c.id ? '⏳ Loading…' : playingId === c.id ? '■ Stop Playback' : '▶︎ Play Recording'}
               </Text>
             )}
           </View>
