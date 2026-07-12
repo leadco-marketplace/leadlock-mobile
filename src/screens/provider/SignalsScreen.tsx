@@ -143,7 +143,14 @@ function SignalCard({ signal, onRespond }: SignalCardProps) {
         </View>
       )}
 
-      {/* ── Response buttons (always shown — provider can update at any time) ── */}
+      {/* ── Response buttons — hidden once the response window closes ── */}
+      {signal.expired ? (
+        <View style={[cardStyles.respondedBox, { backgroundColor: 'rgba(148,163,184,0.08)', borderColor: 'rgba(148,163,184,0.25)' }]}>
+          <Text style={[cardStyles.respondedLabel, { color: Colors.muted }]}>
+            ⏱ Response window closed — this signal is view-only.
+          </Text>
+        </View>
+      ) : (
       <View style={cardStyles.responseSection}>
         <Text style={[cardStyles.responsePrompt, { color: Colors.muted }]}>
           {currentResponse ? 'Send an update:' : 'How do you want to respond?'}
@@ -176,6 +183,7 @@ function SignalCard({ signal, onRespond }: SignalCardProps) {
           <ActivityIndicator color={Colors.accent} style={{ marginTop: 6 }} />
         )}
       </View>
+      )}
     </View>
   );
 }

@@ -399,6 +399,9 @@ export interface LeadSignal {
   provider_response: "verifying" | "number_correct" | "customer_available" | "info_updated" | null;
   created_at:        string;
   responded_at:      string | null;
+  /** true once the response window (admin-set, default 3 days) has closed —
+   *  the thread is view-only; no new responses or notifications. */
+  expired?:          boolean;
   /** Present in provider-side fetch (includes full lead + purchase details) */
   leads?:            {
     id: string;

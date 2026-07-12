@@ -1,6 +1,5 @@
 import React, { useCallback, useState } from 'react';
 import { View, Text, FlatList, StyleSheet, ActivityIndicator, Alert } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import { providerApi, ProviderLead } from '@/lib/api';
 import { ScreenShell } from '@/components/ScreenShell';
@@ -266,14 +265,14 @@ export function MySubmissionsScreen({ navigation }: any) {
   return (
     <>
       <ScreenShell title="My Submissions" subtitle="Manage your leads" scrollable={false}>
-        {/* Earnings card */}
-        <LinearGradient
-          colors={['rgba(249,115,22,0.12)', 'rgba(251,191,36,0.06)']}
-          style={styles.earningsCard}
-        >
+        {/* Earnings card — themed panel + orange border; money in brand
+            orange so it reads correctly in dark, light, AND inner-light
+            (the old translucent orange gradient went solid orange on light
+            backgrounds and muddy on dark). */}
+        <View style={[styles.earningsCard, { backgroundColor: Colors.panel, borderColor: 'rgba(249,115,22,0.45)', shadowColor: Colors.glowColor }]}>
           <View>
             <Text style={[styles.earningsLabel, { color: Colors.muted }]}>Total Earnings</Text>
-            <Text style={[styles.earningsValue, { color: Colors.foreground }]}>{formatPrice(earnings)}</Text>
+            <Text style={[styles.earningsValue, { color: Colors.orange }]}>{formatPrice(earnings)}</Text>
             <Text style={[styles.earningsSub,   { color: Colors.muted }]}>From {soldCount} sold lead{soldCount !== 1 ? 's' : ''}</Text>
           </View>
           <Button
@@ -281,7 +280,7 @@ export function MySubmissionsScreen({ navigation }: any) {
             onPress={() => navigation.navigate('SubmitLead')}
             style={{ alignSelf: 'flex-start' }}
           />
-        </LinearGradient>
+        </View>
 
         {/* Stat pills */}
         <View style={styles.statsRow}>
