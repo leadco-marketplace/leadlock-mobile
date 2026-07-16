@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   View, Text, FlatList, StyleSheet, ActivityIndicator,
   TouchableOpacity, Linking, Alert,
+  LayoutAnimation, Platform, UIManager,
 } from 'react-native';
 import * as Location from 'expo-location';
 import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
@@ -19,6 +20,12 @@ import { useAuth }       from '@/contexts/AuthContext';
 import Constants from 'expo-constants';
 
 const WEB_APP = (Constants.expoConfig?.extra?.apiBaseUrl as string) ?? 'https://leadco-marketplace-p5zj.vercel.app';
+
+// LayoutAnimation is enabled by default on iOS; Android needs the experimental
+// flag (guarded — it's a no-op on the new architecture where it's always on).
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 // Route params this screen accepts (from push-notification tap or deep link)
 type LiveFeedRouteParams = { highlightLeadId?: string };
@@ -52,6 +59,9 @@ export function LiveFeedScreen() {
   const [modalLead,     setModalLead]    = useState<Lead | null>(null);
   const [showMyMatches, setShowMyMatches] = useState(true);
   const [preferences,   setPreferences]  = useState<Preference[]>([]);
+  // Leads currently in the 4-second "just sold" hold: they keep their list
+  // position (sorted as if still available) and render with the SOLD stamp.
+  const [justSoldIds,   setJustSoldIds]  = useState<Set<string>>(new Set());
 
   const flatListRef = useRef<FlatList<Lead>>(null);
   // Always holds the latest `load` so the realtime subscription isn't stale
@@ -64,6 +74,36 @@ export function LiveFeedScreen() {
   // Always points to the latest applyHighlight so the event subscription
   // (set up once with [] deps) never captures a stale closure.
   const applyHighlightRef = useRef<(leadId: string) => void>(() => {});
+  // ── "Just sold" hold plumbing ─────────────────────────────────────────────
+  // Statuses from the PREVIOUS fetched snapshot — the first snapshot never
+  // triggers a stamp (there's nothing to diff against).
+  const prevStatusesRef  = useRef<Map<string, string>>(new Map());
+  // One hold timer per lead id (multiple simultaneous sales each get their own)
+  const holdTimersRef    = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  // Leads THIS user purchased — never stamp their own purchase.
+  const selfPurchasedRef = useRef<Set<string>>(new Set());
+
+  // Put a lead into the 4s hold, then release with a smooth layout animation
+  // so the re-sort (sold sinks to bottom) slides instead of jumping.
+  const startSoldHold = useCallback((id: string) => {
+    const existing = holdTimersRef.current.get(id);
+    if (existing) clearTimeout(existing);
+    setJustSoldIds(prev => { const next = new Set(prev); next.add(id); return next; });
+    holdTimersRef.current.set(id, setTimeout(() => {
+      holdTimersRef.current.delete(id);
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      setJustSoldIds(prev => { const next = new Set(prev); next.delete(id); return next; });
+    }, 4000));
+  }, []);
+
+  // Clear all hold timers on unmount — no setState after unmount / timer leaks
+  useEffect(() => {
+    const timers = holdTimersRef.current;
+    return () => {
+      timers.forEach(t => clearTimeout(t));
+      timers.clear();
+    };
+  }, []);
 
   // ── Load buyer's alert preferences for "My Matches" filtering ───────────
   useEffect(() => {
@@ -92,6 +132,19 @@ export function LiveFeedScreen() {
     if (!silent) setLoading(true);
     try {
       const data = await leadsApi.getLive(loc ?? buyerLocation ?? undefined);
+      // Diff against the previous snapshot: any lead the viewer could see as
+      // available/reserved that is now sold enters the "just sold" hold —
+      // unless this user bought it themselves. First load never triggers.
+      const prevStatuses = prevStatusesRef.current;
+      if (prevStatuses.size > 0) {
+        for (const l of data) {
+          const was = prevStatuses.get(l.id);
+          if (was && was !== 'sold' && l.status === 'sold' && !selfPurchasedRef.current.has(l.id)) {
+            startSoldHold(l.id);
+          }
+        }
+      }
+      prevStatusesRef.current = new Map(data.map(l => [l.id, l.status]));
       setLeads(data);
       setError(null);
     } catch (e: any) {
@@ -180,13 +233,15 @@ export function LiveFeedScreen() {
   // return — this prevents the temporal-dead-zone ReferenceError that would
   // occur if the useEffect below ran while `loading` was true (which would have
   // caused the component to early-return before the old const declaration).
+  // Leads in the "just sold" hold sort as if still available so the SOLD stamp
+  // plays out in place — they sink to the bottom only when the hold releases.
   const sortedLeads = useMemo(
     () => [...leads].sort((a, b) => {
-      const aSold = a.status === 'sold' ? 1 : 0;
-      const bSold = b.status === 'sold' ? 1 : 0;
+      const aSold = a.status === 'sold' && !justSoldIds.has(a.id) ? 1 : 0;
+      const bSold = b.status === 'sold' && !justSoldIds.has(b.id) ? 1 : 0;
       return aSold - bSold;
     }),
-    [leads],
+    [leads, justSoldIds],
   );
 
   // ── "My Matches" filter: only show leads matching any saved alert pref ────
@@ -252,10 +307,11 @@ export function LiveFeedScreen() {
       }
       unlocking={unlocking === item.id}
       highlighted={highlightedId === item.id}
+      justSold={justSoldIds.has(item.id)}
     />
   // handleUnlock and highlightedId change rarely; unlocking changes per-unlock action
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  ), [isGuest, profile?.role, unlocking, highlightedId]);
+  ), [isGuest, profile?.role, unlocking, highlightedId, justSoldIds]);
 
   // ── Unlock handler ─────────────────────────────────────────────────────────
   function handleUnlock(lead: Lead) {
@@ -266,6 +322,8 @@ export function LiveFeedScreen() {
     setUnlocking(lead.id);
     try {
       const { purchase_id } = await leadsApi.unlock(lead.id);
+      // This user bought it — never show them the "just sold" stamp for it
+      selfPurchasedRef.current.add(lead.id);
       await refreshProfile();   // update credit balance
       // Pass purchase_id so LeadDetailScreen can look up the specific purchase
       // directly rather than scanning all purchases — avoids the 6-second polling
@@ -284,6 +342,10 @@ export function LiveFeedScreen() {
         // we route them to ACH Add Funds.
         await tryCardIntroPurchase(lead);
       } else if (e.message === 'already_sold') {
+        // Mark the previous-snapshot status as sold too, so the follow-up
+        // refetch doesn't re-trigger a stamp (the user already got this alert
+        // and the card has already sunk via the local update below).
+        prevStatusesRef.current.set(lead.id, 'sold');
         setLeads(prev => prev.map(l =>
           l.id === lead.id ? { ...l, status: 'sold', sold_at: new Date().toISOString() } : l
         ));
@@ -348,6 +410,8 @@ export function LiveFeedScreen() {
 
       // Payment succeeded. The webhook finalizes the purchase; LeadDetail polls
       // for it. Note: a credit card would be auto-refunded server-side.
+      // This user bought it — never show them the "just sold" stamp for it.
+      selfPurchasedRef.current.add(lead.id);
       await refreshProfile();
       Alert.alert(
         '✅ Payment received',
@@ -365,6 +429,9 @@ export function LiveFeedScreen() {
           ]
         );
       } else if (ce.message === 'already_sold' || ce.message === 'already_purchased') {
+        // Keep the previous-snapshot status in sync so the refetch doesn't
+        // re-trigger a stamp for a sale the user was already alerted about.
+        prevStatusesRef.current.set(lead.id, 'sold');
         setLeads(prev => prev.map(l =>
           l.id === lead.id ? { ...l, status: 'sold', sold_at: new Date().toISOString() } : l
         ));

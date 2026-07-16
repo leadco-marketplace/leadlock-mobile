@@ -59,6 +59,9 @@ interface LeadCardProps {
   purchased?: boolean;
   /** When true, renders a glowing accent border to indicate the notification-tapped lead */
   highlighted?: boolean;
+  /** 4s "just sold" hold: card keeps its list position, body dims, unlock is
+   *  disabled+greyed, and an animated orange SOLD rubber stamp slams in. */
+  justSold?: boolean;
 }
 
 function formatPrice(cents: number) {
@@ -79,7 +82,7 @@ function timeAgo(dateStr: string) {
 // React.memo: re-renders ONLY when this specific lead's data changes.
 // Without this, every setLeads() call (every 30s poll + every realtime event)
 // re-renders ALL cards simultaneously — the #1 cause of scroll jank.
-function LeadCardInner({ lead, onUnlock, unlocking, purchased, highlighted }: LeadCardProps) {
+function LeadCardInner({ lead, onUnlock, unlocking, purchased, highlighted, justSold }: LeadCardProps) {
   const { mode } = useTheme();
 
   // Vehicle tag: brand orange in dark mode, near-black in light modes
@@ -128,6 +131,30 @@ function LeadCardInner({ lead, onUnlock, unlocking, purchased, highlighted }: Le
     return () => loop.stop();
   }, [highlighted, pulseAnim]);
 
+  // ── "Just sold" stamp slam animation (native driver: opacity + scale only) ─
+  // Scale springs 2.2 → 1 with a small overshoot (~350ms) like a rubber stamp.
+  const stampAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (!justSold) { stampAnim.setValue(0); return; }
+    stampAnim.setValue(0);
+    const spring = Animated.spring(stampAnim, {
+      toValue: 1,
+      stiffness: 300,
+      damping: 16,
+      mass: 0.7,
+      useNativeDriver: true,
+    });
+    spring.start();
+    return () => spring.stop();
+  }, [justSold, stampAnim]);
+
+  // Spring overshoots past 1, so scale dips slightly below 1 then settles (bounce)
+  const stampScale   = stampAnim.interpolate({ inputRange: [0, 1], outputRange: [2.2, 1] });
+  const stampOpacity = stampAnim.interpolate({
+    inputRange: [0, 0.25, 1], outputRange: [0, 1, 1], extrapolate: 'clamp',
+  });
+
   function handleUnlock() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     onUnlock?.();
@@ -164,7 +191,7 @@ function LeadCardInner({ lead, onUnlock, unlocking, purchased, highlighted }: Le
           shadowColor: Colors.glowColor,
         },
         highlighted && styles.cardHighlighted,
-        isSold && styles.cardSold,
+        isSold && !justSold && styles.cardSold,
       ]}>
 
         {/* ── "🔥 Your Lead" banner — full card width ───────────────────────── */}
@@ -178,7 +205,8 @@ function LeadCardInner({ lead, onUnlock, unlocking, purchased, highlighted }: Le
         )}
 
         {/* ── Card body: full-height gradient column + compact content ──────── */}
-        <View style={styles.cardInner}>
+        {/* During the just-sold hold the body dims to ~55% (stamp stays full) */}
+        <View style={[styles.cardInner, justSold && { opacity: 0.55 }]}>
 
           {/* Full-height left thumbnail — bundled local image (instant, no network)
                Falls back to LinearGradient for unrecognised categories        */}
@@ -297,13 +325,18 @@ function LeadCardInner({ lead, onUnlock, unlocking, purchased, highlighted }: Le
                 </Text>
               </View>
 
-              {!purchased && onUnlock && (
-                <TouchableOpacity onPress={handleUnlock} disabled={unlocking} activeOpacity={0.85}>
+              {!purchased && (onUnlock || justSold) && (
+                <TouchableOpacity
+                  onPress={handleUnlock}
+                  disabled={unlocking || justSold}
+                  activeOpacity={0.85}
+                >
                   <LinearGradient
-                    colors={['#1d4ed8', '#3b82f6']}
+                    // Greyed out during the just-sold hold — not tappable
+                    colors={justSold ? ['#4b5563', '#6b7280'] : ['#1d4ed8', '#3b82f6']}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
-                    style={[styles.unlockBtn, unlocking && { opacity: 0.6 }]}
+                    style={[styles.unlockBtn, (unlocking || justSold) && { opacity: 0.6 }]}
                   >
                     <Text style={styles.unlockText}>
                       {unlocking ? 'Unlocking…' : `Unlock ${formatPrice(price)}`}
@@ -323,7 +356,7 @@ function LeadCardInner({ lead, onUnlock, unlocking, purchased, highlighted }: Le
         </View>{/* end cardInner */}
 
         {/* ── SOLD stamp — absoluteFill covers the entire card ──────────────── */}
-        {isSold && (
+        {isSold && !justSold && (
           <>
             <View style={[StyleSheet.absoluteFillObject, styles.soldDim]} pointerEvents="none" />
             <View style={[StyleSheet.absoluteFillObject, styles.soldContainer]} pointerEvents="none">
@@ -332,6 +365,25 @@ function LeadCardInner({ lead, onUnlock, unlocking, purchased, highlighted }: Le
               </View>
             </View>
           </>
+        )}
+
+        {/* ── "Just sold" rubber stamp — animated slam during the 4s hold ───── */}
+        {/* Brand orange border+text on a translucent dark backdrop pill:      */}
+        {/* readable in both dark and light modes. Native-driver only.         */}
+        {justSold && (
+          <View style={[StyleSheet.absoluteFillObject, styles.soldContainer]} pointerEvents="none">
+            <Animated.View
+              style={[
+                styles.justSoldStamp,
+                {
+                  opacity: stampOpacity,
+                  transform: [{ rotate: '-12deg' }, { scale: stampScale }],
+                },
+              ]}
+            >
+              <Text style={styles.justSoldStampText}>SOLD</Text>
+            </Animated.View>
+          </View>
         )}
 
       </View>
@@ -349,7 +401,8 @@ export const LeadCard = React.memo(LeadCardInner, (prev, next) =>
   prev.lead.quality_score     === next.lead.quality_score     &&
   prev.unlocking    === next.unlocking  &&
   prev.highlighted  === next.highlighted &&
-  prev.purchased    === next.purchased
+  prev.purchased    === next.purchased  &&
+  prev.justSold     === next.justSold
 );
 
 // ── Styles ────────────────────────────────────────────────────────────────────
@@ -649,5 +702,26 @@ const styles = StyleSheet.create({
     textShadowColor:  'rgba(0,0,0,0.45)',
     textShadowOffset: { width: 1, height: 2 },
     textShadowRadius: 4,
+  },
+
+  // ── "Just sold" rubber stamp (4s hold) ───────────────────────────────────
+  // Static brand colors (NOT theme-derived), so StyleSheet.create is safe here:
+  // orange border+text on a translucent dark pill reads in dark AND light mode.
+  justSoldStamp: {
+    paddingHorizontal: 22,
+    paddingVertical:   6,
+    borderRadius:      12,
+    borderWidth:       3,
+    borderColor:       '#f97316',
+    backgroundColor:   'rgba(7,17,30,0.62)',
+    alignItems:        'center',
+    justifyContent:    'center',
+  },
+  justSoldStampText: {
+    color:         '#f97316',
+    fontSize:      26,
+    fontWeight:    '900',
+    letterSpacing: 6,
+    textTransform: 'uppercase',
   },
 });
