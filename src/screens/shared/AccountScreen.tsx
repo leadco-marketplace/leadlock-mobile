@@ -24,6 +24,7 @@ export function AccountScreen() {
   const [saving,        setSaving]        = useState(false);
   const [deleting,      setDeleting]      = useState(false);
   const [buyingCredits, setBuyingCredits] = useState<number | null>(null); // amountCents in flight
+  const [customAmount,  setCustomAmount]  = useState(''); // free-entry deposit amount (dollars)
 
   // Keep the wallet balance current: refresh when this screen gains focus and
   // whenever the app returns to the foreground (e.g. back from the Stripe
@@ -120,6 +121,21 @@ export function AccountScreen() {
     } finally {
       setBuyingCredits(null);
     }
+  }
+
+  // Custom amount → same deposit flow as the preset buttons. Server enforces
+  // the $20–$20,000 range too; this is just instant on-device feedback.
+  function handleCustomDeposit() {
+    const dollars = parseFloat(customAmount.replace(/[^0-9.]/g, ''));
+    if (!isFinite(dollars) || dollars <= 0) {
+      Alert.alert('Enter An Amount', 'Type the amount you want to deposit, e.g. 555.');
+      return;
+    }
+    if (dollars < 20)     { Alert.alert('Minimum Deposit', 'The minimum deposit is $20.'); return; }
+    if (dollars > 20000)  { Alert.alert('Maximum Deposit', 'The maximum single deposit is $20,000.'); return; }
+    const cents = Math.round(dollars * 100);
+    setCustomAmount('');
+    handleAddCredits(cents);
   }
 
   // ── Sign out ──────────────────────────────────────────────────────────────
@@ -315,7 +331,7 @@ export function AccountScreen() {
         <View style={[styles.creditCard, { backgroundColor: Colors.panel, borderColor: Colors.borderOrange, shadowColor: Colors.glowColor }]}>
           <Text style={[styles.sectionTitle, { color: Colors.foreground }]}>💰  Add Funds</Text>
           <Text style={[styles.creditsHint, { color: Colors.muted, marginTop: Spacing.xs }]}>
-            Pick an amount and deposit on a secure checkout page. New here? Your first few deposits (up to $200) can be paid instantly with Cash App; after that, deposits use your bank (ACH) and take 1–4 business days to clear. You can move any unused balance back to where it came from anytime.
+            Pick an amount — or type your own ($20–$20,000) — and deposit on a secure checkout page. New here? Your first few deposits (up to $200) can be paid instantly with Cash App; after that, deposits use your bank (ACH) and take 1–4 business days to clear. You can move any unused balance back to where it came from anytime.
           </Text>
           <View style={{ marginTop: Spacing.sm, gap: Spacing.sm }}>
             {([
@@ -342,6 +358,32 @@ export function AccountScreen() {
                 })}
               </View>
             ))}
+
+            {/* Custom amount — any value $20–$20,000 */}
+            <View style={styles.creditRow}>
+              <View style={[styles.customAmountWrap, { borderColor: Colors.border2, backgroundColor: Colors.panel2 }]}>
+                <Text style={[styles.customAmountPrefix, { color: Colors.muted }]}>$</Text>
+                <TextInput
+                  style={[styles.customAmountInput, { color: Colors.foreground }]}
+                  value={customAmount}
+                  onChangeText={setCustomAmount}
+                  placeholder="Custom amount"
+                  placeholderTextColor={Colors.placeholder}
+                  keyboardType="decimal-pad"
+                  returnKeyType="done"
+                  onSubmitEditing={handleCustomDeposit}
+                  editable={buyingCredits === null}
+                />
+              </View>
+              <TouchableOpacity
+                style={[styles.creditBtn, { flex: 0, paddingHorizontal: 18 }, (buyingCredits !== null || !customAmount.trim()) && styles.creditBtnLoading]}
+                onPress={handleCustomDeposit}
+                disabled={buyingCredits !== null || !customAmount.trim()}
+                activeOpacity={0.75}
+              >
+                <Text style={[styles.creditBtnText, { color: Colors.accent }]}>Deposit</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       )}
@@ -562,6 +604,27 @@ const styles = StyleSheet.create({
     fontSize: FontSize.md,
     fontWeight: '700',
     color: Colors.accent,
+    fontVariant: ['tabular-nums'],
+  },
+  // Custom deposit amount (colors passed inline — theme-safe)
+  customAmountWrap: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+  },
+  customAmountPrefix: {
+    fontSize: FontSize.md,
+    fontWeight: '700',
+    marginRight: 4,
+  },
+  customAmountInput: {
+    flex: 1,
+    paddingVertical: 14,
+    fontSize: FontSize.md,
+    fontWeight: '600',
     fontVariant: ['tabular-nums'],
   },
 
