@@ -183,8 +183,9 @@ export function LoginScreen({ navigation }: Props) {
                 ))}
               </View>
               <Text style={s.logoWordmark}>
-                <Text style={{ color: '#4E6BDE' }}>Lead</Text>
-                <Text style={{ color: '#f97316' }}>Co</Text>
+                <Text style={{ color: '#f8fafc' }}>Na</Text>
+                <Text style={{ color: '#f97316' }}>bb</Text>
+                <Text style={{ color: '#f8fafc' }}>it</Text>
               </Text>
               <Text style={s.logoSub}>MARKETPLACE</Text>
             </View>

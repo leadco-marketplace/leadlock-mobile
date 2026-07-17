@@ -40,7 +40,7 @@ export function ForgotPasswordScreen({ navigation }: Props) {
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView style={styles.screen} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.logoWrap}>
-          <Text style={styles.logo}><Text style={{ color: Colors.accent }}>Lead</Text><Text style={{ color: Colors.orange }}>Co</Text></Text>
+          <Text style={styles.logo}><Text style={{ color: '#f8fafc' }}>Na</Text><Text style={{ color: '#f97316' }}>bb</Text><Text style={{ color: '#f8fafc' }}>it</Text></Text>
           <Text style={styles.logoSub}>MARKETPLACE</Text>
         </View>
         <View style={styles.card}>
