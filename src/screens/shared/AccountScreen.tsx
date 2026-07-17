@@ -14,7 +14,7 @@ import { Colors, FontSize, Spacing, Radius, Shadow } from '@/theme';
 import Constants from 'expo-constants';
 import { supabase } from '@/lib/supabase';
 
-const WEB_APP = (Constants.expoConfig?.extra?.apiBaseUrl as string) ?? 'https://leadco-marketplace-p5zj.vercel.app';
+const WEB_APP = (Constants.expoConfig?.extra?.apiBaseUrl as string) ?? 'https://www.nabbitmarketplace.com';
 
 type PhoneStep = 'idle' | 'entering' | 'sending' | 'verifying' | 'done';
 

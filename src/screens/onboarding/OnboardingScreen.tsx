@@ -461,7 +461,7 @@ export function OnboardingScreen() {
             {[
               { icon: '👁️', title: 'Browse leads for free', desc: 'See all active leads in your areas — category, job type, and general location are always visible.' },
               { icon: '🔒', title: 'Pay to unlock contact info', desc: "When you find a lead you want, pay a flat fee to reveal the customer's name, phone, and address." },
-              { icon: '📞', title: 'Call through our platform', desc: 'All calls are routed through LeadCo Marketplace so quality and disputes can be verified.' },
+              { icon: '📞', title: 'Call through our platform', desc: 'All calls are routed through Nabbit Marketplace so quality and disputes can be verified.' },
             ].map(item => (
               <View key={item.title} style={{ flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.sm }}>
                 <Text style={{ fontSize: 18 }}>{item.icon}</Text>

@@ -38,7 +38,7 @@ function DiagonalPattern() {
 }
 
 /**
- * LeadCo logo as pure View elements — no image file, no black background.
+ * Nabbit logo as pure View elements — no image file, no black background.
  * Renders the 3×3 grid of coloured rounded squares directly.
  * Transparent background — shows whatever is behind it.
  */

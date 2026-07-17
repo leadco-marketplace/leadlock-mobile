@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────────────────────
-//  LeadCo — Bundled category & job-type photos (ALL 11 platform groups)
+//  Nabbit — Bundled category & job-type photos (ALL 11 platform groups)
 //
 //  All images live in  leadlock-mobile/assets/categories/
 //  and are committed to git so EAS cloud builds find them instantly.

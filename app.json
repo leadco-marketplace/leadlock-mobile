@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "LeadCo Marketplace",
+    "name": "Nabbit",
     "slug": "leadco-marketplace",
     "scheme": "leadco",
     "version": "1.0.0",
@@ -24,9 +24,9 @@
           "remote-notification"
         ],
         "ITSAppUsesNonExemptEncryption": false,
-        "NSCameraUsageDescription": "LeadCo Marketplace uses the camera to scan your card when you add a payment method.",
-        "NSPhotoLibraryUsageDescription": "LeadCo Marketplace needs photo access if you choose an image while adding payment details.",
-        "NSFaceIDUsageDescription": "LeadCo Marketplace uses Face ID to help verify your identity during secure payments."
+        "NSCameraUsageDescription": "Nabbit Marketplace uses the camera to scan your card when you add a payment method.",
+        "NSPhotoLibraryUsageDescription": "Nabbit Marketplace needs photo access if you choose an image while adding payment details.",
+        "NSFaceIDUsageDescription": "Nabbit Marketplace uses Face ID to help verify your identity during secure payments."
       }
     },
     "android": {
@@ -70,7 +70,7 @@
     "extra": {
       "supabaseUrl": "https://eyzcxxctjukrcawjrkvx.supabase.co",
       "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5emN4eGN0anVrcmNhd2pya3Z4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1ODI2NTcsImV4cCI6MjA5MjE1ODY1N30.JL-h9Wd_2JXVukNuDom2ea1ZGHhNeIBHCeJGtjiAkak",
-      "apiBaseUrl": "https://leadco-marketplace-p5zj.vercel.app",
+      "apiBaseUrl": "https://www.nabbitmarketplace.com",
       "stripePublishableKey": "",
       "stripeMerchantId": "merchant.com.leadco.marketplace",
       "eas": {

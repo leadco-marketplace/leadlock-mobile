@@ -19,7 +19,7 @@ import { useTheme }      from '@/contexts/ThemeContext';
 import { useAuth }       from '@/contexts/AuthContext';
 import Constants from 'expo-constants';
 
-const WEB_APP = (Constants.expoConfig?.extra?.apiBaseUrl as string) ?? 'https://leadco-marketplace-p5zj.vercel.app';
+const WEB_APP = (Constants.expoConfig?.extra?.apiBaseUrl as string) ?? 'https://www.nabbitmarketplace.com';
 
 // LayoutAnimation is enabled by default on iOS; Android needs the experimental
 // flag (guarded — it's a no-op on the new architecture where it's always on).
@@ -384,7 +384,7 @@ export function LiveFeedScreen() {
       }
 
       const { error: initErr } = await initPaymentSheet({
-        merchantDisplayName: 'LeadCo Marketplace',
+        merchantDisplayName: 'Nabbit Marketplace',
         customerId: intent.customerId,
         customerEphemeralKeySecret: intent.ephemeralKey,
         paymentIntentClientSecret: intent.clientSecret,

@@ -22,8 +22,8 @@ export function SignupScreen({ navigation }: Props) {
   const [termsAccepted, setTermsAccepted] = useState(false);
 
   const termsUrl = role === 'provider'
-    ? 'https://www.leadcomarketplace.com/terms/lead-provider'
-    : 'https://www.leadcomarketplace.com/terms/service-provider';
+    ? 'https://www.nabbitmarketplace.com/terms/lead-provider'
+    : 'https://www.nabbitmarketplace.com/terms/service-provider';
 
   async function handleSignup() {
     if (!email.trim() || !password) { setError('Please fill in all fields.'); return; }

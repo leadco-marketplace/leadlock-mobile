@@ -104,7 +104,7 @@ export function UnlockModal({ lead, visible, onCancel, onConfirm }: UnlockModalP
           {/* ── Privacy notice ──────────────────────────────── */}
           <View style={styles.noticeBox}>
             <Text style={[styles.noticeText, { color: Colors.textSecondary }]}>
-              ℹ️{'  '}Job description and call details are revealed after payment. All calls go through the LeadCo platform for privacy and verification.
+              ℹ️{'  '}Job description and call details are revealed after payment. All calls go through the Nabbit platform for privacy and verification.
             </Text>
           </View>
 

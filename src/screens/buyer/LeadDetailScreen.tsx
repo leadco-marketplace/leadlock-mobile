@@ -13,7 +13,7 @@ import { Audio } from 'expo-av';
 import { supabase } from '@/lib/supabase';
 import { Linking, Alert, Share } from 'react-native';
 
-const BASE = (Constants.expoConfig?.extra?.apiBaseUrl as string) ?? 'https://leadcomarketplace.com';
+const BASE = (Constants.expoConfig?.extra?.apiBaseUrl as string) ?? 'https://www.nabbitmarketplace.com';
 
 type LeadDetailRouteParams = { leadId: string; purchaseId?: string };
 

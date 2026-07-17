@@ -1,7 +1,7 @@
 import Constants from 'expo-constants';
 import { supabase } from './supabase';
 
-export const BASE = (Constants.expoConfig?.extra?.apiBaseUrl as string) ?? 'https://leadcomarketplace.com';
+export const BASE = (Constants.expoConfig?.extra?.apiBaseUrl as string) ?? 'https://www.nabbitmarketplace.com';
 
 /** Exported so screens that need a raw fetch (e.g. submit lead with duplicate handling) can share the same auth token logic. */
 export async function authHeaders(): Promise<Record<string, string>> {

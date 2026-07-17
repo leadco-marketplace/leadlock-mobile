@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────────────────────
-//  LeadCo — Category-specific lead context chips
+//  Nabbit — Category-specific lead context chips
 //
 //  Each service category has its own tailored set of context chips that
 //  help buyers quickly understand the lead's key characteristics.

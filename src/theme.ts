@@ -1,4 +1,4 @@
-// ── LeadCo Marketplace — Design system with Light / Dark / Inner-Light modes ──
+// ── Nabbit Marketplace — Design system with Light / Dark / Inner-Light modes ──
 
 export type ThemeMode = 'dark' | 'light' | 'inner-light';
 
