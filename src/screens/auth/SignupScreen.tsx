@@ -45,9 +45,9 @@ export function SignupScreen({ navigation }: Props) {
         {/* Logo */}
         <View style={styles.logoWrap}>
           <Text style={styles.logo}>
-            <Text style={{ color: '#f8fafc' }}>Na</Text>
+            <Text style={{ color: Colors.accent }}>Na</Text>
             <Text style={{ color: '#f97316' }}>bb</Text>
-            <Text style={{ color: '#f8fafc' }}>it</Text>
+            <Text style={{ color: Colors.accent }}>it</Text>
           </Text>
           <Text style={styles.logoSub}>MARKETPLACE</Text>
         </View>
