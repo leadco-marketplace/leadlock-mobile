@@ -184,7 +184,7 @@ export function LoginScreen({ navigation }: Props) {
               </View>
               <Text style={s.logoWordmark}>
                 <Text style={{ color: '#4E6BDE' }}>Na</Text>
-                <Text style={{ color: '#f97316' }}>bb</Text>
+                <Text style={{ color: '#f97316', fontWeight: '900', fontSize: 29 }}>bb</Text>
                 <Text style={{ color: '#4E6BDE' }}>it</Text>
               </Text>
               <Text style={s.logoSub}>MARKETPLACE</Text>
