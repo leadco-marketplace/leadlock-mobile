@@ -737,6 +737,7 @@ const BUYER_OUTCOME_META: Record<string, { label: string; color: string; bg: str
   connected:             { label: '✅ Valid Conversation', color: '#22d3ee', bg: 'rgba(34,211,238,0.10)' },
   callback_requested:    { label: '🔔 Callback Requested', color: '#fbbf24', bg: 'rgba(251,191,36,0.10)' },
   declined:              { label: '❌ Customer Declined', color: '#f87171', bg: 'rgba(248,113,113,0.10)' },
+  never_requested:       { label: '🚩 Not A Real Request?', color: '#f87171', bg: 'rgba(248,113,113,0.14)' },
   voicemail:             { label: '📵 Voicemail', color: '#94a3b8', bg: 'rgba(148,163,184,0.10)' },
   no_answer:             { label: '📞 No Answer', color: '#94a3b8', bg: 'rgba(148,163,184,0.10)' },
 };
@@ -1087,6 +1088,12 @@ export function LeadDetailScreen() {
                     </View>
                     {lead.call_outcome_summary && (
                       <Text style={[styles.description, { color: Colors.muted }]}>{lead.call_outcome_summary}</Text>
+                    )}
+                    {lead.call_outcome === 'never_requested' && (
+                      <Text style={[styles.description, { color: Colors.muted, marginTop: 4 }]}>
+                        This call was flagged — the customer says they never requested service.
+                        Our team reviews flagged leads; if confirmed, you'll receive platform credit.
+                      </Text>
                     )}
                   </>
                 ) : lead.call_analysis_status === 'failed' ? (

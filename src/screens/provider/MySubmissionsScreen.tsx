@@ -36,6 +36,7 @@ const OUTCOME_META: Record<string, { label: string; color: string; bg: string }>
   connected:             { label: '💬 Spoke To Customer', color: '#22d3ee', bg: 'rgba(34,211,238,0.10)' },
   callback_requested:    { label: '↩︎ Callback Requested', color: '#fbbf24', bg: 'rgba(251,191,36,0.10)' },
   declined:              { label: 'Not Interested',       color: '#94a3b8', bg: 'rgba(148,163,184,0.10)' },
+  never_requested:       { label: '🚩 Not A Real Request?', color: '#f87171', bg: 'rgba(248,113,113,0.10)' },
   voicemail:             { label: 'Voicemail',            color: '#94a3b8', bg: 'rgba(148,163,184,0.10)' },
   no_answer:             { label: 'No Answer',            color: '#94a3b8', bg: 'rgba(148,163,184,0.10)' },
 };
