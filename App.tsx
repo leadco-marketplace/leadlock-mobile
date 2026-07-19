@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { Platform, AppState } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as SplashScreen from 'expo-splash-screen';
@@ -8,6 +9,7 @@ import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { StripeProvider } from '@stripe/stripe-react-native';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
+import { PUSH_TOKEN_STORAGE_KEY } from '@/lib/pushToken';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { AppNavigator, navigationRef } from '@/navigation/AppNavigator';
 import { pushApi } from '@/lib/api';
@@ -94,6 +96,8 @@ async function registerForPushNotifications(userId: string): Promise<void> {
   // can find this token with a direct column lookup.
   try {
     await pushApi.register(expoToken, Platform.OS);
+    // Remember this device's token so sign-out can unregister it (see AuthContext).
+    AsyncStorage.setItem(PUSH_TOKEN_STORAGE_KEY, expoToken).catch(() => {});
     console.log('[push] Token saved ✅ for user', userId);
   } catch (e: any) {
     console.error('[push] Failed to save token via API:', e?.message ?? String(e));

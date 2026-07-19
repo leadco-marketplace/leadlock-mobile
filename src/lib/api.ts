@@ -406,6 +406,12 @@ export const pushApi = {
       method: 'POST',
       body: JSON.stringify({ token, platform }),
     }),
+  /** Called on sign-out so this device stops receiving the account's pushes. */
+  unregister: (token: string) =>
+    request<{ ok: boolean }>('/api/push/unregister', {
+      method: 'POST',
+      body: JSON.stringify({ token }),
+    }),
 };
 
 // ── Credits ────────────────────────────────────────────────────────────────

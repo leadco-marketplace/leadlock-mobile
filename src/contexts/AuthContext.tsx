@@ -1,8 +1,9 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { PUSH_TOKEN_STORAGE_KEY } from '@/lib/pushToken';
 import { supabase } from '@/lib/supabase';
-import { Profile, profileApi } from '@/lib/api';
+import { Profile, profileApi, pushApi } from '@/lib/api';
 import { THEME_STORAGE_KEY } from '@/contexts/ThemeContext';
 
 type AuthContextValue = {
@@ -118,6 +119,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   async function signOut() {
+    // Stop this DEVICE from receiving the account's pushes before the session
+    // is destroyed (the API call needs the still-valid auth token). Never
+    // block logout on it — 4s cap, errors swallowed.
+    try {
+      const deviceToken = await AsyncStorage.getItem(PUSH_TOKEN_STORAGE_KEY);
+      if (deviceToken) {
+        await Promise.race([
+          pushApi.unregister(deviceToken),
+          new Promise((resolve) => setTimeout(resolve, 4000)),
+        ]);
+      }
+    } catch { /* logout must never fail because of push cleanup */ }
     await supabase.auth.signOut();
     setProfile(null);
     setIsGuest(false);
