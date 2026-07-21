@@ -1,12 +1,12 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, Switch,
   ActivityIndicator, Alert, TextInput,
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import {
-  areasApi, categoriesApi, preferencesApi,
-  ServiceArea, ServiceCategory, Preference,
+  areasApi, categoriesApi, preferencesApi, profileApi, placesApi,
+  ServiceArea, ServiceCategory, Preference, PlacePrediction,
 } from '@/lib/api';
 import { ScreenShell } from '@/components/ScreenShell';
 import { CreditPill } from '@/components/CreditPill';
@@ -45,6 +45,7 @@ export function AlertsScreen() {
   const [prefs,       setPrefs]       = useState<Preference[]>([]);
   const [loading,     setLoading]     = useState(true);
   const [deletingId,  setDeletingId]  = useState<string | null>(null);
+  const [baseAddress, setBaseAddress] = useState<string>('');
 
   // "New Alert" mini-form state (category picker only)
   const [showForm,    setShowForm]    = useState(false);
@@ -54,14 +55,16 @@ export function AlertsScreen() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [fetchedAreas, fetchedCats, fetchedPrefs] = await Promise.all([
+      const [fetchedAreas, fetchedCats, fetchedPrefs, fetchedProfile] = await Promise.all([
         areasApi.getAll(),
         categoriesApi.getAll(),
         preferencesApi.get(),
+        profileApi.get(),
       ]);
       setAreas(fetchedAreas);
       setCategories(fetchedCats);
       setPrefs(fetchedPrefs);
+      setBaseAddress(fetchedProfile.base_address ?? '');
     } catch (e: any) {
       Alert.alert('Error', e.message ?? 'Failed to load alerts');
     } finally {
@@ -164,6 +167,9 @@ export function AlertsScreen() {
 
   return (
     <ScreenShell title="Lead Alerts" subtitle="Get notified when matching leads go live" rightElement={<CreditPill />} scrollable>
+
+      {/* ── Business location (distance anchor for alerts) ────────────── */}
+      <BusinessLocationSection savedAddress={baseAddress} onChanged={setBaseAddress} />
 
       {/* ── Saved alerts ─────────────────────────────────────────────── */}
       <Text style={[styles.sectionLabel, { color: Colors.textSecondary }]}>Your Alerts</Text>
@@ -327,6 +333,203 @@ export function AlertsScreen() {
     </ScreenShell>
   );
 }
+
+// ── Business location (distance anchor for lead alerts) ──────────────────
+// Alert distances used to be measured from the buyer's closest service-area
+// center — an arbitrary city pin that could sit miles from their real shop.
+// Saving a business location makes it the anchor instead ("≈3 mi away" =
+// ≈3 mi from THEIR door). Optional; never shown to customers. Saves through
+// the same PATCH /api/profile the web Alert Settings page uses.
+// NOTE: all colors are applied inline from Colors.* (theme mutates Colors —
+// never bake colors into module-level StyleSheet objects).
+
+function BusinessLocationSection({
+  savedAddress, onChanged,
+}: {
+  savedAddress: string;
+  onChanged:    (address: string) => void;
+}) {
+  useTheme(); // re-render when theme changes so inline Colors.* picks up new values
+  const [editing,     setEditing]     = useState(false);
+  const [query,       setQuery]       = useState('');
+  const [suggestions, setSuggestions] = useState<PlacePrediction[]>([]);
+  const [searching,   setSearching]   = useState(false);
+  const [saving,      setSaving]      = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function handleChangeText(text: string) {
+    setQuery(text);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    // Address search needs more chars to get useful results from Nominatim
+    if (text.length < 5) { setSuggestions([]); return; }
+    debounceRef.current = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const results = await placesApi.autocomplete(text, 'address');
+        setSuggestions(results);
+      } catch { /* ignore network errors */ }
+      finally { setSearching(false); }
+    }, 400);
+  }
+
+  async function pickSuggestion(item: PlacePrediction) {
+    setSuggestions([]);
+    setSaving(true);
+    try {
+      await profileApi.update({
+        base_address: item.description,
+        base_lat:     item.lat,
+        base_lng:     item.lng,
+      });
+      onChanged(item.description);
+      setEditing(false);
+      setQuery('');
+    } catch (e: any) {
+      Alert.alert('Error', e.message ?? 'Could not save your business location.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function removeLocation() {
+    setSaving(true);
+    try {
+      await profileApi.update({ base_address: null, base_lat: null, base_lng: null });
+      onChanged('');
+      setEditing(false);
+      setQuery('');
+      setSuggestions([]);
+    } catch (e: any) {
+      Alert.alert('Error', e.message ?? 'Could not remove your business location.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <View style={[bl.card, { backgroundColor: Colors.panel, borderColor: Colors.border, shadowColor: Colors.glowColor }]}>
+      <Text style={[bl.title, { color: Colors.foreground }]}>📍 Business Location</Text>
+      <Text style={[bl.hint, { color: Colors.textSecondary }]}>
+        Used to show accurate distances in your lead alerts. Never shown to customers.
+      </Text>
+
+      {savedAddress && !editing ? (
+        <>
+          <View style={[bl.addressBox, { backgroundColor: Colors.panel2, borderColor: Colors.border2 }]}>
+            <Text style={[bl.addressText, { color: Colors.foreground }]}>{savedAddress}</Text>
+          </View>
+          <View style={bl.actionsRow}>
+            <TouchableOpacity
+              style={[bl.actionBtn, { borderColor: Colors.accent }]}
+              onPress={() => { setEditing(true); setQuery(''); setSuggestions([]); }}
+              disabled={saving}
+              activeOpacity={0.75}
+            >
+              <Text style={[bl.actionBtnText, { color: Colors.accent }]}>Change</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[bl.actionBtn, { borderColor: 'rgba(248,113,113,0.45)' }]}
+              onPress={removeLocation}
+              disabled={saving}
+              activeOpacity={0.75}
+            >
+              {saving
+                ? <ActivityIndicator size="small" color={Colors.danger} />
+                : <Text style={[bl.actionBtnText, { color: Colors.danger }]}>Remove</Text>}
+            </TouchableOpacity>
+          </View>
+        </>
+      ) : (
+        <>
+          <View style={[bl.inputRow, { backgroundColor: Colors.panel2, borderColor: Colors.border2 }]}>
+            <TextInput
+              style={[bl.input, { color: Colors.foreground }]}
+              value={query}
+              onChangeText={handleChangeText}
+              placeholder="Type your shop or office address…"
+              placeholderTextColor={Colors.muted}
+              autoCorrect={false}
+              autoCapitalize="words"
+              editable={!saving}
+            />
+            {(searching || saving) && (
+              <ActivityIndicator size="small" color={Colors.orange} style={{ marginRight: 8 }} />
+            )}
+          </View>
+          {suggestions.length > 0 && (
+            <View style={[bl.dropdown, { backgroundColor: Colors.panel2, borderColor: Colors.border2 }]}>
+              {suggestions.map(item => (
+                <TouchableOpacity
+                  key={item.place_id}
+                  style={bl.suggestion}
+                  onPress={() => pickSuggestion(item)}
+                  disabled={saving}
+                >
+                  <Text style={[bl.suggestionText, { color: Colors.text }]}>{item.description}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+          {savedAddress && (
+            <TouchableOpacity
+              onPress={() => { setEditing(false); setQuery(''); setSuggestions([]); }}
+              style={bl.cancelLink}
+            >
+              <Text style={[bl.cancelLinkText, { color: Colors.muted }]}>Cancel</Text>
+            </TouchableOpacity>
+          )}
+        </>
+      )}
+    </View>
+  );
+}
+
+const bl = StyleSheet.create({
+  card: {
+    borderRadius: Radius.lg,
+    borderWidth:  1,
+    padding:      Spacing.md,
+    marginBottom: Spacing.lg,
+    ...Shadow.card,
+  },
+  title:      { fontSize: FontSize.md, fontWeight: '700', marginBottom: 4 },
+  hint:       { fontSize: FontSize.xs, lineHeight: 16, marginBottom: Spacing.sm },
+  addressBox: {
+    borderRadius:      Radius.md,
+    borderWidth:       1,
+    paddingHorizontal: Spacing.md,
+    paddingVertical:   Spacing.sm + 2,
+  },
+  addressText: { fontSize: FontSize.sm, fontWeight: '600' },
+  actionsRow:  { flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.sm },
+  actionBtn: {
+    borderWidth:       1,
+    borderRadius:      Radius.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical:   6,
+    alignItems:        'center',
+    justifyContent:    'center',
+  },
+  actionBtnText: { fontSize: FontSize.xs, fontWeight: '700' },
+  inputRow: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    borderRadius:      Radius.md,
+    borderWidth:       1,
+    paddingHorizontal: Spacing.md,
+  },
+  input:    { flex: 1, fontSize: FontSize.sm, paddingVertical: Spacing.sm + 2 },
+  dropdown: {
+    borderRadius: Radius.md,
+    borderWidth:  1,
+    marginTop:    4,
+    overflow:     'hidden',
+  },
+  suggestion:     { paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm + 2 },
+  suggestionText: { fontSize: FontSize.sm },
+  cancelLink:     { alignSelf: 'flex-start', marginTop: Spacing.xs, paddingVertical: 4 },
+  cancelLinkText: { fontSize: FontSize.xs, fontWeight: '600' },
+});
 
 // ── Styles ────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({

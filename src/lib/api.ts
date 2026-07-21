@@ -234,6 +234,11 @@ export type Profile = {
   notify_email: boolean;
   notify_sms: boolean;
   notify_push: boolean;
+  /** Business location — anchors the distance shown in lead alerts.
+   *  Set/cleared together (all three or all null) via profileApi.update. */
+  base_address?: string | null;
+  base_lat?: number | null;
+  base_lng?: number | null;
 };
 
 export const profileApi = {
