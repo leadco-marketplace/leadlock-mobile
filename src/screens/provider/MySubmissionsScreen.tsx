@@ -121,18 +121,33 @@ const sheet = StyleSheet.create({
   sub:     { fontSize: FontSize.sm, color: Colors.muted },
 });
 
+/** Trust Engine state → tag copy + colors ("Sale Is Final" per user design). */
+const TRUST_META: Record<string, { label: string; color: string; bg: string }> = {
+  verified:        { label: '✓ Sale Is Final',                 color: '#34d399', bg: 'rgba(52,211,153,0.12)' },
+  flagged_pending: { label: '🚩 Needs Response — Fix Now',     color: '#f87171', bg: 'rgba(248,113,113,0.12)' },
+  awaiting_recall: { label: '📞 Awaiting Buyer’s Re-Call', color: '#fbbf24', bg: 'rgba(251,191,36,0.12)' },
+  confirmed_fake:  { label: 'Sale Reversed',                   color: '#94a3b8', bg: 'rgba(148,163,184,0.12)' },
+};
+
 function SubmissionCard({
   lead,
   onEdit,
   onDelete,
+  onRespondFlag,
 }: {
   lead: ProviderLead;
   onEdit: () => void;
   onDelete: () => void;
+  onRespondFlag: () => void;
 }) {
   useTheme();
   const sc = STATUS_COLORS[lead.status] ?? STATUS_COLORS.archived;
   const canEditLead = ['draft', 'available'].includes(lead.status);
+  const trust = lead.trust_status ? TRUST_META[lead.trust_status] : null;
+  const flagged = lead.trust_status === 'flagged_pending';
+  const flagMinLeft = flagged && lead.trust_flag_deadline
+    ? Math.max(0, Math.round((Date.parse(lead.trust_flag_deadline) - Date.now()) / 60000))
+    : null;
 
   // Choose the most relevant date label
   const dateLabel = lead.status === 'sold'      ? 'Sold'      :
@@ -174,6 +189,15 @@ function SubmissionCard({
               </Text>
             </View>
           )}
+
+          {/* Trust Engine tag — "Sale Is Final" / "Needs Response" (user design) */}
+          {trust && (
+            <View style={[styles.outcomePill, { backgroundColor: trust.bg, borderColor: trust.color + '55' }]}>
+              <Text style={[styles.outcomeText, { color: trust.color, fontWeight: '800' }]}>
+                {trust.label}{flagged && flagMinLeft != null ? ` (${flagMinLeft} min left)` : ''}
+              </Text>
+            </View>
+          )}
         </View>
 
         <View style={{ alignItems: 'flex-end', gap: 6 }}>
@@ -184,9 +208,16 @@ function SubmissionCard({
         </View>
       </View>
 
+      {/* Flagged lead → the ONE action that matters, front and center */}
+      {flagged && (
+        <View style={styles.actions}>
+          <Button label="🚩 Respond To Flag" onPress={onRespondFlag} variant="danger" style={{ flex: 1 }} />
+        </View>
+      )}
+
       {/* Edit Details is available on live AND sold leads (fix a wrong
           number after the buyer reports it); Delete only pre-sale. */}
-      {(canEditLead || lead.status === 'sold') && (
+      {!flagged && (canEditLead || lead.status === 'sold') && (
         <View style={styles.actions}>
           <Button label="Edit Details" onPress={onEdit} variant="secondary" style={{ flex: 1 }} />
           {canEditLead && (
@@ -211,7 +242,14 @@ export function MySubmissionsScreen({ navigation }: any) {
   async function load() {
     try {
       const data = await providerApi.getSubmissions();
-      setLeads(data.leads ?? []);
+      // Flagged leads (fix window ticking) sort to the VERY TOP — the one
+      // thing a provider must see the second they open the screen.
+      const sorted = [...(data.leads ?? [])].sort((a, b) => {
+        const aF = a.trust_status === 'flagged_pending' ? 1 : 0;
+        const bF = b.trust_status === 'flagged_pending' ? 1 : 0;
+        return bF - aF;
+      });
+      setLeads(sorted);
       setEarnings(data.totalEarningsCents ?? 0);
       setSoldCount(data.soldCount ?? 0);
       setLoadError(null);
@@ -230,6 +268,35 @@ export function MySubmissionsScreen({ navigation }: any) {
       load();
     }, [])
   );
+
+  /** Flag response — the two cures, signals-style: fix the number (opens the
+   *  edit sheet) or stand behind it (buyer told to try again). Either one
+   *  stops the auto-reverse clock and starts the buyer's re-call window. */
+  function handleRespondFlag(lead: ProviderLead) {
+    Alert.alert(
+      '🚩 Lead Flagged',
+      `On the buyer's call, the customer indicated this may not be a real request${lead.trust_flag_reason ? ` (${String(lead.trust_flag_reason).replace(/_/g, ' ')})` : ''}.\n\nIf the phone number was mistyped, fix it now. If it's correct, the buyer will be asked to call again — that call decides: verified locks the sale, no call returns the lead to the marketplace.`,
+      [
+        { text: 'Fix The Number', onPress: () => setEditTarget(lead) },
+        {
+          text: 'Number Is Correct — Retry',
+          onPress: async () => {
+            try {
+              const res = await providerApi.confirmFlagNumber(lead.id);
+              const win = res.recallMinutes != null
+                ? (res.recallMinutes < 90 ? `${res.recallMinutes} minutes` : `${Math.round(res.recallMinutes / 60)} hours`)
+                : 'their window';
+              Alert.alert('Response Sent', `The buyer was notified to call again within ${win}. A verified call locks this sale in.`);
+              load();
+            } catch (e: any) {
+              Alert.alert('Error', e?.message ?? 'Failed to send response');
+            }
+          },
+        },
+        { text: 'Cancel', style: 'cancel' },
+      ]
+    );
+  }
 
   function handleDelete(lead: ProviderLead) {
     Alert.alert(
@@ -307,6 +374,7 @@ export function MySubmissionsScreen({ navigation }: any) {
               lead={item}
               onEdit={() => setEditTarget(item)}
               onDelete={() => handleDelete(item)}
+              onRespondFlag={() => handleRespondFlag(item)}
             />
           )}
           onRefresh={() => { setRefreshing(true); load(); }}
