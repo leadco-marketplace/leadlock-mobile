@@ -5,7 +5,20 @@ export const BASE = (Constants.expoConfig?.extra?.apiBaseUrl as string) ?? 'http
 
 /** Exported so screens that need a raw fetch (e.g. submit lead with duplicate handling) can share the same auth token logic. */
 export async function authHeaders(): Promise<Record<string, string>> {
-  const { data: { session } } = await supabase.auth.getSession();
+  let { data: { session } } = await supabase.auth.getSession();
+  // Access tokens live 60 minutes and iOS suspends the auto-refresh timer in
+  // the background — an app woken after ~1h can hand out an EXPIRED token,
+  // which the API silently treats as "not logged in" (guest): My Matches
+  // empties, notification taps toast "no longer available". Caught live on
+  // 58-minute-old notifications. Refresh proactively when expired or within
+  // 30s of it.
+  const expiresAtMs = (session?.expires_at ?? 0) * 1000;
+  if (session && expiresAtMs < Date.now() + 30_000) {
+    try {
+      const { data } = await supabase.auth.refreshSession();
+      if (data.session) session = data.session;
+    } catch { /* keep the old token — server 401 will surface it */ }
+  }
   const token = session?.access_token;
   return {
     'Content-Type': 'application/json',
@@ -24,15 +37,29 @@ async function request<T>(path: string, opts?: RequestInit): Promise<T> {
   if (method === 'GET') {
     path += (path.includes('?') ? '&' : '?') + `_t=${Date.now()}`;
   }
-  const res = await fetch(`${BASE}${path}`, {
+  const doFetch = (hdrs: Record<string, string>) => fetch(`${BASE}${path}`, {
     ...opts,
     headers: {
-      ...headers,
+      ...hdrs,
       ...opts?.headers,
       'Cache-Control': 'no-cache',
       Pragma:          'no-cache',
     },
   });
+
+  let res = await doFetch(headers);
+
+  // 401 with a token attached = the token died mid-flight (expiry race).
+  // Force-refresh the session and retry ONCE with the new token.
+  if (res.status === 401 && headers.Authorization) {
+    try {
+      const { data } = await supabase.auth.refreshSession();
+      if (data.session?.access_token) {
+        res = await doFetch({ ...headers, Authorization: `Bearer ${data.session.access_token}` });
+      }
+    } catch { /* fall through to the error below */ }
+  }
+
   const body = await res.json();
   if (!res.ok) throw new Error(body?.error ?? `HTTP ${res.status}`);
   return body as T;
@@ -203,6 +230,12 @@ export type ProviderLead = {
   customer_name?: string | null;
   customer_phone?: string | null;
   customer_email?: string | null;
+  /** Trust Engine state: verified (sale FINAL) | flagged_pending (fix window
+   *  open — action needed NOW) | awaiting_recall (corrected, buyer must
+   *  re-call) | confirmed_fake (reversed) | null. */
+  trust_status?: 'verified' | 'flagged_pending' | 'awaiting_recall' | 'confirmed_fake' | null;
+  trust_flag_reason?: string | null;
+  trust_flag_deadline?: string | null;
 };
 
 export const providerApi = {
@@ -220,6 +253,13 @@ export const providerApi = {
       body: JSON.stringify(fields),
     }),
   deleteLead: (id: string)             => request<{ success: boolean }>(`/api/provider/leads/${id}`, { method: 'DELETE' }),
+  /** Respond to a trust flag WITHOUT editing: "the number is correct — buyer
+   *  should try again". Opens the buyer's re-call window. */
+  confirmFlagNumber: (id: string) =>
+    request<{ ok: boolean; trustFlagCured?: boolean; recallMinutes?: number | null }>(`/api/provider/leads/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ trust_confirm_number: true }),
+    }),
 };
 
 // ── Profile ────────────────────────────────────────────────────────────────
