@@ -308,6 +308,29 @@ export const preferencesApi = {
   delete: (id: string)                   => request<{ success: boolean }>(`/api/preferences/${id}`, { method: 'DELETE' }),
 };
 
+// ── Announcements (admin broadcasts inbox) ─────────────────────────────────
+export type Announcement = {
+  recipient_id: string;
+  broadcast_id: string;
+  title: string;
+  body: string;
+  accent_color: string | null;
+  image_url: string | null;
+  cta_label: string | null;
+  cta_href: string | null;
+  promo_credit_cents: number | null;
+  read: boolean;
+  promo_claimed: boolean;
+  created_at: string;
+};
+
+export const broadcastsApi = {
+  inbox:      () => request<{ items: Announcement[]; unread: number }>(`/api/broadcasts?_t=${Date.now()}`),
+  markRead:   (broadcastId: string) => request<{ ok: boolean }>(`/api/broadcasts/${broadcastId}`, { method: 'PATCH', body: JSON.stringify({ read: true }) }),
+  markClick:  (broadcastId: string) => request<{ ok: boolean }>(`/api/broadcasts/${broadcastId}`, { method: 'PATCH', body: JSON.stringify({ clicked: true }) }),
+  claim:      (broadcastId: string) => request<{ ok: boolean; already?: boolean; credited_cents?: number; error?: string }>(`/api/broadcasts/${broadcastId}/claim`, { method: 'POST' }),
+};
+
 // ── Service Categories ─────────────────────────────────────────────────────
 export type ServiceCategory = {
   id: string;

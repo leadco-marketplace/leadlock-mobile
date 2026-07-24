@@ -5,6 +5,7 @@ import { Text } from 'react-native';
 import { MySubmissionsScreen } from '@/screens/provider/MySubmissionsScreen';
 import { SubmitLeadScreen }    from '@/screens/provider/SubmitLeadScreen';
 import { SignalsScreen }       from '@/screens/provider/SignalsScreen';
+import { AnnouncementsScreen } from '@/screens/buyer/AnnouncementsScreen';
 import { AccountScreen }       from '@/screens/shared/AccountScreen';
 import { Colors, FontSize } from '@/theme';
 
@@ -21,6 +22,7 @@ function SubmissionsStack() {
     <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: Colors.bg } }}>
       <Stack.Screen name="MySubmissions" component={MySubmissionsScreen} />
       <Stack.Screen name="SubmitLead"    component={SubmitLeadScreen}    />
+      <Stack.Screen name="Announcements" component={AnnouncementsScreen} />
     </Stack.Navigator>
   );
 }

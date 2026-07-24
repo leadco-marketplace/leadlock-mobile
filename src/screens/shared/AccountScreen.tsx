@@ -4,7 +4,7 @@ import {
   Alert, Switch, Linking, ScrollView, TextInput,
   ActivityIndicator, AppState,
 } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { profileApi, phoneVerifyApi } from '@/lib/api';
@@ -21,6 +21,11 @@ type PhoneStep = 'idle' | 'entering' | 'sending' | 'verifying' | 'done';
 export function AccountScreen() {
   const { profile, signOut, signInAsGuest: _signInAsGuest, isGuest, refreshProfile } = useAuth();
   const { mode: themeMode, setMode: setThemeMode } = useTheme();
+  const navigation = useNavigation<any>();
+  function openAnnouncements() {
+    if (profile?.role === 'provider') navigation.navigate('SubmissionsTab', { screen: 'Announcements' });
+    else navigation.navigate('Announcements');
+  }
   const [saving,        setSaving]        = useState(false);
   const [deleting,      setDeleting]      = useState(false);
   const [buyingCredits, setBuyingCredits] = useState<number | null>(null); // amountCents in flight
@@ -237,6 +242,14 @@ export function AccountScreen() {
             <Text style={[styles.creditsLabel, { color: Colors.muted }]}>Credit balance</Text>
             <Text style={[styles.creditsValue, { color: Colors.accent }]}>${((profile.credits_cents ?? 0) / 100).toFixed(2)}</Text>
           </View>
+        )}
+
+        {!isGuest && (
+          <TouchableOpacity onPress={openAnnouncements}
+            style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: Colors.border, paddingVertical: Spacing.md }}>
+            <Text style={{ color: Colors.foreground, fontSize: FontSize.md, fontWeight: '600' }}>📣  Announcements</Text>
+            <Text style={{ color: Colors.muted, fontSize: FontSize.lg }}>›</Text>
+          </TouchableOpacity>
         )}
       </View>
 

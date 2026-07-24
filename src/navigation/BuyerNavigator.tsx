@@ -8,6 +8,7 @@ import { AlertsScreen }      from '@/screens/buyer/AlertsScreen';
 import { AccountScreen }     from '@/screens/shared/AccountScreen';
 import { LeadDetailScreen }  from '@/screens/buyer/LeadDetailScreen';
 import { AreaPickerScreen }  from '@/screens/buyer/AreaPickerScreen';
+import { AnnouncementsScreen } from '@/screens/buyer/AnnouncementsScreen';
 import { GuestLockedScreen } from '@/screens/shared/GuestLockedScreen';
 import { useAuth }           from '@/contexts/AuthContext';
 import { Colors, FontSize }  from '@/theme';
@@ -110,6 +111,7 @@ export function BuyerNavigator() {
       <Stack.Screen name="BuyerTabs"   component={BuyerTabs} />
       <Stack.Screen name="LeadDetail"  component={LeadDetailScreen} />
       <Stack.Screen name="AreaPicker"  component={AreaPickerScreen} />
+      <Stack.Screen name="Announcements" component={AnnouncementsScreen} />
     </Stack.Navigator>
   );
 }
