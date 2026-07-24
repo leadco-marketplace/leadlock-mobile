@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, Alert, Linking } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { ScreenShell } from '@/components/ScreenShell';
 import { Colors, FontSize, Spacing, Radius } from '@/theme';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -14,6 +14,7 @@ import { broadcastsApi, Announcement } from '@/lib/api';
 export function AnnouncementsScreen() {
   const { mode } = useTheme();
   const styles = useMemo(() => makeStyles(mode), [mode]);
+  const navigation = useNavigation<any>();
 
   const [items, setItems] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,6 +51,10 @@ export function AnnouncementsScreen() {
 
   return (
     <ScreenShell title="Announcements" subtitle="Updates & offers from Nabbit" onRefresh={load} refreshing={loading}>
+      <TouchableOpacity onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('AccountTab'))} style={styles.backBtn}>
+        <Text style={styles.backText}>‹  Back</Text>
+      </TouchableOpacity>
+
       {items.length === 0 && !loading ? (
         <View style={styles.empty}><Text style={styles.emptyText}>No announcements yet.</Text></View>
       ) : (
@@ -60,7 +65,10 @@ export function AnnouncementsScreen() {
               <View style={[styles.rail, { backgroundColor: accent }]} />
               {it.image_url ? <Image source={{ uri: it.image_url }} style={styles.image} /> : null}
               <View style={styles.body}>
-                <Text style={[styles.kicker, { color: accent }]}>ANNOUNCEMENT</Text>
+                <View style={styles.kickerRow}>
+                  <Text style={[styles.kicker, { color: accent }]}>ANNOUNCEMENT</Text>
+                  <Text style={styles.date}>{new Date(it.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</Text>
+                </View>
                 <Text style={styles.title}>{it.title}</Text>
                 <Text style={styles.text}>{it.body}</Text>
                 {it.promo_credit_cents ? (
@@ -88,8 +96,12 @@ export function AnnouncementsScreen() {
 
 function makeStyles(_mode: string) {
   return StyleSheet.create({
+    backBtn: { alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 4, marginBottom: 6 },
+    backText: { color: Colors.accent, fontSize: FontSize.md, fontWeight: '700' },
     empty: { padding: Spacing.xl, alignItems: 'center' },
     emptyText: { color: Colors.muted, fontSize: FontSize.md },
+    kickerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    date: { color: Colors.muted, fontSize: FontSize.xs },
     card: { backgroundColor: Colors.panel2, borderRadius: Radius.lg, borderWidth: 1, borderColor: Colors.border, overflow: 'hidden', marginBottom: Spacing.md },
     rail: { height: 5, width: '100%' },
     image: { width: '100%', height: 160 },
