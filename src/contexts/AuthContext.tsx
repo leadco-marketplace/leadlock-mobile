@@ -70,6 +70,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (session) {
         setProfile(null); // Clear stale profile immediately before fetching the new one
         loadProfile();
+        import('@/lib/api').then(m => m.sessionApi.ping().catch(() => {})).catch(() => {}); // last-active + login IP
       } else {
         setProfile(null);
       }

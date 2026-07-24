@@ -324,6 +324,11 @@ export type Announcement = {
   created_at: string;
 };
 
+export const sessionApi = {
+  /** Throttled last-active + login-IP beat (server dedups). Fire-and-forget. */
+  ping: () => request<{ ok: boolean }>('/api/session/ping', { method: 'POST' }),
+};
+
 export const broadcastsApi = {
   inbox:      () => request<{ items: Announcement[]; unread: number }>(`/api/broadcasts?_t=${Date.now()}`),
   markRead:   (broadcastId: string) => request<{ ok: boolean }>(`/api/broadcasts/${broadcastId}`, { method: 'PATCH', body: JSON.stringify({ read: true }) }),
