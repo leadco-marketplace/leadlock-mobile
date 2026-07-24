@@ -74,7 +74,10 @@ export function UnlockModal({ lead, visible, onCancel, onConfirm }: UnlockModalP
             <View style={styles.priceRow}>
               <Text style={[styles.priceLabel, { color: Colors.textSecondary }]}>Location</Text>
               <Text style={[styles.priceValue, { color: Colors.foreground }]}>
-                {lead.nationwide ? 'Nationwide' : `${lead.city}, ${lead.state}`}
+                {lead.nationwide
+                  ? 'Nationwide'
+                  : ([lead.city, lead.state].filter(Boolean).join(', ') +
+                     (lead.zip_code ? ` ${lead.zip_code}` : '')) || 'Location pending'}
               </Text>
             </View>
 

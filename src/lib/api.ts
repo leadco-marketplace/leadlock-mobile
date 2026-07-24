@@ -75,6 +75,7 @@ export type Lead = {
   job_type: string;
   city: string;
   state: string;
+  zip_code?: string | null;
   nationwide: boolean;
   status: string;
   price_cents: number;

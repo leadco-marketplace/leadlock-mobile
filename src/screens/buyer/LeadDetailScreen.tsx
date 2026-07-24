@@ -914,13 +914,17 @@ export function LeadDetailScreen() {
 
   // Internal system fields that should never be shown to buyers
   const INTERNAL_META_KEYS = new Set([
-    'area_id', 'area_ids', 'decay_enabled', 'nationwide',
+    'area_id', 'area_ids', 'decay_enabled', 'decay_started_at', 'nationwide',
+    'api_key_id', 'landing_page_id', 'ai_review', 'load_test', 'test_seed',
   ]);
+  // Also drop any internal namespaced keys (trust_*, flagged_*, decay_*).
+  const isInternalKey = (k: string) =>
+    INTERNAL_META_KEYS.has(k) || /^(trust_|flagged_|decay_|ai_review)/.test(k);
 
   // Parse metadata fields — skip nulls, blanks, and internal keys
   const metaEntries = lead.metadata
     ? Object.entries(lead.metadata).filter(
-        ([k, v]) => v !== null && v !== '' && v !== undefined && !INTERNAL_META_KEYS.has(k)
+        ([k, v]) => v !== null && v !== '' && v !== undefined && !isInternalKey(k)
       )
     : [];
 
@@ -963,7 +967,9 @@ export function LeadDetailScreen() {
               <Text style={[styles.category, { color: Colors.foreground }]}>{lead.service_category}</Text>
               <Text style={[styles.jobType, { color: Colors.textSecondary }]}>{lead.job_type}</Text>
               <Text style={[styles.location, { color: Colors.muted }]}>
-                {lead.nationwide ? '🌐 Nationwide' : `📍 ${lead.city}, ${lead.state}`}
+                {lead.nationwide
+                  ? '🌐 Nationwide'
+                  : `📍 ${([lead.city, lead.state].filter(Boolean).join(', ') + (lead.zip_code ? ` ${lead.zip_code}` : '')) || 'Location pending'}`}
               </Text>
             </View>
             <View style={styles.priceBadge}>

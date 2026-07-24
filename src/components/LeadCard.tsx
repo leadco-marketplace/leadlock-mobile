@@ -296,7 +296,10 @@ function LeadCardInner({ lead, onUnlock, unlocking, purchased, highlighted, just
             <Text style={[styles.metaLine, { color: Colors.muted }]} numberOfLines={1}>
               {lead.service_category.toUpperCase()}
               {' · '}
-              {lead.nationwide ? '🌐 Nationwide' : `${lead.city}, ${lead.state}`}
+              {lead.nationwide
+                ? '🌐 Nationwide'
+                : ([lead.city, lead.state].filter(Boolean).join(', ') +
+                   (lead.zip_code ? ` ${lead.zip_code}` : '')) || 'Location pending'}
               {distanceLabel ? ` · ${distanceLabel}` : ''}
             </Text>
 
