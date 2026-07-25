@@ -5,6 +5,7 @@ import { ScreenShell } from '@/components/ScreenShell';
 import { Colors, FontSize, Spacing, Radius } from '@/theme';
 import { useTheme } from '@/contexts/ThemeContext';
 import { broadcastsApi, Announcement } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
 
 /**
  * Announcements — the in-app inbox for admin broadcasts. Designed cards
@@ -15,6 +16,7 @@ export function AnnouncementsScreen() {
   const { mode } = useTheme();
   const styles = useMemo(() => makeStyles(mode), [mode]);
   const navigation = useNavigation<any>();
+  const { profile } = useAuth();
 
   const [items, setItems] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,9 +46,26 @@ export function AnnouncementsScreen() {
     } finally { setClaiming(null); }
   }
 
+  // Map a web-style CTA path (/dashboard, /account, …) to the right mobile
+  // screen for the current role. External http links open in the browser.
   function clickThrough(it: Announcement) {
     broadcastsApi.markClick(it.broadcast_id).catch(() => {});
-    if (it.cta_href && /^https?:\/\//.test(it.cta_href)) Linking.openURL(it.cta_href).catch(() => {});
+    const href = it.cta_href ?? '';
+    if (!href) return;
+    if (/^https?:\/\//.test(href)) { Linking.openURL(href).catch(() => {}); return; }
+    const path = href.split('?')[0].replace(/\/+$/, '') || '/';
+    try {
+      if (profile?.role === 'provider') {
+        if (path === '/submit-lead')                                navigation.navigate('SubmitLeadTab');
+        else if (path === '/my-submissions' || path === '/my-leads') navigation.navigate('SubmissionsTab', { screen: 'MySubmissions' });
+        else                                                        navigation.navigate('AccountTab'); // /account, /provider-settings, fallback
+      } else {
+        if (path === '/dashboard' || path === '/')                  navigation.navigate('BuyerTabs', { screen: 'LiveFeed' });
+        else if (path === '/my-leads')                              navigation.navigate('BuyerTabs', { screen: 'MyLeads' });
+        else if (path === '/dashboard/preferences')                 navigation.navigate('BuyerTabs', { screen: 'Alerts' });
+        else                                                        navigation.navigate('BuyerTabs', { screen: 'Account' }); // /account + fallback
+      }
+    } catch { /* unknown target — no-op */ }
   }
 
   return (
