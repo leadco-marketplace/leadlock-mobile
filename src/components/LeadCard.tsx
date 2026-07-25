@@ -292,18 +292,17 @@ function LeadCardInner({ lead, onUnlock, unlocking, purchased, highlighted, just
               </Text>
             ) : null}
 
-            {/* Meta: category · LOCATION · distance — two-tone, location is the hero */}
-            <Text style={styles.metaLine} numberOfLines={1}>
-              <Text style={[styles.metaCat, { color: Colors.muted }]}>
-                {lead.service_category.toUpperCase()}{' · '}
-              </Text>
-              <Text style={[styles.metaLoc, { color: Colors.foreground }]}>
-                {lead.nationwide
-                  ? '🌐 Nationwide'
-                  : ([lead.city, lead.state].filter(Boolean).join(', ') +
-                     (lead.zip_code ? ` ${lead.zip_code}` : '')) || 'Location pending'}
-              </Text>
-              {distanceLabel ? <Text style={styles.metaDist}>{' · '}{distanceLabel}</Text> : null}
+            {/* Category on its own line, LOCATION (blue) on the line below it —
+                gives the city/state/zip a full line so it never truncates.
+                Distance stays only in the green pill in the badges row below. */}
+            <Text style={[styles.metaCat, { color: Colors.muted }]} numberOfLines={1}>
+              {lead.service_category.toUpperCase()}
+            </Text>
+            <Text style={styles.metaLoc} numberOfLines={1}>
+              {lead.nationwide
+                ? '🌐 Nationwide'
+                : ([lead.city, lead.state].filter(Boolean).join(', ') +
+                   (lead.zip_code ? ` ${lead.zip_code}` : '')) || 'Location pending'}
             </Text>
 
             {/* Badges row: distance pill + lead code */}
@@ -592,15 +591,19 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  // ── Meta line ─────────────────────────────────────────────────────────────
-  metaLine: {
-    fontSize:  FontSize.sm + 1,   // bumped up for readability
-    lineHeight: 18,
-    marginTop: 5,
+  // ── Meta lines ────────────────────────────────────────────────────────────
+  metaCat: {
+    fontSize: FontSize.xs,
+    fontWeight: '600',
+    letterSpacing: 0.3,
+    marginTop: 6,
   },
-  metaCat:  { fontWeight: '600' },
-  metaLoc:  { fontWeight: '700' },   // location — the hero (uses foreground for light/dark safety)
-  metaDist: { fontWeight: '700', color: Colors.orange },
+  metaLoc: {
+    fontSize: FontSize.sm + 2,   // location on its own line, bigger + blue
+    fontWeight: '700',
+    color: '#2f6bff',
+    marginTop: 2,
+  },
 
   // ── Badges row ────────────────────────────────────────────────────────────
   badgesRow: {
