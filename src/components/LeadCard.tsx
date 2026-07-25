@@ -292,15 +292,18 @@ function LeadCardInner({ lead, onUnlock, unlocking, purchased, highlighted, just
               </Text>
             ) : null}
 
-            {/* Meta: category · location · distance */}
-            <Text style={[styles.metaLine, { color: Colors.muted }]} numberOfLines={1}>
-              {lead.service_category.toUpperCase()}
-              {' · '}
-              {lead.nationwide
-                ? '🌐 Nationwide'
-                : ([lead.city, lead.state].filter(Boolean).join(', ') +
-                   (lead.zip_code ? ` ${lead.zip_code}` : '')) || 'Location pending'}
-              {distanceLabel ? ` · ${distanceLabel}` : ''}
+            {/* Meta: category · LOCATION · distance — two-tone, location is the hero */}
+            <Text style={styles.metaLine} numberOfLines={1}>
+              <Text style={[styles.metaCat, { color: Colors.muted }]}>
+                {lead.service_category.toUpperCase()}{' · '}
+              </Text>
+              <Text style={[styles.metaLoc, { color: Colors.foreground }]}>
+                {lead.nationwide
+                  ? '🌐 Nationwide'
+                  : ([lead.city, lead.state].filter(Boolean).join(', ') +
+                     (lead.zip_code ? ` ${lead.zip_code}` : '')) || 'Location pending'}
+              </Text>
+              {distanceLabel ? <Text style={styles.metaDist}>{' · '}{distanceLabel}</Text> : null}
             </Text>
 
             {/* Badges row: distance pill + lead code */}
@@ -323,9 +326,7 @@ function LeadCardInner({ lead, onUnlock, unlocking, purchased, highlighted, just
                 <Text style={[styles.timeAgo, { color: Colors.muted }]}>
                   {timeAgo(lead.published_at ?? lead.created_at)}
                 </Text>
-                <Text style={[styles.price, { color: Colors.foreground }]}>
-                  {formatPrice(price)}
-                </Text>
+                {/* Price shown only in the Unlock button (was duplicated here) */}
               </View>
 
               {!purchased && (onUnlock || justSold) && (
@@ -593,9 +594,13 @@ const styles = StyleSheet.create({
 
   // ── Meta line ─────────────────────────────────────────────────────────────
   metaLine: {
-    fontSize:  FontSize.xs - 1,
-    lineHeight: 14,
+    fontSize:  FontSize.sm + 1,   // bumped up for readability
+    lineHeight: 18,
+    marginTop: 5,
   },
+  metaCat:  { fontWeight: '600' },
+  metaLoc:  { fontWeight: '700' },   // location — the hero (uses foreground for light/dark safety)
+  metaDist: { fontWeight: '700', color: Colors.orange },
 
   // ── Badges row ────────────────────────────────────────────────────────────
   badgesRow: {
