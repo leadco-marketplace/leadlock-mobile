@@ -32,6 +32,7 @@ const CATEGORY_IMAGES: Record<string, any> = {
   'chimney sweep':        require('../../assets/categories/chimney-sweep.jpg'),
   'garage door':          require('../../assets/categories/garage-door.jpg'),
   'landscaping':          require('../../assets/categories/landscaping.jpg'),
+  'lawn care':            require('../../assets/categories/landscaping.jpg'),
   'painting':             require('../../assets/categories/painting.jpg'),
   'flooring':             require('../../assets/categories/flooring.jpg'),
   'windows & doors':      require('../../assets/categories/jt-window-replace.jpg'),
