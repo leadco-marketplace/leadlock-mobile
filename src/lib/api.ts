@@ -471,6 +471,15 @@ export const walletApi = {
     request<{ checkoutUrl: string }>('/api/wallet/deposit', {
       method: 'POST', body: JSON.stringify({ amountCents, mobile: true }),
     }),
+
+  // NATIVE deposit — returns a PaymentIntent client secret for Stripe's
+  // in-app PaymentSheet (Cash App app-to-app / native ACH bank connect), no
+  // browser. Server enforces the same Cash App earned-trust caps as /deposit.
+  depositIntent: (amountCents: number, method: 'cashapp' | 'bank') =>
+    request<{ clientSecret: string; publishableKey: string | null; purchaseId: string }>(
+      '/api/wallet/deposit-intent',
+      { method: 'POST', body: JSON.stringify({ amountCents, method }) },
+    ),
 };
 
 // ── Push token registration ────────────────────────────────────────────────

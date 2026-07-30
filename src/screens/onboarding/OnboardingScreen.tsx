@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet, Linking, ScrollView,
+  View, Text, TextInput, TouchableOpacity, StyleSheet, Linking, ScrollView, Keyboard,
 } from 'react-native';
 import { ScreenShell } from '@/components/ScreenShell';
 import { Input } from '@/components/Input';
@@ -294,7 +294,13 @@ export function OnboardingScreen() {
                 <View style={{ flex: 1 }}>
                   <TextInput
                     value={verifyInput}
-                    onChangeText={v => setVerifyInput(v.replace(/\D/g, ''))}
+                    onChangeText={v => {
+                    const digits = v.replace(/\D/g, '').slice(0, 6);
+                    setVerifyInput(digits);
+                    // number-pad keyboard has no "done" key — auto-dismiss once the
+                    // 6-digit code is entered so the Verify button is reachable.
+                    if (digits.length === 6) Keyboard.dismiss();
+                  }}
                     placeholder="6-digit code"
                     placeholderTextColor={Colors.placeholder}
                     keyboardType="number-pad"

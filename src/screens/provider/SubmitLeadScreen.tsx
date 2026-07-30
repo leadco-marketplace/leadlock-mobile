@@ -374,18 +374,29 @@ interface ExtraFieldInputProps {
   allValues?: Record<string, string>;
 }
 
-/** Searchable dropdown: type-to-filter suggestions with free text allowed
- *  (anything typed that isn't in the list is accepted — "Other" is implicit).
- *  Used for long lists like vehicle makes/models; model options depend on
- *  the selected make via dependsOn/optionsByParent. */
+/** Searchable dropdown: type-to-filter suggestions, PICK-FROM-LIST ONLY.
+ *  Typed text is a filter query, not the committed value — the value only
+ *  changes when a suggestion is tapped. This blocks free text (a channel to
+ *  smuggle contact info / bypass the platform). Used for long lists like
+ *  vehicle makes/models; model options depend on the selected make via
+ *  dependsOn/optionsByParent. */
 function SearchSelectField({ field, value, onChange, allValues }: ExtraFieldInputProps) {
   useTheme();
   const [focused, setFocused] = useState(false);
+  const [query, setQuery] = useState('');
   const parentValue = field.dependsOn ? (allValues?.[field.dependsOn] ?? '') : '';
   const options: string[] = field.optionsByParent
     ? (field.optionsByParent[parentValue] ?? [])
     : (field.options ?? []);
-  const q = value.trim().toLowerCase();
+  // Strict by default now. The ONLY free-text escape hatch: a dependent field
+  // (vehicle model) whose parent make has no option list — VEHICLE_MODELS has
+  // no per-make "Other", so we allow a typed model there to avoid trapping the
+  // user. A model string can't carry a usable phone/contact.
+  const strict = field.strict ?? true;
+  const allowFreeText = !strict || (!!field.optionsByParent && options.length === 0);
+  // While focused, the box shows the live query; otherwise the committed value.
+  const display = focused ? query : value;
+  const q = display.trim().toLowerCase();
   const matches = q
     ? options.filter(o => o.toLowerCase().includes(q) && o.toLowerCase() !== q).slice(0, 6)
     : options.slice(0, 6);
@@ -394,12 +405,20 @@ function SearchSelectField({ field, value, onChange, allValues }: ExtraFieldInpu
     <View>
       <Input
         label={field.label + (field.required ? ' *' : '')}
-        value={value}
-        onChangeText={onChange}
+        value={display}
+        onChangeText={(t) => { setQuery(t); if (allowFreeText) onChange(t); }}
         placeholder={field.placeholder ?? 'Start typing to search…'}
         autoCapitalize="words"
-        onFocus={() => setFocused(true)}
-        onBlur={() => setTimeout(() => setFocused(false), 200)}
+        onFocus={() => { setQuery(value); setFocused(true); }}
+        onBlur={() => setTimeout(() => {
+          setFocused(false);
+          if (!allowFreeText) {
+            // Commit only an exact list match; otherwise discard the typing and
+            // keep the previously committed value.
+            const exact = options.find(o => o.trim().toLowerCase() === query.trim().toLowerCase());
+            if (exact) onChange(exact);
+          }
+        }, 200)}
       />
       {focused && matches.length > 0 && (
         <View style={{
@@ -428,6 +447,10 @@ function SearchSelectField({ field, value, onChange, allValues }: ExtraFieldInpu
 
 function ExtraFieldInput({ field, value, onChange, allValues }: ExtraFieldInputProps) {
   useTheme();
+  // Safety net: never render a free-text box for a "text" field. Free text is a
+  // channel to smuggle contact info / bypass the platform. Customer name/phone/
+  // email are rendered elsewhere (not via this component), so they're unaffected.
+  if (field.type === 'text') return null;
   if (field.searchable) {
     return <SearchSelectField field={field} value={value} onChange={onChange} allValues={allValues} />;
   }
@@ -1213,7 +1236,6 @@ export function SubmitLeadScreen({ navigation }: any) {
                 <View style={[styles.section, { backgroundColor: Colors.panel, borderColor: Colors.borderOrange, shadowColor: Colors.glowColor }]}>
                   <SectionHeader title="Lead Details" />
                   {activeFields
-                    .filter((field) => field.key !== 'vehicle_make_custom' || extraValues['vehicle_make'] === 'Other')
                     .map((field) => (
                     <ExtraFieldInput
                       key={field.key}

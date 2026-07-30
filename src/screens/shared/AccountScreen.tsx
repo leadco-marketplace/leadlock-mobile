@@ -1,18 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  Alert, Switch, Linking, ScrollView, TextInput,
+  Alert, Switch, Linking, ScrollView, TextInput, Keyboard,
   ActivityIndicator, AppState,
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
-import { profileApi, phoneVerifyApi } from '@/lib/api';
+import { profileApi, phoneVerifyApi, walletApi } from '@/lib/api';
 import { ScreenShell } from '@/components/ScreenShell';
 import { Button } from '@/components/Button';
 import { Colors, FontSize, Spacing, Radius, Shadow } from '@/theme';
 import Constants from 'expo-constants';
 import { supabase } from '@/lib/supabase';
+import { useStripe, initStripe } from '@stripe/stripe-react-native';
 
 const WEB_APP = (Constants.expoConfig?.extra?.apiBaseUrl as string) ?? 'https://www.nabbitmarketplace.com';
 
@@ -21,6 +22,7 @@ type PhoneStep = 'idle' | 'entering' | 'sending' | 'verifying' | 'done';
 export function AccountScreen() {
   const { profile, signOut, signInAsGuest: _signInAsGuest, isGuest, refreshProfile } = useAuth();
   const { mode: themeMode, setMode: setThemeMode } = useTheme();
+  const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const navigation = useNavigation<any>();
   function openAnnouncements() {
     if (profile?.role === 'provider') navigation.navigate('SubmissionsTab', { screen: 'Announcements' });
@@ -31,15 +33,39 @@ export function AccountScreen() {
   const [buyingCredits, setBuyingCredits] = useState<number | null>(null); // amountCents in flight
   const [customAmount,  setCustomAmount]  = useState(''); // free-entry deposit amount (dollars)
 
+  // ── Cash App deposit trust ladder state ────────────────────────────────────
+  const [cashAppAllowed,  setCashAppAllowed]  = useState(false);
+  const [cashAppMaxCents, setCashAppMaxCents] = useState(0);
+  const [owedCents,       setOwedCents]       = useState(0);
+  const [depositMethod,   setDepositMethod]   = useState<'cashapp' | 'bank'>('bank');
+  const [repaying,        setRepaying]        = useState(false);
+
+  async function loadCashAppStatus() {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) return;
+      const res = await fetch(`${WEB_APP}/api/wallet/cashapp-status?_t=${Date.now()}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return;
+      const body = await res.json();
+      setCashAppAllowed(!!body.allowed);
+      setCashAppMaxCents(Number(body.perDepositCapCents) || 0);
+      setOwedCents(Number(body.owedCents) || 0);
+      if (!body.allowed) setDepositMethod('bank');
+    } catch { /* non-fatal — bank stays the default */ }
+  }
+
   // Keep the wallet balance current: refresh when this screen gains focus and
   // whenever the app returns to the foreground (e.g. back from the Stripe
   // deposit checkout). Fixes the balance not updating right after a deposit.
   useFocusEffect(
-    React.useCallback(() => { refreshProfile(); }, [])
+    React.useCallback(() => { refreshProfile(); loadCashAppStatus(); }, [])
   );
   useEffect(() => {
     const sub = AppState.addEventListener('change', (s) => {
-      if (s === 'active') refreshProfile();
+      if (s === 'active') { refreshProfile(); loadCashAppStatus(); }
     });
     return () => sub.remove();
   }, []);
@@ -97,34 +123,108 @@ export function AccountScreen() {
     }
   }
 
-  // ── Add funds (bank/ACH or card) ──────────────────────────────────────────
-  // Routes through /api/wallet/deposit (NOT the legacy card-only top-up) so the
-  // checkout offers bank transfer (ACH) + card, and funds are credited only
-  // once the payment settles — safe for ACH's multi-day clearing.
+  // ── Add funds — NATIVE Stripe PaymentSheet (Cash App / ACH) ────────────────
+  // Fetches a PaymentIntent client secret from /api/wallet/deposit-intent and
+  // presents Stripe's in-app sheet instead of opening a browser Checkout:
+  //   • Cash App → app-to-app handoff to the Cash App app, back into ours.
+  //   • Bank     → native us_bank_account bank-connect sheet (ACH).
+  // The Stripe webhook credits the wallet on payment_intent.succeeded (Cash App
+  // ~instant; ACH settles in 1–4 business days). Server enforces the Cash App
+  // earned-trust caps — the on-device check below is just instant feedback.
   async function handleAddCredits(amountCents: number) {
+    const method: 'cashapp' | 'bank' = cashAppAllowed ? depositMethod : 'bank';
+    if (method === 'cashapp' && cashAppMaxCents > 0 && amountCents > cashAppMaxCents) {
+      Alert.alert(
+        'Cash App Limit',
+        `The most you can deposit with Cash App right now is $${(cashAppMaxCents / 100).toFixed(2)}. Use your bank for a larger amount.`,
+      );
+      return;
+    }
     setBuyingCredits(amountCents);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-      if (!token) { Alert.alert('Error', 'Please sign in again.'); return; }
-      const res = await fetch(`${WEB_APP}/api/wallet/deposit`, {
-        method:  'POST',
-        headers: {
-          'Content-Type':  'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({ amountCents, mobile: true }),
+      const { clientSecret, publishableKey } = await walletApi.depositIntent(amountCents, method);
+
+      // StripeProvider ships with a blank key, so initialize with the key the
+      // server returned (auto-matches test vs live) before presenting the sheet.
+      if (publishableKey) {
+        try {
+          await initStripe({
+            publishableKey,
+            merchantIdentifier: (Constants.expoConfig?.extra?.stripeMerchantId as string) ?? 'merchant.com.leadco.marketplace',
+          });
+        } catch { /* provider already initialized — fine */ }
+      }
+
+      // returnURL is REQUIRED for the Cash App app-to-app redirect back into our
+      // app; scheme is registered in app config (leadco / leadcotest).
+      const scheme = (Constants.expoConfig?.scheme as string) ?? 'leadco';
+      const { error: initErr } = await initPaymentSheet({
+        merchantDisplayName: 'Nabbit Marketplace',
+        paymentIntentClientSecret: clientSecret,
+        returnURL: `${scheme}://stripe-redirect`,
+        // REQUIRED for ACH (us_bank_account) — funds settle after the sheet closes.
+        allowsDelayedPaymentMethods: true,
+        // Native wallets are disabled for deposits (Cash App / ACH only).
+        applePay: undefined,
+        googlePay: undefined,
       });
-      const body = await res.json();
-      if (res.ok && body.checkoutUrl) {
-        await Linking.openURL(body.checkoutUrl);
+      if (initErr) {
+        Alert.alert('Payment error', initErr.message ?? 'Could not start the deposit.');
+        return;
+      }
+
+      const { error: payErr } = await presentPaymentSheet();
+      if (payErr) {
+        // Cancelling the sheet is not an error we surface loudly.
+        if (payErr.code !== 'Canceled') {
+          Alert.alert('Payment not completed', payErr.message ?? 'Please try again.');
+        }
+        return;
+      }
+
+      // Payment authorized. The webhook credits the wallet once it settles.
+      await refreshProfile();
+      await loadCashAppStatus();
+      if (method === 'bank') {
+        Alert.alert(
+          '✅ Bank transfer started',
+          'Your deposit is on its way. Bank transfers (ACH) take 1–4 business days to clear — your balance updates automatically once it settles.',
+        );
       } else {
-        Alert.alert('Error', body.detail ?? body.error ?? 'Could not open checkout. Please try again.');
+        Alert.alert('✅ Deposit received', "We're adding the funds to your balance now.");
       }
     } catch (e: any) {
       Alert.alert('Error', e.message ?? 'Network error. Please try again.');
     } finally {
       setBuyingCredits(null);
+    }
+  }
+
+  // ── Repay a reversed Cash App deposit ──────────────────────────────────────
+  async function handleRepayChargeback() {
+    setRepaying(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) { Alert.alert('Error', 'Please sign in again.'); return; }
+      const res = await fetch(`${WEB_APP}/api/wallet/repay-chargeback`, {
+        method:  'POST',
+        headers: {
+          'Content-Type':  'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ mobile: true }),
+      });
+      const body = await res.json();
+      if (res.ok && body.checkoutUrl) {
+        await Linking.openURL(body.checkoutUrl);
+      } else {
+        Alert.alert('Error', body.detail ?? body.error ?? 'Could not start repayment. Please try again.');
+      }
+    } catch (e: any) {
+      Alert.alert('Error', e.message ?? 'Network error. Please try again.');
+    } finally {
+      setRepaying(false);
     }
   }
 
@@ -316,7 +416,12 @@ export function AccountScreen() {
                   placeholder="6-digit code"
                   placeholderTextColor={Colors.muted}
                   value={codeInput}
-                  onChangeText={setCodeInput}
+                  onChangeText={v => {
+                    const digits = v.replace(/\D/g, '').slice(0, 6);
+                    setCodeInput(digits);
+                    // number-pad has no "done" key — auto-dismiss at 6 digits.
+                    if (digits.length === 6) Keyboard.dismiss();
+                  }}
                   keyboardType="number-pad"
                   maxLength={6}
                   autoFocus
@@ -343,9 +448,65 @@ export function AccountScreen() {
       {isBuyer && (
         <View style={[styles.creditCard, { backgroundColor: Colors.panel, borderColor: Colors.borderOrange, shadowColor: Colors.glowColor }]}>
           <Text style={[styles.sectionTitle, { color: Colors.foreground }]}>💰  Add Funds</Text>
+
+          {/* Repay banner — a reversed Cash App deposit is outstanding */}
+          {owedCents > 0 && (
+            <View style={{ marginTop: Spacing.sm, padding: Spacing.sm, borderRadius: Radius.md, borderWidth: 1, borderColor: '#f59e0b66', backgroundColor: '#f59e0b1a' }}>
+              <Text style={{ color: '#fbbf24', fontSize: FontSize.sm, lineHeight: 20 }}>
+                A recent Cash App deposit was reversed. Repay ${(owedCents / 100).toFixed(2)} to keep your account in good standing.
+              </Text>
+              <TouchableOpacity
+                style={{ marginTop: Spacing.sm, alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 16, borderRadius: Radius.md, backgroundColor: '#f59e0b' }}
+                onPress={handleRepayChargeback}
+                disabled={repaying}
+                activeOpacity={0.75}
+              >
+                <Text style={{ color: '#111827', fontWeight: '700', fontSize: FontSize.sm }}>
+                  {repaying ? 'Opening…' : `Pay it back ($${(owedCents / 100).toFixed(2)})`}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
           <Text style={[styles.creditsHint, { color: Colors.muted, marginTop: Spacing.xs }]}>
-            Pick an amount — or type your own ($20–$20,000) — and deposit on a secure checkout page. New here? Your first few deposits (up to $200) can be paid instantly with Cash App; after that, deposits use your bank (ACH) and take 1–4 business days to clear. You can move any unused balance back to where it came from anytime.
+            Pick an amount — or type your own ($20–$20,000) — and deposit on a secure checkout page.
+            {cashAppAllowed
+              ? ' Choose ⚡ Cash App (instant) or 🏦 Bank (ACH, 1–4 business days).'
+              : ' Deposits use your bank (ACH) and take 1–4 business days to clear.'}
+            {' '}You can move any unused balance back to where it came from anytime.
           </Text>
+
+          {/* Explicit method choice — only when Cash App is currently eligible. */}
+          {cashAppAllowed && (
+            <View style={{ flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.sm }}>
+              {([['cashapp', '⚡ Cash App'], ['bank', '🏦 Bank (ACH)']] as const).map(([m, label]) => {
+                const active = depositMethod === m;
+                return (
+                  <TouchableOpacity
+                    key={m}
+                    style={{
+                      flex: 1, paddingVertical: 10, borderRadius: Radius.md, alignItems: 'center',
+                      borderWidth: 1,
+                      borderColor: active ? Colors.accent : Colors.border2,
+                      backgroundColor: active ? `${Colors.accent}22` : Colors.panel2,
+                    }}
+                    onPress={() => setDepositMethod(m)}
+                    activeOpacity={0.75}
+                  >
+                    <Text style={{ color: active ? Colors.accent : Colors.muted, fontWeight: active ? '700' : '500', fontSize: FontSize.sm }}>
+                      {label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          )}
+          {cashAppAllowed && depositMethod === 'cashapp' && cashAppMaxCents > 0 && (
+            <Text style={[styles.creditsHint, { color: Colors.muted, marginTop: Spacing.xs }]}>
+              Cash App available up to ${(cashAppMaxCents / 100).toFixed(2)} per deposit.
+            </Text>
+          )}
+
           <View style={{ marginTop: Spacing.sm, gap: Spacing.sm }}>
             {([
               [[2500, '$25'], [5000,  '$50' ]],
