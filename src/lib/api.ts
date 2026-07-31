@@ -275,6 +275,8 @@ export type Profile = {
   notify_email: boolean;
   notify_sms: boolean;
   notify_push: boolean;
+  /** Which sound matching-lead push alerts play. */
+  alert_sound?: 'default' | 'emergency' | 'ping';
   /** Business location — anchors the distance shown in lead alerts.
    *  Set/cleared together (all three or all null) via profileApi.update. */
   base_address?: string | null;
@@ -475,7 +477,7 @@ export const walletApi = {
   // NATIVE deposit — returns a PaymentIntent client secret for Stripe's
   // in-app PaymentSheet (Cash App app-to-app / native ACH bank connect), no
   // browser. Server enforces the same Cash App earned-trust caps as /deposit.
-  depositIntent: (amountCents: number, method: 'cashapp' | 'bank') =>
+  depositIntent: (amountCents: number, method: 'cashapp' | 'applepay' | 'bank') =>
     request<{ clientSecret: string; publishableKey: string | null; purchaseId: string }>(
       '/api/wallet/deposit-intent',
       { method: 'POST', body: JSON.stringify({ amountCents, method }) },

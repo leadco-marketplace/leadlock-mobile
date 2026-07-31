@@ -21,6 +21,7 @@
       }
     },
     "test": {
+      "autoIncrement": true,
       "env": {
         "APP_VARIANT": "test",
         "TEST_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlyZGJldWtoYXZ3Zm1pcWJzaWxlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ5ODkwMjcsImV4cCI6MjEwMDU2NTAyN30.3ERpgScqx5FuMyFbkAD08XongpBPGCsd6TK333F5gY4"
@@ -52,7 +53,8 @@
     "test": {
       "ios": {
         "appleId": "aeschela@hotmail.com",
-        "appleTeamId": "4TFD5Q6UC7"
+        "appleTeamId": "4TFD5Q6UC7",
+        "ascAppId": "6795110346"
       }
     }
   }

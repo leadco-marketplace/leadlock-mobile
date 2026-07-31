@@ -14,8 +14,22 @@ import { Button } from '@/components/Button';
 import { Colors, FontSize, Spacing, Radius, Shadow } from '@/theme';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { Audio } from 'expo-av';
 
 const DEFAULT_RADIUS = 25;
+
+// Bundled alert sounds (must match app.json `sounds` + the server's alert-sounds map).
+type AlertSoundKey = 'default' | 'emergency' | 'ping';
+const ALERT_SOUND_ASSETS: Record<AlertSoundKey, number> = {
+  default:   require('../../../assets/lead-alert.wav'),
+  emergency: require('../../../assets/lead-emergency.wav'),
+  ping:      require('../../../assets/lead-ping.wav'),
+};
+const ALERT_SOUND_OPTIONS: { key: AlertSoundKey; label: string; hint: string; icon: string }[] = [
+  { key: 'default',   label: 'Default',   hint: 'The standard chime',            icon: '🔔' },
+  { key: 'emergency', label: 'Emergency', hint: 'Loud & urgent — never miss one', icon: '🚨' },
+  { key: 'ping',      label: 'Ping',      hint: 'Short, sharp alert',            icon: '📣' },
+];
 
 // US state code → name (for display in chips)
 const STATE_NAMES: Record<string, string> = {
@@ -46,6 +60,7 @@ export function AlertsScreen() {
   const [loading,     setLoading]     = useState(true);
   const [deletingId,  setDeletingId]  = useState<string | null>(null);
   const [baseAddress, setBaseAddress] = useState<string>('');
+  const [alertSound,  setAlertSound]  = useState<'default' | 'emergency' | 'ping'>('default');
 
   // "New Alert" mini-form state (category picker only)
   const [showForm,    setShowForm]    = useState(false);
@@ -65,6 +80,7 @@ export function AlertsScreen() {
       setCategories(fetchedCats);
       setPrefs(fetchedPrefs);
       setBaseAddress(fetchedProfile.base_address ?? '');
+      setAlertSound(fetchedProfile.alert_sound ?? 'default');
     } catch (e: any) {
       Alert.alert('Error', e.message ?? 'Failed to load alerts');
     } finally {
@@ -170,6 +186,9 @@ export function AlertsScreen() {
 
       {/* ── Business location (distance anchor for alerts) ────────────── */}
       <BusinessLocationSection savedAddress={baseAddress} onChanged={setBaseAddress} />
+
+      {/* ── Alert sound (choose how new-lead pushes sound) ───────────── */}
+      <AlertSoundSection value={alertSound} onChange={setAlertSound} />
 
       {/* ── Saved alerts ─────────────────────────────────────────────── */}
       <Text style={[styles.sectionLabel, { color: Colors.textSecondary }]}>Your Alerts</Text>
@@ -342,6 +361,81 @@ export function AlertsScreen() {
 // the same PATCH /api/profile the web Alert Settings page uses.
 // NOTE: all colors are applied inline from Colors.* (theme mutates Colors —
 // never bake colors into module-level StyleSheet objects).
+
+// ── Alert sound picker ──────────────────────────────────────────────────────
+function AlertSoundSection({ value, onChange }: {
+  value: AlertSoundKey; onChange: (v: AlertSoundKey) => void;
+}) {
+  useTheme();
+  const [saving, setSaving] = useState<AlertSoundKey | null>(null);
+
+  async function preview(key: AlertSoundKey) {
+    try {
+      // Play even if the phone is on silent so the buyer actually hears the preview.
+      await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
+      const { sound } = await Audio.Sound.createAsync(ALERT_SOUND_ASSETS[key], { shouldPlay: true });
+      sound.setOnPlaybackStatusUpdate((st) => {
+        if (st.isLoaded && st.didJustFinish) sound.unloadAsync().catch(() => {});
+      });
+    } catch { /* preview is best-effort */ }
+  }
+
+  async function choose(key: AlertSoundKey) {
+    preview(key);
+    if (key === value) return;
+    const prev = value;
+    onChange(key);          // optimistic
+    setSaving(key);
+    try {
+      await profileApi.update({ alert_sound: key });
+    } catch {
+      onChange(prev);       // revert if the save fails
+      Alert.alert('Could not save', 'Please try again.');
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  return (
+    <View style={{
+      backgroundColor: Colors.panel, borderRadius: Radius.lg, padding: Spacing.md,
+      marginBottom: Spacing.md, borderWidth: 1, borderColor: Colors.border,
+    }}>
+      <Text style={{ color: Colors.foreground, fontSize: FontSize.md, fontWeight: '700' }}>🔊 Alert Sound</Text>
+      <Text style={{ color: Colors.textSecondary, fontSize: FontSize.sm, marginTop: 2, marginBottom: Spacing.sm }}>
+        Choose the sound your new-lead alerts play. Tap one to hear it.
+      </Text>
+      {ALERT_SOUND_OPTIONS.map((opt) => {
+        const active = value === opt.key;
+        return (
+          <TouchableOpacity
+            key={opt.key}
+            onPress={() => choose(opt.key)}
+            activeOpacity={0.75}
+            style={{
+              flexDirection: 'row', alignItems: 'center', gap: Spacing.sm,
+              paddingVertical: 10, paddingHorizontal: Spacing.sm, marginTop: 6,
+              borderRadius: Radius.md, borderWidth: 1.5,
+              borderColor: active ? Colors.accent : Colors.border2,
+              backgroundColor: active ? `${Colors.accent}18` : Colors.panel2,
+            }}
+          >
+            <Text style={{ fontSize: 20 }}>{opt.icon}</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: active ? Colors.accent : Colors.foreground, fontWeight: active ? '700' : '600', fontSize: FontSize.sm }}>
+                {opt.label}
+              </Text>
+              <Text style={{ color: Colors.textSecondary, fontSize: FontSize.xs }}>{opt.hint}</Text>
+            </View>
+            {saving === opt.key
+              ? <ActivityIndicator size="small" color={Colors.accent} />
+              : <Text style={{ color: active ? Colors.accent : Colors.muted, fontSize: FontSize.md }}>{active ? '✓' : '▶'}</Text>}
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+}
 
 function BusinessLocationSection({
   savedAddress, onChanged,

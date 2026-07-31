@@ -49,7 +49,11 @@
         {
           "icon": "./assets/notification-icon.png",
           "color": "#f97316",
-          "sounds": ["./assets/lead-alert.wav"]
+          "sounds": [
+            "./assets/lead-alert.wav",
+            "./assets/lead-emergency.wav",
+            "./assets/lead-ping.wav"
+          ]
         }
       ],
       "expo-font",
@@ -63,6 +67,7 @@
       [
         "@stripe/stripe-react-native",
         {
+          "merchantIdentifier": "merchant.com.leadco.marketplace",
           "enableGooglePay": false
         }
       ]

@@ -42,14 +42,23 @@ async function registerForPushNotifications(userId: string): Promise<void> {
     return;
   }
 
-  // Android requires a notification channel
+  // Android requires a notification channel — one per selectable alert sound
+  // (Android bakes the sound into the channel, so the push's channelId chooses it).
   if (Platform.OS === 'android') {
-    await Notifications.setNotificationChannelAsync('default', {
-      name:       'Lead Alerts',
+    const base = {
       importance: Notifications.AndroidImportance.MAX,
       vibrationPattern: [0, 250, 250, 250],
       lightColor: '#f97316',
-      sound:      'lead-alert.wav',
+    };
+    await Notifications.setNotificationChannelAsync('default', {
+      ...base, name: 'Lead Alerts', sound: 'lead-alert.wav',
+    });
+    await Notifications.setNotificationChannelAsync('leads-emergency', {
+      ...base, name: 'Lead Alerts — Emergency',
+      vibrationPattern: [0, 400, 200, 400, 200, 400], sound: 'lead-emergency.wav',
+    });
+    await Notifications.setNotificationChannelAsync('leads-ping', {
+      ...base, name: 'Lead Alerts — Ping', sound: 'lead-ping.wav',
     });
   }
 
