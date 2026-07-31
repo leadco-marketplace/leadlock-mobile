@@ -37,7 +37,7 @@ export function AccountScreen() {
   const [cashAppAllowed,  setCashAppAllowed]  = useState(false);
   const [cashAppMaxCents, setCashAppMaxCents] = useState(0);
   const [owedCents,       setOwedCents]       = useState(0);
-  const [depositMethod,   setDepositMethod]   = useState<'cashapp' | 'bank'>('bank');
+  const [depositMethod,   setDepositMethod]   = useState<'cashapp' | 'applepay' | 'bank'>('bank');
   const [repaying,        setRepaying]        = useState(false);
 
   async function loadCashAppStatus() {
@@ -132,11 +132,12 @@ export function AccountScreen() {
   // ~instant; ACH settles in 1–4 business days). Server enforces the Cash App
   // earned-trust caps — the on-device check below is just instant feedback.
   async function handleAddCredits(amountCents: number) {
-    const method: 'cashapp' | 'bank' = cashAppAllowed ? depositMethod : 'bank';
-    if (method === 'cashapp' && cashAppMaxCents > 0 && amountCents > cashAppMaxCents) {
+    const method: 'cashapp' | 'applepay' | 'bank' = cashAppAllowed ? depositMethod : 'bank';
+    // Cash App + Apple Pay share the same instant-funding per-deposit cap.
+    if ((method === 'cashapp' || method === 'applepay') && cashAppMaxCents > 0 && amountCents > cashAppMaxCents) {
       Alert.alert(
-        'Cash App Limit',
-        `The most you can deposit with Cash App right now is $${(cashAppMaxCents / 100).toFixed(2)}. Use your bank for a larger amount.`,
+        method === 'applepay' ? 'Apple Pay Limit' : 'Cash App Limit',
+        `The most you can deposit instantly right now is $${(cashAppMaxCents / 100).toFixed(2)}. Use your bank for a larger amount.`,
       );
       return;
     }
@@ -164,8 +165,9 @@ export function AccountScreen() {
         returnURL: `${scheme}://stripe-redirect`,
         // REQUIRED for ACH (us_bank_account) — funds settle after the sheet closes.
         allowsDelayedPaymentMethods: true,
-        // Native wallets are disabled for deposits (Cash App / ACH only).
-        applePay: undefined,
+        // Apple Pay = a true native sheet (no web hop). Only enabled for the
+        // Apple Pay method; Cash App / ACH don't use a native wallet.
+        applePay: method === 'applepay' ? { merchantCountryCode: 'US' } : undefined,
         googlePay: undefined,
       });
       if (initErr) {
@@ -471,15 +473,15 @@ export function AccountScreen() {
           <Text style={[styles.creditsHint, { color: Colors.muted, marginTop: Spacing.xs }]}>
             Pick an amount — or type your own ($20–$20,000) — and deposit on a secure checkout page.
             {cashAppAllowed
-              ? ' Choose ⚡ Cash App (instant) or 🏦 Bank (ACH, 1–4 business days).'
+              ? ' Choose ⚡ Cash App, 🍎 Apple Pay (both instant) or 🏦 Bank (ACH, 1–4 business days).'
               : ' Deposits use your bank (ACH) and take 1–4 business days to clear.'}
             {' '}You can move any unused balance back to where it came from anytime.
           </Text>
 
-          {/* Explicit method choice — only when Cash App is currently eligible. */}
+          {/* Explicit method choice — instant methods only when eligible. */}
           {cashAppAllowed && (
             <View style={{ flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.sm }}>
-              {([['cashapp', '⚡ Cash App'], ['bank', '🏦 Bank (ACH)']] as const).map(([m, label]) => {
+              {([['cashapp', '⚡ Cash App'], ['applepay', '🍎 Apple Pay'], ['bank', '🏦 Bank']] as const).map(([m, label]) => {
                 const active = depositMethod === m;
                 return (
                   <TouchableOpacity
@@ -493,7 +495,7 @@ export function AccountScreen() {
                     onPress={() => setDepositMethod(m)}
                     activeOpacity={0.75}
                   >
-                    <Text style={{ color: active ? Colors.accent : Colors.muted, fontWeight: active ? '700' : '500', fontSize: FontSize.sm }}>
+                    <Text numberOfLines={1} style={{ color: active ? Colors.accent : Colors.muted, fontWeight: active ? '700' : '500', fontSize: FontSize.xs }}>
                       {label}
                     </Text>
                   </TouchableOpacity>
