@@ -1004,7 +1004,7 @@ export function SubmitLeadScreen({ navigation }: any) {
 
   // ── Price calculation ──
   const priceDollars = parseFloat(price) || 0;
-  const buyerPrice   = (priceDollars * 1.125).toFixed(2);
+  const buyerPrice   = (priceDollars * 1.15).toFixed(2);
 
   return (
     <>
@@ -1277,7 +1277,7 @@ export function SubmitLeadScreen({ navigation }: any) {
                 {price && priceDollars > 0 && (
                   <View style={styles.priceHint}>
                     <Text style={styles.priceHintText}>
-                      💡 Buyer will pay ${buyerPrice} (includes 12.5% platform fee)
+                      💡 Buyer will pay ${buyerPrice} (includes 15% platform fee)
                     </Text>
                   </View>
                 )}

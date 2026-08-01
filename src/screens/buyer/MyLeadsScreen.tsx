@@ -33,7 +33,7 @@ function PurchasedCard({ lead }: { lead: PurchasedLead }) {
           </Text>
         </View>
         <View style={{ alignItems: 'flex-end' }}>
-          <Text style={[styles.price, { color: Colors.foreground }]}>{formatPrice(lead.buyer_price_cents || Math.round(lead.price_cents * 1.125))}</Text>
+          <Text style={[styles.price, { color: Colors.foreground }]}>{formatPrice(lead.buyer_price_cents || Math.round(lead.price_cents * 1.15))}</Text>
           <Text style={[styles.unlockedLabel, { color: Colors.accent }]}>✓ Unlocked</Text>
           {lead.is_old && (
             <Text style={[styles.oldLeadBadge, { color: Colors.warn ?? '#b45309', borderColor: Colors.warn ?? '#b45309' }]}>Old Lead</Text>

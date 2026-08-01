@@ -26,9 +26,8 @@ export function UnlockModal({ lead, visible, onCancel, onConfirm }: UnlockModalP
   if (!lead) return null;
 
   const sellerPrice    = lead.price_cents;
-  const platformFee    = Math.round(sellerPrice * 0.10);
-  const processingFee  = Math.round(sellerPrice * 0.025);
-  const total          = sellerPrice + platformFee + processingFee;
+  const platformFee    = Math.round(sellerPrice * 0.15);
+  const total          = sellerPrice + platformFee;
 
   function handleConfirm() {
     if (!accepted) return;
@@ -88,12 +87,8 @@ export function UnlockModal({ lead, visible, onCancel, onConfirm }: UnlockModalP
               <Text style={[styles.priceValue, { color: Colors.foreground }]}>{fmt(sellerPrice)}</Text>
             </View>
             <View style={styles.priceRow}>
-              <Text style={[styles.priceLabel, { color: Colors.textSecondary }]}>Platform fee (10%)</Text>
+              <Text style={[styles.priceLabel, { color: Colors.textSecondary }]}>Platform fee (15%)</Text>
               <Text style={[styles.priceValue, { color: Colors.textSecondary }]}>{fmt(platformFee)}</Text>
-            </View>
-            <View style={styles.priceRow}>
-              <Text style={[styles.priceLabel, { color: Colors.textSecondary }]}>Processing fee (2.5%)</Text>
-              <Text style={[styles.priceValue, { color: Colors.textSecondary }]}>{fmt(processingFee)}</Text>
             </View>
 
             <View style={[styles.divider, { backgroundColor: Colors.border }]} />

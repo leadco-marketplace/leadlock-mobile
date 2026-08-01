@@ -89,7 +89,7 @@ function LeadCardInner({ lead, onUnlock, unlocking, purchased, highlighted, just
   // (light + inner-light both put the card on a white/light surface).
   const vehicleColor = mode === 'dark' ? '#f97316' : '#111827';
 
-  const price      = lead.buyer_price_cents ?? Math.round(lead.price_cents * 1.125);
+  const price      = lead.buyer_price_cents ?? Math.round(lead.price_cents * 1.15);
   const catThumb   = getCategoryThumb(lead.service_category);
   const localImage = getLeadImage(lead.service_category, lead.job_type);
   const isSold     = lead.status === 'sold';

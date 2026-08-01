@@ -456,7 +456,7 @@ export function LiveFeedScreen() {
   // ── Stats derived from current feed ───────────────────────────────────────
   const availableCount = leads.filter(l => l.status === 'available').length;
   const avgPrice = leads.length > 0
-    ? leads.reduce((sum, l) => sum + (l.buyer_price_cents ?? Math.round(l.price_cents * 1.125)), 0) / leads.length
+    ? leads.reduce((sum, l) => sum + (l.buyer_price_cents ?? Math.round(l.price_cents * 1.15)), 0) / leads.length
     : 0;
   const newestLead = leads.length > 0
     ? leads.reduce((a, b) =>

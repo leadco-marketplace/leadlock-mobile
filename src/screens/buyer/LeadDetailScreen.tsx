@@ -928,7 +928,7 @@ export function LeadDetailScreen() {
       )
     : [];
 
-  const price = lead.buyer_price_cents || Math.round(lead.price_cents * 1.125);
+  const price = lead.buyer_price_cents || Math.round(lead.price_cents * 1.15);
 
   // When this screen was opened after a fresh purchase (purchaseId is set),
   // pressing back should navigate explicitly to the My Leads tab rather than
