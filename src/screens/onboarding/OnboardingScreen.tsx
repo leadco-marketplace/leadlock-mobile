@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet, Linking, ScrollView, Keyboard,
+  View, Text, TextInput, TouchableOpacity, StyleSheet, Linking, ScrollView, Keyboard, Platform,
 } from 'react-native';
 import { ScreenShell } from '@/components/ScreenShell';
 import { Input } from '@/components/Input';
@@ -479,22 +479,26 @@ export function OnboardingScreen() {
             ))}
           </View>
 
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Add starter funds <Text style={{ color: Colors.muted, fontWeight: '400' }}>(optional)</Text></Text>
-            <Text style={styles.cardHint}>Load your account so you&apos;re ready to unlock leads the moment you find one. Credits never expire.</Text>
-            <View style={[styles.row, { marginTop: Spacing.sm }]}>
-              {[2500, 5000, 10000].map(cents => (
-                <TouchableOpacity
-                  key={cents}
-                  onPress={() => addFunds(cents)}
-                  disabled={buyingCents !== null}
-                  style={[styles.fundBtn, buyingCents === cents && { opacity: 0.6 }]}
-                >
-                  <Text style={styles.fundBtnText}>{buyingCents === cents ? '…' : `$${cents / 100}`}</Text>
-                </TouchableOpacity>
-              ))}
+          {/* iOS hides in-app funding (App Store Guideline 3.1.1) — buyers add
+              funds on the web; this optional starter-deposit shows on Android/web. */}
+          {Platform.OS !== 'ios' && (
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>Add starter funds <Text style={{ color: Colors.muted, fontWeight: '400' }}>(optional)</Text></Text>
+              <Text style={styles.cardHint}>Load your account so you&apos;re ready to unlock leads the moment you find one. Credits never expire.</Text>
+              <View style={[styles.row, { marginTop: Spacing.sm }]}>
+                {[2500, 5000, 10000].map(cents => (
+                  <TouchableOpacity
+                    key={cents}
+                    onPress={() => addFunds(cents)}
+                    disabled={buyingCents !== null}
+                    style={[styles.fundBtn, buyingCents === cents && { opacity: 0.6 }]}
+                  >
+                    <Text style={styles.fundBtnText}>{buyingCents === cents ? '…' : `$${cents / 100}`}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
             </View>
-          </View>
+          )}
 
           <Button
             label={finishing ? 'Loading…' : 'Start Browsing Leads →'}

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
   Alert, Switch, Linking, ScrollView, TextInput, Keyboard,
-  ActivityIndicator, AppState,
+  ActivityIndicator, AppState, Platform,
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useAuth } from '@/contexts/AuthContext';
@@ -295,6 +295,32 @@ export function AccountScreen() {
     }
   }
 
+  // Open the web Add Funds page ALREADY signed in: mint a single-use handoff
+  // token, then open /auth/continue which sets the web session and lands on
+  // /add-funds. Falls back to the plain page (web login) if anything fails.
+  async function openAddFunds() {
+    // Deep-link this app (live "leadco://…" or test "leadcotest://…") so checkout
+    // can bounce the user back into THIS app after payment.
+    const scheme = (Constants.expoConfig?.scheme as string) || 'leadco';
+    const nextPath = `/add-funds?return=${encodeURIComponent(`${scheme}://account`)}`;
+    const fallback = () => Linking.openURL(`${WEB_APP}${nextPath}`);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      const res = await fetch(`${WEB_APP}/api/auth/mobile-handoff`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      });
+      const d = await res.json().catch(() => ({}));
+      if (res.ok && d?.token_hash) {
+        const url = `${WEB_APP}/auth/continue?token_hash=${encodeURIComponent(d.token_hash)}&next=${encodeURIComponent(nextPath)}`;
+        await Linking.openURL(url);
+        return;
+      }
+    } catch { /* fall through */ }
+    await fallback();
+  }
+
   if (!profile) {
     // Guest or loading state — show a sign-in prompt
     return (
@@ -447,7 +473,11 @@ export function AccountScreen() {
       </View>
 
       {/* ── Add credits (buyers only) ─────────────────────────── */}
-      {isBuyer && (
+      {/* iOS: in-app funding is hidden to comply with App Store Guideline 3.1.1
+          (no non-Apple purchase of credits in-app). iOS buyers top up their
+          wallet on the website; the app only spends existing balance. Android
+          + web keep the in-app Add Funds flow. */}
+      {isBuyer && Platform.OS !== 'ios' && (
         <View style={[styles.creditCard, { backgroundColor: Colors.panel, borderColor: Colors.borderOrange, shadowColor: Colors.glowColor }]}>
           <Text style={[styles.sectionTitle, { color: Colors.foreground }]}>💰  Add Funds</Text>
 
@@ -562,6 +592,24 @@ export function AccountScreen() {
             </View>
           </View>
         </View>
+      )}
+
+      {/* iOS: no in-app purchase (Guideline 3.1.1) — but a clear link so buyers
+          always know where to top up. Opens the branded web /add-funds page.
+          This is a link to our website (like Manage Billing), not an in-app
+          purchase mechanism. Android/web use the in-app Add Funds card above. */}
+      {isBuyer && Platform.OS === 'ios' && (
+        <TouchableOpacity
+          style={[styles.linkCard, { backgroundColor: Colors.panel, borderColor: Colors.borderOrange, shadowColor: Colors.glowColor }]}
+          onPress={openAddFunds}
+          activeOpacity={0.75}
+        >
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.linkCardTitle, { color: Colors.foreground }]}>💰  Add Funds</Text>
+            <Text style={[styles.linkCardSub, { color: Colors.muted }]}>Top up your wallet on the web · then unlock leads instantly from your balance</Text>
+          </View>
+          <Text style={[styles.linkArrow, { color: Colors.muted }]}>›</Text>
+        </TouchableOpacity>
       )}
 
       {/* ── Account & billing (buyers only) ───────────────────── */}

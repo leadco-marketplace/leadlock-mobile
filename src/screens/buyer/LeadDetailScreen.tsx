@@ -4,7 +4,7 @@ import {
   TouchableOpacity, ScrollView,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { leadsApi, rateApi, signalsApi, PurchasedLead, RatingThumb, LeadSignal, CallLogEntry, THUMBS_UP_REASONS, THUMBS_DOWN_REASONS } from '@/lib/api';
+import { leadsApi, rateApi, reportsApi, signalsApi, PurchasedLead, RatingThumb, LeadSignal, CallLogEntry, ReportReason, THUMBS_UP_REASONS, THUMBS_DOWN_REASONS } from '@/lib/api';
 import { ScreenShell } from '@/components/ScreenShell';
 import { Colors, FontSize, Spacing, Radius, Shadow } from '@/theme';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -507,6 +507,132 @@ function RatingPanel({ leadId }: { leadId: string }) {
     </View>
   );
 }
+
+// ── Report a lead ─────────────────────────────────────────────────────────────
+// A report is NOT a dispute: it moves no money. It flags a bad lead (fake /
+// inactive / suspicious) for platform review — the only channel on a final
+// (verified) sale. See POST /api/lead-reports.
+const REPORT_REASONS: { code: ReportReason; label: string }[] = [
+  { code: 'fake',       label: 'Fake — not a real request' },
+  { code: 'inactive',   label: 'Customer went cold after confirming' },
+  { code: 'suspicious', label: 'Suspicious — something feels off' },
+];
+
+function ReportPanel({ leadId, purchaseId }: { leadId: string; purchaseId: string }) {
+  useTheme(); // re-render on theme change so inline Colors.* picks up new values
+  const [open,       setOpen]       = useState(false);
+  const [reason,     setReason]     = useState<ReportReason | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted,  setSubmitted]  = useState(false);
+  const [error,      setError]      = useState<string | null>(null);
+
+  async function submitReport() {
+    if (!reason) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      await reportsApi.report({ leadId, purchaseId, reason });
+      setSubmitted(true);
+    } catch (e: any) {
+      if (e.message === 'already_reported') setSubmitted(true);
+      else setError(e.message ?? 'Could not submit report. Try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  if (submitted) {
+    return (
+      <View style={[reportStyles.box, { backgroundColor: Colors.panel, shadowColor: Colors.glowColor }]}>
+        <Text style={[reportStyles.title, { color: Colors.foreground }]}>🚩  Lead Reported</Text>
+        <Text style={[reportStyles.submitted, { color: Colors.accent }]}>Thanks — our team will review it.</Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={[reportStyles.box, { backgroundColor: Colors.panel }]}>
+      <Text style={[reportStyles.title, { color: Colors.foreground }]}>Report This Lead</Text>
+      <Text style={[reportStyles.subtitle, { color: Colors.muted }]}>
+        Fake, inactive, or suspicious? Reporting doesn&apos;t refund — it flags the provider for review.
+      </Text>
+
+      {!open ? (
+        <TouchableOpacity
+          style={[reportStyles.openBtn, { borderColor: Colors.border }]}
+          onPress={() => setOpen(true)}
+          activeOpacity={0.8}
+        >
+          <Text style={[reportStyles.openBtnText, { color: Colors.muted }]}>Report lead</Text>
+        </TouchableOpacity>
+      ) : (
+        <>
+          {REPORT_REASONS.map((r) => (
+            <TouchableOpacity
+              key={r.code}
+              style={[reportStyles.reasonRow, { borderColor: Colors.border, backgroundColor: Colors.panel2 }, reason === r.code && reportStyles.reasonRowActive]}
+              onPress={() => setReason(r.code)}
+              activeOpacity={0.75}
+            >
+              <View style={[reportStyles.radioCircle, { borderColor: Colors.border }, reason === r.code && reportStyles.radioCircleActive]} />
+              <Text style={[reportStyles.reasonLabel, { color: Colors.muted }, reason === r.code && { color: Colors.foreground, fontWeight: '600' }]}>
+                {r.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+
+          {error && <Text style={reportStyles.errorText}>{error}</Text>}
+
+          {reason && (
+            <TouchableOpacity
+              style={[reportStyles.submitBtn, submitting && { opacity: 0.6 }]}
+              onPress={submitReport}
+              disabled={submitting}
+              activeOpacity={0.8}
+            >
+              <Text style={reportStyles.submitBtnText}>{submitting ? 'Submitting…' : 'Submit Report'}</Text>
+            </TouchableOpacity>
+          )}
+        </>
+      )}
+    </View>
+  );
+}
+
+const reportStyles = StyleSheet.create({
+  box: {
+    backgroundColor: Colors.panel,
+    borderRadius: Radius.lg,
+    borderWidth: 2,
+    borderColor: Colors.border,
+    padding: Spacing.md,
+    gap: Spacing.sm,
+    ...Shadow.card,
+  },
+  title: { fontSize: FontSize.sm, fontWeight: '700', color: Colors.foreground, letterSpacing: 0.3 },
+  subtitle: { fontSize: FontSize.xs, color: Colors.muted, lineHeight: 18 },
+  submitted: { fontSize: FontSize.sm, fontWeight: '600' },
+  openBtn: {
+    alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 18,
+    borderRadius: Radius.md, borderWidth: 1,
+  },
+  openBtnText: { fontSize: FontSize.sm, fontWeight: '600' },
+  reasonRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    paddingVertical: 10, paddingHorizontal: 12,
+    borderRadius: Radius.md, borderWidth: 1,
+  },
+  reasonRowActive: { borderColor: Colors.orange },
+  radioCircle: { width: 16, height: 16, borderRadius: 8, borderWidth: 2 },
+  radioCircleActive: { borderColor: Colors.orange, backgroundColor: Colors.orange },
+  reasonLabel: { fontSize: FontSize.sm, flexShrink: 1 },
+  errorText: { fontSize: FontSize.xs, color: Colors.danger },
+  submitBtn: {
+    alignSelf: 'flex-start', paddingVertical: 10, paddingHorizontal: 24,
+    borderRadius: Radius.md, backgroundColor: Colors.orange,
+  },
+  submitBtnText: { fontSize: FontSize.sm, color: '#fff', fontWeight: '700' },
+});
 
 const ratingStyles = StyleSheet.create({
   box: {
@@ -1135,6 +1261,9 @@ export function LeadDetailScreen() {
 
         {/* ── Rate this lead ───────────────────────────── */}
         <RatingPanel leadId={lead.id} />
+
+        {/* ── Report this lead ─────────────────────────── */}
+        <ReportPanel leadId={lead.id} purchaseId={lead.purchase_id} />
       </ScrollView>
     </ScreenShell>
   );

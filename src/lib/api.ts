@@ -143,6 +143,19 @@ export const leadsApi = {
   unlock: (id: string)                 => request<{ success: boolean; purchase_id: string }>(`/api/leads/${id}/unlock`, { method: 'POST' }),
 };
 
+// ── Report a lead ─────────────────────────────────────────────────────────────
+// Flags a purchased lead as fake / inactive / suspicious for platform review.
+// Unlike a dispute this moves NO money — it's how a buyer surfaces a bad lead on
+// a final (verified) sale. Backend: POST /api/lead-reports.
+export type ReportReason = 'fake' | 'inactive' | 'suspicious';
+export const reportsApi = {
+  report: (data: { leadId: string; purchaseId: string; reason: ReportReason; note?: string }) =>
+    request<{ id: string }>('/api/lead-reports', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+};
+
 // ── Call log ────────────────────────────────────────────────────────────────
 export interface CallLogEntry {
   id: string;

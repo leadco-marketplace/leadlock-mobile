@@ -235,8 +235,8 @@ export function LoginScreen({ navigation }: Props) {
             </TouchableOpacity>
           </View>
 
-          <TouchableOpacity onPress={signInAsGuest} style={s.guestBtn}>
-            <Text style={s.guestText}>Browse as Guest →</Text>
+          <TouchableOpacity onPress={signInAsGuest} style={s.guestBtn} activeOpacity={0.8}>
+            <Text style={s.guestText}>Browse leads without an account →</Text>
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -382,10 +382,19 @@ const s = StyleSheet.create({
   footer: { flexDirection: 'row', justifyContent: 'center', flexWrap: 'wrap' },
   footerText:   { fontSize: FontSize.sm, color: '#607898' },
   footerSignup: { fontSize: FontSize.sm, color: '#60a5fa', fontWeight: '600' },
-  guestBtn:     { alignItems: 'center', paddingVertical: 6 },
-  guestText:    {
-    fontSize:           FontSize.sm,
-    color:              '#507090',
-    textDecorationLine: 'underline',
+  guestBtn: {
+    marginTop:        16,
+    alignSelf:        'stretch',
+    alignItems:       'center',
+    paddingVertical:  14,
+    borderRadius:     12,
+    borderWidth:      1,
+    borderColor:      '#3b5578',
+    backgroundColor:  'rgba(96,165,250,0.08)',
+  },
+  guestText: {
+    fontSize:   FontSize.base,
+    color:      '#93c5fd',
+    fontWeight: '700',
   },
 });

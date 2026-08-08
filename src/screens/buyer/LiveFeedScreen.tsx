@@ -336,10 +336,19 @@ export function LiveFeedScreen() {
       navigation.dispatch(StackActions.push('LeadDetail', { leadId: lead.id, purchaseId: purchase_id }));
     } catch (e: any) {
       if (e.message === 'insufficient_credits') {
-        // Not enough credits. New buyers get an in-app debit-card / Apple Pay
-        // trial for their first 3 leads (native PaymentSheet — no browser).
-        // Once the trial is used up the server returns card_intro_exhausted and
-        // we route them to ACH Add Funds.
+        // iOS: no in-app card purchase (App Store Guideline 3.1.1). The buyer
+        // unlocks only from existing wallet balance; funding happens on the web.
+        if (Platform.OS === 'ios') {
+          Alert.alert(
+            'Not enough balance',
+            "You don't have enough balance to unlock this lead. Add funds to your wallet from your account on the web, then unlock instantly from your balance.",
+            [{ text: 'OK' }]
+          );
+          return;
+        }
+        // Android/web: new buyers get an in-app debit-card / Apple Pay trial for
+        // their first 3 leads (native PaymentSheet — no browser). Once the trial
+        // is used up the server returns card_intro_exhausted and we route to ACH.
         await tryCardIntroPurchase(lead);
       } else if (e.message === 'already_sold') {
         // Mark the previous-snapshot status as sold too, so the follow-up
