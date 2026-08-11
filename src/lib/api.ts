@@ -472,9 +472,15 @@ export const onboardingApi = {
     areaNames:         string[];
     areaIds:           string[];  // preferred by the server — exact area rows
   }) =>
-    request<{ ok: boolean }>('/api/onboarding/complete', {
+    request<{ ok: boolean; signupBonusCents?: number }>('/api/onboarding/complete', {
       method: 'POST', body: JSON.stringify(body),
     }),
+};
+
+// ── Signup pilot bonus (limited-time) ───────────────────────────────────────
+export const promoApi = {
+  signupBonus: () =>
+    request<{ enabled: boolean; amountCents: number }>('/api/promo/signup-bonus'),
 };
 
 // ── Wallet deposits ────────────────────────────────────────────────────────

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, KeyboardAvoidingView,
   Platform, ScrollView, Linking,
@@ -7,6 +7,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth }  from '@/contexts/AuthContext';
 import { Input }   from '@/components/Input';
 import { Button }  from '@/components/Button';
+import { promoApi } from '@/lib/api';
 import { Colors, FontSize, Spacing, Radius } from '@/theme';
 import type { AuthStackParamList } from '@/navigation/AuthNavigator';
 
@@ -20,6 +21,13 @@ export function SignupScreen({ navigation }: Props) {
   const [loading,  setLoading]  = useState(false);
   const [error,    setError]    = useState<string | null>(null);
   const [termsAccepted, setTermsAccepted] = useState(false);
+  const [bonusCents, setBonusCents] = useState(0);
+
+  useEffect(() => {
+    promoApi.signupBonus()
+      .then((b) => { if (b.enabled && b.amountCents > 0) setBonusCents(b.amountCents); })
+      .catch(() => {});
+  }, []);
 
   const termsUrl = role === 'provider'
     ? 'https://www.nabbitmarketplace.com/terms/lead-provider'
@@ -51,6 +59,12 @@ export function SignupScreen({ navigation }: Props) {
           </Text>
           <Text style={styles.logoSub}>MARKETPLACE</Text>
         </View>
+
+        {bonusCents > 0 && (
+          <View style={styles.bonusBanner}>
+            <Text style={styles.bonusText}>🎁 Limited-time pilot: get ${(bonusCents / 100).toFixed(0)} in free lead credit when you sign up</Text>
+          </View>
+        )}
 
         <View style={styles.card}>
           <Text style={styles.heading}>Create your account</Text>
@@ -144,6 +158,15 @@ const styles = StyleSheet.create({
   logoWrap: { alignItems: 'center', gap: 4 },
   logo:     { fontSize: 40, fontWeight: '800', letterSpacing: -1 },
   logoSub:  { fontSize: 9, fontWeight: '600', letterSpacing: 4, color: Colors.muted },
+  bonusBanner: {
+    borderWidth: 1,
+    borderColor: 'rgba(249,115,22,0.4)',
+    backgroundColor: 'rgba(249,115,22,0.1)',
+    borderRadius: 12,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+  },
+  bonusText: { color: '#f97316', fontSize: FontSize.sm, fontWeight: '700', textAlign: 'center' },
   card: {
     backgroundColor: Colors.panel,
     borderRadius: Radius.xxl,

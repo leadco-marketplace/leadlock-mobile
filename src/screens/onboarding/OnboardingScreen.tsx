@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet, Linking, ScrollView, Keyboard, Platform,
+  View, Text, TextInput, TouchableOpacity, StyleSheet, Linking, ScrollView, Keyboard, Platform, Alert,
 } from 'react-native';
 import { ScreenShell } from '@/components/ScreenShell';
 import { Input } from '@/components/Input';
@@ -76,6 +76,7 @@ export function OnboardingScreen() {
   const [saved,        setSaved]        = useState(false);
   const [buyingCents,  setBuyingCents]  = useState<number | null>(null);
   const [finishing,    setFinishing]    = useState(false);
+  const [bonusCents,   setBonusCents]   = useState(0);
 
   useEffect(() => {
     categoriesApi.getAll().then(setCategories).catch(() => {});
@@ -148,7 +149,7 @@ export function OnboardingScreen() {
     setError(null);
     try {
       const picked = areas.filter(a => selectedAreas.includes(a.name));
-      await onboardingApi.complete({
+      const res = await onboardingApi.complete({
         firstName:         firstName.trim(),
         lastName:          lastName.trim(),
         companyName:       companyName.trim(),
@@ -159,6 +160,7 @@ export function OnboardingScreen() {
         areaNames:         picked.map(a => a.name),
         areaIds:           picked.map(a => a.id),
       });
+      if (res?.signupBonusCents && res.signupBonusCents > 0) setBonusCents(res.signupBonusCents);
       setSaved(true);
       return true;
     } catch (e: any) {
@@ -197,6 +199,14 @@ export function OnboardingScreen() {
   // ── Step 4 actions ─────────────────────────────────────────────────────
   async function finish() {
     setFinishing(true);
+    // Welcome the buyer with their pilot credit before the gate lifts. The
+    // Alert is OS-level, so it stays on top after we navigate to the feed.
+    if (bonusCents > 0) {
+      Alert.alert(
+        '🎁 Welcome to Nabbit!',
+        `We've added $${(bonusCents / 100).toFixed(0)} in free lead credit to your wallet as part of our limited-time pilot. Use it to unlock your first leads — credit can be used toward lead purchases only.`,
+      );
+    }
     // refreshProfile picks up onboarding_complete=true → AppNavigator lifts the gate
     await refreshProfile();
     setFinishing(false);
