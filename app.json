@@ -50,9 +50,9 @@
           "icon": "./assets/notification-icon.png",
           "color": "#f97316",
           "sounds": [
-            "./assets/lead-alert.wav",
-            "./assets/lead-emergency.wav",
-            "./assets/lead-ping.wav"
+            "./assets/lead_alert.wav",
+            "./assets/lead_emergency.wav",
+            "./assets/lead_ping.wav"
           ]
         }
       ],

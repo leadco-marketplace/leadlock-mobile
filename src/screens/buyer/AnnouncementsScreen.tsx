@@ -93,6 +93,8 @@ export function AnnouncementsScreen() {
                 {it.promo_credit_cents ? (
                   it.promo_claimed ? (
                     <Text style={styles.claimed}>✓ Credit added to your wallet</Text>
+                  ) : it.promo_expired ? (
+                    <Text style={styles.expired}>Offer expired</Text>
                   ) : (
                     <TouchableOpacity onPress={() => claim(it)} disabled={claiming === it.broadcast_id}
                       style={[styles.btn, { backgroundColor: accent }]}>
@@ -129,6 +131,7 @@ function makeStyles(_mode: string) {
     title: { fontSize: FontSize.lg, fontWeight: '700', color: Colors.foreground, marginTop: 4 },
     text: { fontSize: FontSize.md, color: Colors.textSecondary, marginTop: 6, lineHeight: 20 },
     claimed: { marginTop: 12, fontSize: FontSize.md, fontWeight: '700', color: '#34d399' },
+    expired: { marginTop: 12, fontSize: FontSize.sm, fontWeight: '600', color: Colors.muted },
     btn: { marginTop: 14, alignSelf: 'flex-start', paddingHorizontal: 18, paddingVertical: 11, borderRadius: Radius.md },
     btnText: { color: '#fff', fontWeight: '800', fontSize: FontSize.md },
   });

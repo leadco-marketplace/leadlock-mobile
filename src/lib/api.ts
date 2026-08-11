@@ -334,6 +334,7 @@ export type Announcement = {
   cta_label: string | null;
   cta_href: string | null;
   promo_credit_cents: number | null;
+  promo_expired?: boolean;
   read: boolean;
   promo_claimed: boolean;
   created_at: string;

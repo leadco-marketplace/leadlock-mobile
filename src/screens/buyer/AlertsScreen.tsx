@@ -21,9 +21,9 @@ const DEFAULT_RADIUS = 25;
 // Bundled alert sounds (must match app.json `sounds` + the server's alert-sounds map).
 type AlertSoundKey = 'default' | 'emergency' | 'ping';
 const ALERT_SOUND_ASSETS: Record<AlertSoundKey, number> = {
-  default:   require('../../../assets/lead-alert.wav'),
-  emergency: require('../../../assets/lead-emergency.wav'),
-  ping:      require('../../../assets/lead-ping.wav'),
+  default:   require('../../../assets/lead_alert.wav'),
+  emergency: require('../../../assets/lead_emergency.wav'),
+  ping:      require('../../../assets/lead_ping.wav'),
 };
 const ALERT_SOUND_OPTIONS: { key: AlertSoundKey; label: string; hint: string; icon: string }[] = [
   { key: 'default',   label: 'Default',   hint: 'The standard chime',            icon: '🔔' },

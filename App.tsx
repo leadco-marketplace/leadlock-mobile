@@ -51,14 +51,14 @@ async function registerForPushNotifications(userId: string): Promise<void> {
       lightColor: '#f97316',
     };
     await Notifications.setNotificationChannelAsync('default', {
-      ...base, name: 'Lead Alerts', sound: 'lead-alert.wav',
+      ...base, name: 'Lead Alerts', sound: 'lead_alert.wav',
     });
     await Notifications.setNotificationChannelAsync('leads-emergency', {
       ...base, name: 'Lead Alerts — Emergency',
-      vibrationPattern: [0, 400, 200, 400, 200, 400], sound: 'lead-emergency.wav',
+      vibrationPattern: [0, 400, 200, 400, 200, 400], sound: 'lead_emergency.wav',
     });
     await Notifications.setNotificationChannelAsync('leads-ping', {
-      ...base, name: 'Lead Alerts — Ping', sound: 'lead-ping.wav',
+      ...base, name: 'Lead Alerts — Ping', sound: 'lead_ping.wav',
     });
   }
 
