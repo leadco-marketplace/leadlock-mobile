@@ -207,6 +207,17 @@ function PushResponseHandler() {
         return;
       }
 
+      // ── Admin announcement (broadcast) → open the Announcements inbox ──────
+      // Broadcast pushes carry a broadcastId (+ screen "Announcements"). Without
+      // this, they fell through to the default and the app just showed the Live
+      // Feed — so users never reached the page where they claim a promo credit.
+      if (data?.broadcastId || data?.screen === 'Announcements') {
+        tryNavigate(() => {
+          navigationRef.current!.navigate('Announcements' as never);
+        });
+        return;
+      }
+
       // ── Default: new lead notification → highlight card in Live Feed ───────
       if (!leadId) return;
 
