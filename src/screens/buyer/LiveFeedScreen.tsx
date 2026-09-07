@@ -107,11 +107,21 @@ export function LiveFeedScreen() {
   }, []);
 
   // ── Load buyer's alert preferences for "My Matches" filtering ───────────
+  // Re-runs when the profile becomes available too. On a FRESH login the screen
+  // can mount and fetch BEFORE the auth token/profile settle, so this came back
+  // empty and hid the My Matches / All Leads toggle until an app restart. Adding
+  // profile?.id makes it re-fetch the moment the session is ready → self-corrects.
   useEffect(() => {
-    if (!isGuest) {
-      preferencesApi.get().then(setPreferences).catch(() => {});
-    }
-  }, [isGuest]);
+    if (isGuest) return;
+    preferencesApi.get().then(setPreferences).catch(() => {});
+  }, [isGuest, profile?.id]);
+
+  // Same first-login race for the feed itself — re-pull it once the profile is
+  // ready so an empty first fetch doesn't leave the feed blank with no retry.
+  useEffect(() => {
+    if (!isGuest && profile?.id) loadRef.current?.(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?.id, isGuest]);
 
   // ── Location permission ────────────────────────────────────────────────────
   useEffect(() => {
