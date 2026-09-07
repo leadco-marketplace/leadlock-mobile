@@ -23,7 +23,7 @@ const WEB_APP = (Constants.expoConfig?.extra?.apiBaseUrl as string) ?? 'https://
 type PhoneStep = 'idle' | 'entering' | 'sending' | 'verifying' | 'done';
 
 export function AccountScreen() {
-  const { profile, signOut, signInAsGuest: _signInAsGuest, isGuest, refreshProfile } = useAuth();
+  const { profile, signOut, signInAsGuest: _signInAsGuest, isGuest, refreshProfile, dual, effectiveRole, setActiveRole } = useAuth();
   const { mode: themeMode, setMode: setThemeMode } = useTheme();
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const navigation = useNavigation<any>();
@@ -267,6 +267,17 @@ export function AccountScreen() {
     } finally {
       setAddingSide(false);
     }
+  }
+
+  // ── Switch side (dual accounts) ───────────────────────────────────────────
+  // Flips the active side in-session (no logout). AppNavigator watches
+  // effectiveRole and re-renders into the chosen side; data stays fully isolated.
+  const [switching, setSwitching] = useState(false);
+  async function handleSwitchSide() {
+    if (switching || (effectiveRole !== 'buyer' && effectiveRole !== 'provider')) return;
+    const target = effectiveRole === 'buyer' ? 'provider' : 'buyer';
+    setSwitching(true);
+    try { await setActiveRole(target); } finally { setSwitching(false); }
   }
 
   // ── Sign out ──────────────────────────────────────────────────────────────
@@ -712,6 +723,27 @@ export function AccountScreen() {
           </View>
         ))}
       </View>
+
+      {/* ── Switch side (dual accounts) ─────────────────────────── */}
+      {!isGuest && dual && (effectiveRole === 'buyer' || effectiveRole === 'provider') && (() => {
+        const target = effectiveRole === 'buyer' ? 'provider' : 'buyer';
+        const currentLabel = effectiveRole === 'buyer' ? 'Buyer' : 'Seller';
+        const targetLabel  = target === 'provider' ? 'Seller' : 'Buyer';
+        return (
+          <View style={[styles.card, { backgroundColor: Colors.panel, borderColor: Colors.borderOrange, shadowColor: Colors.glowColor }]}>
+            <Text style={[styles.sectionTitle, { color: Colors.foreground }]}>🔁  Switch Account</Text>
+            <Text style={{ fontSize: FontSize.sm, color: Colors.textSecondary, lineHeight: 19, marginBottom: Spacing.md }}>
+              You&apos;re in your {currentLabel} account. Switch to your {targetLabel} account instantly — balances and data stay completely separate.
+            </Text>
+            <Button
+              label={switching ? 'Switching…' : `Switch to ${targetLabel} Account`}
+              onPress={handleSwitchSide}
+              loading={switching}
+              fullWidth
+            />
+          </View>
+        );
+      })()}
 
       {/* ── Add the other side (single-role accounts only) ──────── */}
       {!isGuest && profile && (profile.can_buy ? !profile.can_sell : profile.can_sell) && (() => {
