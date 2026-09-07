@@ -15,6 +15,7 @@ import { Colors, FontSize, Spacing, Radius, Shadow } from '@/theme';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Audio } from 'expo-av';
+import * as Sentry from '@sentry/react-native';
 
 const DEFAULT_RADIUS = 25;
 
@@ -70,18 +71,24 @@ export function AlertsScreen() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [fetchedAreas, fetchedCats, fetchedPrefs, fetchedProfile] = await Promise.all([
-        areasApi.getAll(),
+      const [fetchedCats, fetchedPrefs, fetchedProfile] = await Promise.all([
         categoriesApi.getAll(),
         preferencesApi.get(),
         profileApi.get(),
       ]);
+      // Load ONLY the areas referenced by this buyer's alerts (for name display),
+      // not the whole catalog. Adding areas happens in AreaPickerScreen via search.
+      const refIds = [...new Set(fetchedPrefs.flatMap(p => p.area_ids ?? []))];
+      const fetchedAreas = await areasApi.byIds(refIds);
       setAreas(fetchedAreas);
       setCategories(fetchedCats);
       setPrefs(fetchedPrefs);
       setBaseAddress(fetchedProfile.base_address ?? '');
       setAlertSound(fetchedProfile.alert_sound ?? 'default');
     } catch (e: any) {
+      // Report to Sentry so a caught load failure (e.g. a broken API call) is
+      // visible in the feed instead of only showing a popup and disappearing.
+      Sentry.captureException(e, { tags: { screen: 'AlertsScreen', op: 'load' } });
       Alert.alert('Error', e.message ?? 'Failed to load alerts');
     } finally {
       setLoading(false);

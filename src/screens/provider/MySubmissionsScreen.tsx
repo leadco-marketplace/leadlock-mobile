@@ -134,11 +134,13 @@ function SubmissionCard({
   onEdit,
   onDelete,
   onRespondFlag,
+  onResubmit,
 }: {
   lead: ProviderLead;
   onEdit: () => void;
   onDelete: () => void;
   onRespondFlag: () => void;
+  onResubmit: () => void;
 }) {
   useTheme();
   const sc = STATUS_COLORS[lead.status] ?? STATUS_COLORS.archived;
@@ -212,6 +214,23 @@ function SubmissionCard({
       {flagged && (
         <View style={styles.actions}>
           <Button label="🚩 Respond To Flag" onPress={onRespondFlag} variant="danger" style={{ flex: 1 }} />
+        </View>
+      )}
+
+      {/* Invalid (AI-flagged) lead → show WHY + let them fix & resubmit */}
+      {lead.status === 'invalid' && (
+        <View style={{ marginTop: 10, padding: 12, borderRadius: Radius.md, borderWidth: 1, borderColor: 'rgba(248,113,113,0.35)', backgroundColor: 'rgba(248,113,113,0.08)' }}>
+          <Text style={{ color: Colors.danger, fontWeight: '700', fontSize: FontSize.sm, marginBottom: 6 }}>⚠ Flagged — not live</Text>
+          {(lead.flag_reasons ?? []).map((r, i) => (
+            <Text key={i} style={{ color: Colors.muted, fontSize: FontSize.xs, marginBottom: 3, lineHeight: 17 }}>{i + 1}. {r}</Text>
+          ))}
+          <Text style={{ color: Colors.muted, fontSize: FontSize.xs, marginTop: 4, marginBottom: 8 }}>
+            Fix the issue above (tap Edit Details), then resubmit and we&apos;ll re-check it.
+          </Text>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <Button label="Edit Details" onPress={onEdit} variant="secondary" style={{ flex: 1 }} />
+            <Button label="Fix & Resubmit" onPress={onResubmit} variant="primary" style={{ flex: 1 }} />
+          </View>
         </View>
       )}
 
@@ -298,6 +317,22 @@ export function MySubmissionsScreen({ navigation }: any) {
     );
   }
 
+  async function handleResubmit(lead: ProviderLead) {
+    try {
+      const r = await providerApi.resubmit(lead.id);
+      if (r.published) {
+        Alert.alert('✓ Fixed — your lead is live!', 'It passed review and is now in the marketplace.');
+        load();
+      } else {
+        const reasons = (r.aiReasons && r.aiReasons.length ? r.aiReasons : r.aiReason ? [r.aiReason] : ['Still flagged — adjust the details and try again.']);
+        Alert.alert('Still flagged', reasons.map((x, i) => `${i + 1}. ${x}`).join('\n'));
+        setLeads(ls => ls.map(l => l.id === lead.id ? { ...l, flag_reasons: reasons } : l));
+      }
+    } catch (e: any) {
+      Alert.alert('Error', e?.message ?? 'Could not resubmit — please try again.');
+    }
+  }
+
   function handleDelete(lead: ProviderLead) {
     Alert.alert(
       'Delete Lead',
@@ -375,6 +410,7 @@ export function MySubmissionsScreen({ navigation }: any) {
               onEdit={() => setEditTarget(item)}
               onDelete={() => handleDelete(item)}
               onRespondFlag={() => handleRespondFlag(item)}
+              onResubmit={() => handleResubmit(item)}
             />
           )}
           onRefresh={() => { setRefreshing(true); load(); }}

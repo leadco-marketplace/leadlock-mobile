@@ -10,6 +10,7 @@ import { notificationEvents } from '@/lib/notificationEvents';
 import { StackActions } from '@react-navigation/native';
 import { supabase } from '@/lib/supabase';
 import { leadsApi, paymentsApi, preferencesApi, Lead, Preference, BuyerLocation } from '@/lib/api';
+import { HIDE_IN_APP_FUNDING } from '@/lib/payments-policy';
 import { useStripe, initStripe } from '@stripe/stripe-react-native';
 import { LeadCard }      from '@/components/LeadCard';
 import { UnlockModal }   from '@/components/UnlockModal';
@@ -131,7 +132,12 @@ export function LiveFeedScreen() {
   async function load(silent = false, loc?: BuyerLocation) {
     if (!silent) setLoading(true);
     try {
-      const data = await leadsApi.getLive(loc ?? buyerLocation ?? undefined);
+      // Authenticated buyers ALWAYS get their categories scoped server-side
+      // (matched=1) — the server reads their alert prefs from the DB, so this is
+      // independent of client-side pref-loading state. That kills the stale-
+      // closure race where a focus/realtime load captured empty prefs and
+      // intermittently pulled every category (real estate, etc.). Guests browse all.
+      const data = await leadsApi.getLive(loc ?? buyerLocation ?? undefined, { matched: !isGuest });
       // Diff against the previous snapshot: any lead the viewer could see as
       // available/reserved that is now sold enters the "just sold" hold —
       // unless this user bought it themselves. First load never triggers.
@@ -336,9 +342,10 @@ export function LiveFeedScreen() {
       navigation.dispatch(StackActions.push('LeadDetail', { leadId: lead.id, purchaseId: purchase_id }));
     } catch (e: any) {
       if (e.message === 'insufficient_credits') {
-        // iOS: no in-app card purchase (App Store Guideline 3.1.1). The buyer
-        // unlocks only from existing wallet balance; funding happens on the web.
-        if (Platform.OS === 'ios') {
+        // Store builds (iOS + Android): no in-app card purchase (App Store 3.1.1
+        // + Google Play Payments policy). The buyer unlocks only from existing
+        // wallet balance; funding happens on the web.
+        if (HIDE_IN_APP_FUNDING) {
           Alert.alert(
             'Not enough balance',
             "You don't have enough balance to unlock this lead. Add funds to your wallet from your account on the web, then unlock instantly from your balance.",
@@ -346,9 +353,9 @@ export function LiveFeedScreen() {
           );
           return;
         }
-        // Android/web: new buyers get an in-app debit-card / Apple Pay trial for
-        // their first 3 leads (native PaymentSheet — no browser). Once the trial
-        // is used up the server returns card_intro_exhausted and we route to ACH.
+        // Web only: new buyers get an in-app debit-card trial for their first 3
+        // leads (native PaymentSheet). Once used up the server returns
+        // card_intro_exhausted and we route to ACH.
         await tryCardIntroPurchase(lead);
       } else if (e.message === 'already_sold') {
         // Mark the previous-snapshot status as sold too, so the follow-up
@@ -563,6 +570,7 @@ export function LiveFeedScreen() {
 
       <FlatList
         ref={flatListRef}
+        style={{ flex: 1 }}
         data={displayLeads}
         keyExtractor={(l) => l.id}
         renderItem={renderItem}
@@ -571,8 +579,14 @@ export function LiveFeedScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={displayLeads.length === 0 ? styles.emptyContainer : { paddingBottom: Spacing.xxl }}
         // ── Scroll performance ─────────────────────────────────────────────
-        // removeClippedSubviews: unmount cards far off-screen from the native view tree
-        removeClippedSubviews={true}
+        // removeClippedSubviews MUST stay false on iOS: when true it unmounts
+        // off-screen rows and, after a re-layout (tab focus / KeyboardAvoidingView
+        // / navigation transition), miscalculates clipping and blanks even the
+        // VISIBLE rows — the "My Matches shows a count but the list is empty, and
+        // it stops working after switching tabs" bug. windowSize + maxToRenderPerBatch
+        // already bound the work, so we don't need this (HelpSupportScreen learned
+        // the same lesson). Keep it false.
+        removeClippedSubviews={false}
         // Render 8 cards per JS batch so the thread isn't locked painting all at once
         maxToRenderPerBatch={8}
         // Keep 5 "screens" of cards in memory (2 above + 2 below viewport + current)
@@ -682,8 +696,8 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.sm,
   },
   errorText:    { fontSize: FontSize.sm, color: Colors.danger },
-  emptyContainer: { flex: 1 },
-  emptyWrap:    { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.sm, paddingTop: Spacing.xxl },
+  emptyContainer: { flexGrow: 1, justifyContent: 'center' },
+  emptyWrap:    { alignItems: 'center', justifyContent: 'center', gap: Spacing.sm, paddingHorizontal: Spacing.lg },
   emptyIcon:    { fontSize: 48 },
   emptyTitle:   { fontSize: FontSize.md, fontWeight: '600', color: Colors.foreground },
   emptyDesc:    { fontSize: FontSize.sm, color: Colors.muted, textAlign: 'center' },

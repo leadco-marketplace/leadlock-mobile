@@ -6,7 +6,9 @@ import { MySubmissionsScreen } from '@/screens/provider/MySubmissionsScreen';
 import { SubmitLeadScreen }    from '@/screens/provider/SubmitLeadScreen';
 import { SignalsScreen }       from '@/screens/provider/SignalsScreen';
 import { AnnouncementsScreen } from '@/screens/buyer/AnnouncementsScreen';
+import { HelpSupportScreen }   from '@/screens/shared/HelpSupportScreen';
 import { AccountScreen }       from '@/screens/shared/AccountScreen';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors, FontSize } from '@/theme';
 
 const Tab   = createBottomTabNavigator();
@@ -23,11 +25,13 @@ function SubmissionsStack() {
       <Stack.Screen name="MySubmissions" component={MySubmissionsScreen} />
       <Stack.Screen name="SubmitLead"    component={SubmitLeadScreen}    />
       <Stack.Screen name="Announcements" component={AnnouncementsScreen} />
+      <Stack.Screen name="HelpSupport"   component={HelpSupportScreen}   />
     </Stack.Navigator>
   );
 }
 
 export function ProviderNavigator() {
+  const insets = useSafeAreaInsets();
   return (
     <Tab.Navigator
       screenOptions={{
@@ -36,8 +40,8 @@ export function ProviderNavigator() {
           backgroundColor: Colors.panel,
           borderTopColor:  'rgba(59,130,246,0.30)',
           borderTopWidth:  1,
-          paddingBottom:   8,
-          height:          62,
+          paddingBottom:   8 + insets.bottom,
+          height:          62 + insets.bottom,
         },
         tabBarActiveTintColor:   Colors.orange,
         tabBarInactiveTintColor: Colors.tabInactive,

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, KeyboardAvoidingView,
-  Platform, ScrollView, Linking,
+  View, Text, StyleSheet, TouchableOpacity,
+  ScrollView, Linking,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth }  from '@/contexts/AuthContext';
@@ -17,15 +17,15 @@ export function SignupScreen({ navigation }: Props) {
   const { signUp } = useAuth();
   const [email,    setEmail]    = useState('');
   const [password, setPassword] = useState('');
-  const [role,     setRole]     = useState<'buyer' | 'provider'>('buyer');
+  const [role,     setRole]     = useState<'buyer' | 'provider' | 'both'>('buyer');
   const [loading,  setLoading]  = useState(false);
   const [error,    setError]    = useState<string | null>(null);
   const [termsAccepted, setTermsAccepted] = useState(false);
-  const [bonusCents, setBonusCents] = useState(0);
+  const [coverCents, setCoverCents] = useState(0);
 
   useEffect(() => {
     promoApi.signupBonus()
-      .then((b) => { if (b.enabled && b.amountCents > 0) setBonusCents(b.amountCents); })
+      .then((b) => { if (b.enabled && b.coverCents > 0) setCoverCents(b.coverCents); })
       .catch(() => {});
   }, []);
 
@@ -36,6 +36,9 @@ export function SignupScreen({ navigation }: Props) {
   async function handleSignup() {
     if (!email.trim() || !password) { setError('Please fill in all fields.'); return; }
     if (password.length < 8)        { setError('Password must be at least 8 characters.'); return; }
+    if (!/[a-z]/.test(password))     { setError('Password must include a lowercase letter.'); return; }
+    if (!/[A-Z]/.test(password))     { setError('Password must include an uppercase letter.'); return; }
+    if (!/[0-9]/.test(password))     { setError('Password must include a number.'); return; }
     if (!termsAccepted)             { setError('Please accept the Terms of Use to continue.'); return; }
     setError(null);
     setLoading(true);
@@ -44,12 +47,13 @@ export function SignupScreen({ navigation }: Props) {
   }
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView
-        style={styles.screen}
-        contentContainerStyle={styles.content}
-        keyboardShouldPersistTaps="handled"
-      >
+    <ScrollView
+      style={styles.screen}
+      contentContainerStyle={styles.content}
+      keyboardShouldPersistTaps="handled"
+      automaticallyAdjustKeyboardInsets
+      keyboardDismissMode="interactive"
+    >
         {/* Logo */}
         <View style={styles.logoWrap}>
           <Text style={styles.logo}>
@@ -60,9 +64,9 @@ export function SignupScreen({ navigation }: Props) {
           <Text style={styles.logoSub}>MARKETPLACE</Text>
         </View>
 
-        {bonusCents > 0 && (
+        {coverCents > 0 && (
           <View style={styles.bonusBanner}>
-            <Text style={styles.bonusText}>🎁 Limited-time pilot: get ${(bonusCents / 100).toFixed(0)} in free lead credit when you sign up</Text>
+            <Text style={styles.bonusText}>🎁 Your first lead is free — up to ${(coverCents / 100).toFixed(0)}</Text>
           </View>
         )}
 
@@ -89,6 +93,21 @@ export function SignupScreen({ navigation }: Props) {
               </TouchableOpacity>
             ))}
           </View>
+
+          {/* Both — one login, two separate accounts */}
+          <TouchableOpacity
+            onPress={() => setRole('both')}
+            style={[styles.bothBtn, role === 'both' && styles.bothBtnActive]}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.roleEmoji}>🔁</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.roleLabel, role === 'both' && { color: Colors.bg }]}>Buy &amp; Sell Leads</Text>
+              <Text style={[styles.roleDesc, { textAlign: 'left' }, role === 'both' && { color: Colors.bg, opacity: 0.75 }]}>
+                One login, kept fully separate — set up buying first
+              </Text>
+            </View>
+          </TouchableOpacity>
 
           <View style={styles.form}>
             <Input
@@ -147,8 +166,7 @@ export function SignupScreen({ navigation }: Props) {
             <Text style={[styles.footerText, { color: Colors.orange, fontWeight: '600' }]}>Sign in →</Text>
           </TouchableOpacity>
         </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+    </ScrollView>
   );
 }
 
@@ -189,6 +207,20 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   roleBtnActive: {
+    backgroundColor: Colors.orange,
+    borderColor: Colors.orange,
+  },
+  bothBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    padding: Spacing.md,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(249,115,22,0.28)',
+    backgroundColor: Colors.panel2,
+  },
+  bothBtnActive: {
     backgroundColor: Colors.orange,
     borderColor: Colors.orange,
   },

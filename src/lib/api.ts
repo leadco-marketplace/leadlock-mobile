@@ -96,13 +96,23 @@ export type Lead = {
   provider_ai_score?: number | null;
   provider_ai_answer_rate?: number | null;
   provider_ai_calls_analyzed?: number | null;
+  /** Anonymous, stable per-provider badge (color + two-word codename).
+   *  Replaces the real company name — buyers never see the provider's identity. */
+  provider_badge?: { codename: string; color: string; colorName: string } | null;
 };
 
 export type PurchasedLead = Lead & {
   purchase_id: string;
   purchased_at: string;
+  /** Composed one-line job summary + the customer's labeled answers (from /api/my-leads). */
+  summary?: string | null;
+  job_details?: { label: string; value: string }[];
   contact_name: string | null;
   contact_phone: string | null;
+  /** Optional alternate customer number — masked/revealed like the primary. */
+  contact_phone_alt?: string | null;
+  /** Whether a second number exists (so the UI can offer "call alternate" even while masked). */
+  has_phone_alt?: boolean;
   contact_email: string | null;
   /** true while the masked-number window is active — phone/email withheld
    *  server-side and contact_name is the customer's first name only. */
@@ -123,11 +133,15 @@ export type PurchasedLead = Lead & {
 export type BuyerLocation = { lat: number; lng: number } | null;
 
 export const leadsApi = {
-  getLive: (location?: BuyerLocation) => {
-    const params = location
-      ? `?buyer_lat=${location.lat}&buyer_lng=${location.lng}`
-      : '';
-    return request<Lead[]>(`/api/leads${params}`);
+  getLive: (location?: BuyerLocation, opts?: { matched?: boolean; category?: string }) => {
+    // matched=1 scopes to the buyer's own categories server-side (a locksmith
+    // never loads insurance leads) so the feed stays light at scale.
+    const p = new URLSearchParams();
+    if (location) { p.set('buyer_lat', String(location.lat)); p.set('buyer_lng', String(location.lng)); }
+    if (opts?.category) p.set('category', opts.category);
+    else if (opts?.matched) p.set('matched', '1');
+    const qs = p.toString();
+    return request<Lead[]>(`/api/leads${qs ? `?${qs}` : ''}`);
   },
   // Append a cache-busting timestamp so iOS NSURLSession never serves a stale
   // cached response for this URL.  Without this, the pre-unlock My Leads list
@@ -250,6 +264,9 @@ export type ProviderLead = {
   trust_status?: 'verified' | 'flagged_pending' | 'awaiting_recall' | 'confirmed_fake' | null;
   trust_flag_reason?: string | null;
   trust_flag_deadline?: string | null;
+  /** AI-review reasons an invalid lead was flagged — shown on the card so the
+   *  provider knows what to fix before resubmitting. */
+  flag_reasons?: string[] | null;
 };
 
 export const providerApi = {
@@ -274,6 +291,30 @@ export const providerApi = {
       method: 'PATCH',
       body: JSON.stringify({ trust_confirm_number: true }),
     }),
+  /** Re-run AI review on an edited invalid lead. published=true → it's live now;
+   *  otherwise aiReasons/aiReason explain what's still wrong. */
+  resubmit: (id: string) =>
+    request<{ published: boolean; aiReasons?: string[]; aiReason?: string }>(`/api/provider/leads/${id}/resubmit`, {
+      method: 'POST',
+    }),
+};
+
+// ── Help & Support (in-app AI chat + escalation to a human ticket) ───────────
+export type SupportMsg = { role: 'user' | 'assistant'; content: string };
+
+export const supportApi = {
+  /** Non-streaming AI support chat (Haiku). Returns a single reply. */
+  chat: (messages: SupportMsg[]) =>
+    request<{ reply: string }>('/api/mobile/support-chat', {
+      method: 'POST',
+      body: JSON.stringify({ messages }),
+    }),
+  /** Escalate to a human support ticket (emails/pushes admins). */
+  report: (body: { name?: string; email?: string; topic: string; message: string }) =>
+    request<{ ok: boolean }>('/api/support', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
 };
 
 // ── Profile ────────────────────────────────────────────────────────────────
@@ -284,6 +325,11 @@ export type Profile = {
   full_name: string | null;
   phone: string | null;
   onboarding_complete: boolean;
+  /** Dual-role capabilities. Single-role accounts have exactly one true. */
+  can_buy?: boolean;
+  can_sell?: boolean;
+  /** Buyer side finished onboarding (used to gate the buyer side of a dual account). */
+  buyer_ready?: boolean;
   credits_cents: number;
   notify_email: boolean;
   notify_sms: boolean;
@@ -300,6 +346,17 @@ export type Profile = {
 export const profileApi = {
   get: ()                              => request<Profile>('/api/profile'),
   update: (data: Partial<Profile>)     => request<Profile>('/api/profile', { method: 'PATCH', body: JSON.stringify(data) }),
+};
+
+// ── Account (dual-role) ─────────────────────────────────────────────────────
+export const accountApi = {
+  /** Add the missing side to a single-role account (makes it dual). After this
+   *  the user signs out + back in and picks the new side at the gate. */
+  enableRole: (role: 'buyer' | 'provider') =>
+    request<{ ok: boolean; dualNow?: boolean; alreadyHad?: boolean }>(
+      '/api/account/enable-role',
+      { method: 'POST', body: JSON.stringify({ role }) },
+    ),
 };
 
 // ── Preferences ────────────────────────────────────────────────────────────
@@ -436,6 +493,17 @@ export type ServiceArea = {
 export const areasApi = {
   getAll: () => request<ServiceArea[]>('/api/areas'),
 
+  /** Server-side type-ahead city/area search (never downloads the full catalog). */
+  search: (q: string) =>
+    request<ServiceArea[]>(`/api/areas/search?q=${encodeURIComponent(q)}`),
+
+  /** Resolve specific areas by id (for chip/name display) without a full download.
+   *  Returns [] immediately for an empty list so no needless request fires. */
+  byIds: (ids: string[]) =>
+    ids.length === 0
+      ? Promise.resolve([] as ServiceArea[])
+      : request<ServiceArea[]>(`/api/areas/search?ids=${encodeURIComponent(ids.join(','))}`),
+
   /** Create (or return existing) service area from a Places result.
    *  Used when a buyer searches for a city not in the pre-seeded list. */
   upsertFromPlace: (place: { name: string; city: string; state: string; lat: number; lng: number }) =>
@@ -481,7 +549,7 @@ export const onboardingApi = {
 // ── Signup pilot bonus (limited-time) ───────────────────────────────────────
 export const promoApi = {
   signupBonus: () =>
-    request<{ enabled: boolean; amountCents: number }>('/api/promo/signup-bonus'),
+    request<{ enabled: boolean; coverCents: number }>('/api/promo/signup-bonus'),
 };
 
 // ── Wallet deposits ────────────────────────────────────────────────────────

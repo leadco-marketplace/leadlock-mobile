@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { supabase } from '@/lib/supabase';
 import { Input }  from '@/components/Input';
@@ -61,8 +61,13 @@ export function ForgotPasswordScreen({ navigation }: Props) {
   }
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView style={styles.screen} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        style={styles.screen}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        automaticallyAdjustKeyboardInsets
+        keyboardDismissMode="interactive"
+      >
         <View style={styles.logoWrap}>
           <View style={styles.gridLogo}>
             {GRID_CELLS.map((color, i) => (
@@ -82,7 +87,6 @@ export function ForgotPasswordScreen({ navigation }: Props) {
           <Text style={{ fontSize: FontSize.sm, color: Colors.muted }}>← Back to login</Text>
         </TouchableOpacity>
       </ScrollView>
-    </KeyboardAvoidingView>
   );
 }
 

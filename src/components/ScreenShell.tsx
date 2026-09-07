@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, RefreshControl, ViewStyle, Dimensions, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, RefreshControl, ViewStyle, Dimensions, Platform, KeyboardAvoidingView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors, FontSize, Spacing } from '@/theme';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -151,11 +151,18 @@ export function ScreenShell({
     </View>
   );
 
+  // Non-scrolling screens: lift content above the keyboard so inputs near the
+  // bottom stay visible while typing (iOS pads; Android uses native resize).
   if (!scrollable) {
     return (
       <SafeAreaView style={[styles.safe, { backgroundColor: Colors.bg }]} edges={['top']}>
         <DiagonalPattern />
-        {content}
+        <KeyboardAvoidingView
+          style={styles.scroll}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          {content}
+        </KeyboardAvoidingView>
       </SafeAreaView>
     );
   }
@@ -167,6 +174,14 @@ export function ScreenShell({
         style={styles.scroll}
         contentContainerStyle={{ paddingBottom: Spacing.xxl }}
         showsVerticalScrollIndicator={false}
+        // ── Keyboard handling (global) ────────────────────────────────────────
+        // On iOS this insets the scroll view by the keyboard height and scrolls
+        // the focused input into view, so a card near the bottom rises above the
+        // keyboard instead of being covered. keyboardShouldPersistTaps keeps
+        // dropdown/suggestion taps working while the keyboard is open.
+        automaticallyAdjustKeyboardInsets
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
         refreshControl={
           onRefresh
             ? <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.orange} />

@@ -27,6 +27,11 @@ module.exports = ({ config }) => {
     android: {
       ...config.android,
       package: 'com.leadco.marketplace.test',
+      // The live google-services.json is tied to com.leadco.marketplace, so drop
+      // it for the TEST package (a test Android build would otherwise fail
+      // validation). Test builds just won't have FCM push until a test Firebase
+      // app is added — fine, we don't build test Android today.
+      googleServicesFile: undefined,
     },
     extra: {
       ...config.extra,

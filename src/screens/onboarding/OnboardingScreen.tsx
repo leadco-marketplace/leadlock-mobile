@@ -8,9 +8,10 @@ import { Button } from '@/components/Button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import {
-  categoriesApi, areasApi, phoneVerifyApi, onboardingApi, walletApi,
+  categoriesApi, areasApi, phoneVerifyApi, onboardingApi, walletApi, promoApi,
   ServiceCategory, ServiceArea,
 } from '@/lib/api';
+import { HIDE_IN_APP_FUNDING } from '@/lib/payments-policy';
 import { Colors, Spacing, Radius, FontSize } from '@/theme';
 
 /**
@@ -66,22 +67,38 @@ export function OnboardingScreen() {
   const [selectedCats, setSelectedCats] = useState<string[]>([]);
   const [openGroups,   setOpenGroups]   = useState<Set<string>>(new Set(['Local Home Services']));
 
-  // ── Step 3: areas ──────────────────────────────────────────────────────
-  const [areas,         setAreas]         = useState<ServiceArea[]>([]);
+  // ── Step 3: areas (server-side search — the full catalog is never loaded) ─
+  const [areaResults,   setAreaResults]   = useState<ServiceArea[]>([]);
   const [areaQuery,     setAreaQuery]     = useState('');
-  const [selectedAreas, setSelectedAreas] = useState<string[]>([]);
+  const [selectedAreas, setSelectedAreas] = useState<ServiceArea[]>([]);
 
   // ── Step 4: save + payment ─────────────────────────────────────────────
   const [saving,       setSaving]       = useState(false);
   const [saved,        setSaved]        = useState(false);
   const [buyingCents,  setBuyingCents]  = useState<number | null>(null);
   const [finishing,    setFinishing]    = useState(false);
-  const [bonusCents,   setBonusCents]   = useState(0);
+  const [freeCoverCents, setFreeCoverCents] = useState(0);
 
   useEffect(() => {
     categoriesApi.getAll().then(setCategories).catch(() => {});
-    areasApi.getAll().then(setAreas).catch(() => {});
+    // "First lead free" promo — cover cap for the welcome message after onboarding.
+    promoApi.signupBonus()
+      .then((b) => { if (b.enabled && b.coverCents > 0) setFreeCoverCents(b.coverCents); })
+      .catch(() => {});
   }, []);
+
+  // Debounced server-side area search — fetches ≤50 matches as the user types.
+  useEffect(() => {
+    const q = areaQuery.trim();
+    if (q.length < 2) { setAreaResults([]); return; }
+    let cancelled = false;
+    const t = setTimeout(() => {
+      areasApi.search(q)
+        .then(rows => { if (!cancelled) setAreaResults(rows); })
+        .catch(() => { if (!cancelled) setAreaResults([]); });
+    }, 250);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [areaQuery]);
 
   const groupedCats = useMemo(() => {
     const map = new Map<string, ServiceCategory[]>();
@@ -93,15 +110,11 @@ export function OnboardingScreen() {
     return Array.from(map.entries());
   }, [categories]);
 
-  // Suggestions appear only while the user is typing — no full browse list.
+  // Server results minus what's already picked.
   const areaSuggestions = useMemo(() => {
-    const q = areaQuery.trim().toLowerCase();
-    if (q.length === 0) return [];
-    return areas
-      .filter(a => !selectedAreas.includes(a.name) && a.name.toLowerCase().includes(q))
-      .sort((a, b) => a.name.localeCompare(b.name))
-      .slice(0, 25);
-  }, [areas, areaQuery, selectedAreas]);
+    const picked = new Set(selectedAreas.map(a => a.id));
+    return areaResults.filter(a => !picked.has(a.id));
+  }, [areaResults, selectedAreas]);
 
   // ── Phone helpers ──────────────────────────────────────────────────────
   function handlePhoneChange(val: string) {
@@ -148,7 +161,7 @@ export function OnboardingScreen() {
     setSaving(true);
     setError(null);
     try {
-      const picked = areas.filter(a => selectedAreas.includes(a.name));
+      const picked = selectedAreas;
       const res = await onboardingApi.complete({
         firstName:         firstName.trim(),
         lastName:          lastName.trim(),
@@ -160,7 +173,6 @@ export function OnboardingScreen() {
         areaNames:         picked.map(a => a.name),
         areaIds:           picked.map(a => a.id),
       });
-      if (res?.signupBonusCents && res.signupBonusCents > 0) setBonusCents(res.signupBonusCents);
       setSaved(true);
       return true;
     } catch (e: any) {
@@ -199,12 +211,12 @@ export function OnboardingScreen() {
   // ── Step 4 actions ─────────────────────────────────────────────────────
   async function finish() {
     setFinishing(true);
-    // Welcome the buyer with their pilot credit before the gate lifts. The
-    // Alert is OS-level, so it stays on top after we navigate to the feed.
-    if (bonusCents > 0) {
+    // Welcome the buyer + remind them their first lead is free before the gate
+    // lifts. The Alert is OS-level, so it stays on top after we navigate to the feed.
+    if (freeCoverCents > 0) {
       Alert.alert(
         '🎁 Welcome to Nabbit!',
-        `We've added $${(bonusCents / 100).toFixed(0)} in free lead credit to your wallet as part of our limited-time pilot. Use it to unlock your first leads — credit can be used toward lead purchases only.`,
+        `Your first lead is free — we cover up to $${(freeCoverCents / 100).toFixed(0)}. No deposit needed, and it's satisfaction-guaranteed: you only use it when you actually connect with a real customer. Just unlock any lead to claim it.`,
       );
     }
     // refreshProfile picks up onboarding_complete=true → AppNavigator lifts the gate
@@ -404,13 +416,13 @@ export function OnboardingScreen() {
 
           {selectedAreas.length > 0 && (
             <View style={styles.pillWrap}>
-              {selectedAreas.map(name => (
+              {selectedAreas.map(a => (
                 <TouchableOpacity
-                  key={name}
+                  key={a.id}
                   style={styles.areaPill}
-                  onPress={() => setSelectedAreas(p => p.filter(n => n !== name))}
+                  onPress={() => setSelectedAreas(p => p.filter(x => x.id !== a.id))}
                 >
-                  <Text style={styles.areaPillText}>{name}  ×</Text>
+                  <Text style={styles.areaPillText}>{a.name}  ×</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -436,10 +448,12 @@ export function OnboardingScreen() {
                 <TouchableOpacity
                   key={a.id}
                   style={styles.suggestionRow}
-                  onPress={() => { setSelectedAreas(p => [...p, a.name]); setAreaQuery(''); }}
+                  onPress={() => { setSelectedAreas(p => (p.some(x => x.id === a.id) ? p : [...p, a])); setAreaQuery(''); setAreaResults([]); }}
                 >
                   <Text style={{ color: Colors.foreground, fontSize: FontSize.sm }}>{a.name}</Text>
-                  <Text style={{ color: Colors.muted, fontSize: FontSize.xs }}>{a.state}</Text>
+                  {!a.name.trim().toUpperCase().endsWith(`, ${(a.state ?? '').toUpperCase()}`) && (
+                    <Text style={{ color: Colors.muted, fontSize: FontSize.xs }}>{a.state}</Text>
+                  )}
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -489,9 +503,9 @@ export function OnboardingScreen() {
             ))}
           </View>
 
-          {/* iOS hides in-app funding (App Store Guideline 3.1.1) — buyers add
-              funds on the web; this optional starter-deposit shows on Android/web. */}
-          {Platform.OS !== 'ios' && (
+          {/* Store builds (iOS + Android) hide in-app funding — buyers add funds
+              on the web; this optional starter-deposit shows on web only. */}
+          {!HIDE_IN_APP_FUNDING && (
             <View style={styles.card}>
               <Text style={styles.cardTitle}>Add starter funds <Text style={{ color: Colors.muted, fontWeight: '400' }}>(optional)</Text></Text>
               <Text style={styles.cardHint}>Load your account so you&apos;re ready to unlock leads the moment you find one. Credits never expire.</Text>

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "660577873973",
+    "project_id": "nabbit-marketplace",
+    "storage_bucket": "nabbit-marketplace.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:660577873973:android:859d61448777c5b223c17c",
+        "android_client_info": {
+          "package_name": "com.leadco.marketplace"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDTGeEI-7J9DbS7Wb6zGJ5yDD1WjIcFNmc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

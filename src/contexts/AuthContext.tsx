@@ -16,8 +16,15 @@ type AuthContextValue = {
    *  taps an action (unlock, banner), 'Login' otherwise. */
   authStart: 'Login' | 'Signup';
   signIn:   (email: string, password: string) => Promise<string | null>;
-  signUp:   (email: string, password: string, role: 'buyer' | 'provider') => Promise<string | null>;
+  signUp:   (email: string, password: string, role: 'buyer' | 'provider' | 'both') => Promise<string | null>;
   signOut:  () => Promise<void>;
+  /** Dual-role accounts only: which side is active this session (from the gate). */
+  activeRole: 'buyer' | 'provider' | null;
+  setActiveRole: (r: 'buyer' | 'provider') => Promise<void>;
+  /** Account has BOTH a buyer and a seller side. */
+  dual: boolean;
+  /** The role to actually render: activeRole for dual accounts, else the profile role. */
+  effectiveRole: 'buyer' | 'provider' | 'admin' | null;
   signInAsGuest: () => void;
   /** Guest tapped an action — exit guest mode straight into the Signup page. */
   exitGuestToSignup: () => void;
@@ -32,6 +39,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading]   = useState(true);
   const [isGuest, setIsGuest]   = useState(false);
   const [authStart, setAuthStart] = useState<'Login' | 'Signup'>('Login');
+  const [activeRole, setActiveRoleState] = useState<'buyer' | 'provider' | null>(null);
+
+  const ACTIVE_ROLE_KEY = 'nb_active_role';
+
+  async function setActiveRole(r: 'buyer' | 'provider') {
+    setActiveRoleState(r);
+    try { await AsyncStorage.setItem(ACTIVE_ROLE_KEY, r); } catch { /* ignore */ }
+  }
+
+  // Dual = both sides. effectiveRole picks the active side for dual accounts,
+  // otherwise it's exactly the profile role (single-role accounts unchanged).
+  const dual = !!profile?.can_buy && !!profile?.can_sell;
+  const effectiveRole: 'buyer' | 'provider' | 'admin' | null =
+    !profile ? null : dual ? activeRole : profile.role;
 
   async function loadProfile(): Promise<Profile | null> {
     try {
@@ -43,6 +64,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return null;
     }
   }
+
+  // Restore the chosen active side (dual accounts). Cleared on sign-out, so the
+  // gate re-appears after every fresh login (matches web).
+  useEffect(() => {
+    AsyncStorage.getItem(ACTIVE_ROLE_KEY).then(v => {
+      if (v === 'buyer' || v === 'provider') setActiveRoleState(v);
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     // COLD-START POLICY:
@@ -84,7 +113,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return error?.message ?? null;
   }
 
-  async function signUp(email: string, password: string, role: 'buyer' | 'provider'): Promise<string | null> {
+  async function signUp(email: string, password: string, role: 'buyer' | 'provider' | 'both'): Promise<string | null> {
     try {
       const res = await fetch(
         `${require('expo-constants').default.expoConfig?.extra?.apiBaseUrl}/api/auth/signup`,
@@ -136,6 +165,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setProfile(null);
     setIsGuest(false);
     setAuthStart('Login');
+    // Clear the active side so a dual account re-picks at the gate next login.
+    setActiveRoleState(null);
+    AsyncStorage.removeItem(ACTIVE_ROLE_KEY).catch(() => {});
   }
 
   async function refreshProfile() {
@@ -156,6 +188,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signInAsGuest,
       exitGuestToSignup,
       refreshProfile,
+      activeRole,
+      setActiveRole,
+      dual,
+      effectiveRole,
     }}>
       {children}
     </AuthContext.Provider>

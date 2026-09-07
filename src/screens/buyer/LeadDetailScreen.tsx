@@ -1,17 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, ActivityIndicator,
-  TouchableOpacity, ScrollView,
+  TouchableOpacity, ScrollView, Modal, Pressable,
 } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { leadsApi, rateApi, reportsApi, signalsApi, PurchasedLead, RatingThumb, LeadSignal, CallLogEntry, ReportReason, THUMBS_UP_REASONS, THUMBS_DOWN_REASONS } from '@/lib/api';
+import { friendlyError } from '@/lib/friendlyError';
 import { ScreenShell } from '@/components/ScreenShell';
 import { Colors, FontSize, Spacing, Radius, Shadow } from '@/theme';
 import { useTheme } from '@/contexts/ThemeContext';
 import Constants from 'expo-constants';
 import { Audio } from 'expo-av';
 import { supabase } from '@/lib/supabase';
-import { Linking, Alert, Share } from 'react-native';
+import { Linking, Alert } from 'react-native';
 
 const BASE = (Constants.expoConfig?.extra?.apiBaseUrl as string) ?? 'https://www.nabbitmarketplace.com';
 
@@ -55,22 +57,26 @@ async function authHeaders(): Promise<Record<string, string>> {
   };
 }
 
-function CallPanel({ purchaseId }: { purchaseId: string }) {
+function CallPanel({ purchaseId, hasAlt }: { purchaseId: string; hasAlt?: boolean }) {
   useTheme(); // re-render on theme change so inline Colors.* picks up new values
   const [pinData, setPinData] = useState<PinData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState<string | null>(null);
+  const [which,   setWhich]   = useState<'primary' | 'alt'>('primary');
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [copied,    setCopied]    = useState(false);
 
   // forceNew=true → "Get a new extension": server expires the current PIN and
   // issues a fresh one. Without it, prepare returns the existing PIN unchanged.
-  async function fetchPin(forceNew = false) {
+  // `which` picks the primary or the optional alternate customer number.
+  async function fetchPin(forceNew = false, target: 'primary' | 'alt' = which) {
     setLoading(true);
     setError(null);
     try {
       const headers = await authHeaders();
       const res  = await fetch(`${BASE}/api/call/prepare`, {
         method: 'POST', headers,
-        body: JSON.stringify({ purchaseId, forceNew }),
+        body: JSON.stringify({ purchaseId, forceNew, which: target }),
       });
       const body = await res.json();
       if (!res.ok) throw new Error(body.error ?? 'Failed to load extension');
@@ -82,7 +88,7 @@ function CallPanel({ purchaseId }: { purchaseId: string }) {
     }
   }
 
-  useEffect(() => { fetchPin(); }, [purchaseId]);
+  useEffect(() => { fetchPin(false, which); }, [purchaseId, which]);
 
   if (loading) {
     return (
@@ -124,6 +130,25 @@ function CallPanel({ purchaseId }: { purchaseId: string }) {
   return (
     <View style={[callStyles.box, { backgroundColor: Colors.panel2 }]}>
       <Text style={[callStyles.sectionLabel, { color: Colors.accent }]}>📞  CALL CUSTOMER</Text>
+      {hasAlt && (
+        <View style={{ flexDirection: 'row', gap: 6, marginBottom: 10 }}>
+          {(['primary', 'alt'] as const).map(w => (
+            <TouchableOpacity
+              key={w}
+              onPress={() => { if (w !== which) setWhich(w); }}
+              style={{
+                paddingVertical: 6, paddingHorizontal: 12, borderRadius: 8,
+                backgroundColor: which === w ? Colors.accent : 'transparent',
+                borderWidth: 1, borderColor: which === w ? Colors.accent : Colors.border,
+              }}
+            >
+              <Text style={{ fontSize: 12, fontWeight: '700', color: which === w ? '#fff' : Colors.muted }}>
+                {w === 'primary' ? 'Primary' : 'Alternate'}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
       <View style={callStyles.pinRow}>
         <View style={callStyles.pinBlock}>
           <Text style={[callStyles.pinLabel, { color: Colors.muted }]}>DIAL-IN NUMBER</Text>
@@ -137,42 +162,7 @@ function CallPanel({ purchaseId }: { purchaseId: string }) {
       </View>
       <TouchableOpacity
         style={callStyles.callBtn}
-        onPress={() => {
-          // Let the buyer choose HOW to place the call. The dial-in bridge is
-          // a regular US number, so internet-calling apps (Skype, Google
-          // Voice) can reach it from anywhere in the world — essential for
-          // buyers travelling or based outside the US.
-          const num = pinData.dialIn;
-          Alert.alert(
-            'Call Customer',
-            `Dial ${formatPhone(num)}, then enter extension ${pinData.pin}.`,
-            [
-              {
-                text: '📱 Phone app',
-                onPress: () => Linking.openURL(`tel:${num}`).catch(() => {}),
-              },
-              {
-                text: '💬 Skype',
-                onPress: () =>
-                  Linking.openURL(`skype:${num}?call`).catch(() =>
-                    Alert.alert('Skype not installed', 'Install Skype, or use another option.')
-                  ),
-              },
-              {
-                text: '🌐 Google Voice',
-                onPress: () =>
-                  Linking.openURL(
-                    `https://voice.google.com/u/0/calls?a=nc,${encodeURIComponent(num)}`
-                  ).catch(() => {}),
-              },
-              {
-                text: '📋 Share / copy number',
-                onPress: () => Share.share({ message: `${num} (extension ${pinData.pin})` }).catch(() => {}),
-              },
-              { text: 'Cancel', style: 'cancel' },
-            ]
-          );
-        }}
+        onPress={() => { setCopied(false); setSheetOpen(true); }}
         activeOpacity={0.8}
       >
         <Text style={callStyles.callBtnText}>📞  Call Customer Now</Text>
@@ -181,12 +171,101 @@ function CallPanel({ purchaseId }: { purchaseId: string }) {
         Call the number above, then enter extension{' '}
         <Text style={{ fontWeight: '700', color: Colors.accent }}>{pinData.pin}</Text> when prompted.
       </Text>
-      <TouchableOpacity onPress={() => fetchPin(true)}>
-        <Text style={[callStyles.refreshText, { color: Colors.muted }]}>↻ Get a new extension</Text>
+      <TouchableOpacity
+        onPress={() => fetchPin(true)}
+        style={[callStyles.refreshBtn, { borderColor: 'rgba(255,255,255,0.35)' }]}
+        activeOpacity={0.7}
+      >
+        <Text style={[callStyles.refreshText, { color: Colors.foreground }]}>↻  Get a new extension</Text>
       </TouchableOpacity>
+
+      {/* ── Clean in-app call sheet: dial directly (auto-enters the extension
+            via pause digits) or copy the dialable number. ─────────────────── */}
+      <Modal visible={sheetOpen} transparent animationType="slide" onRequestClose={() => setSheetOpen(false)}>
+        <Pressable style={sheetStyles.backdrop} onPress={() => setSheetOpen(false)}>
+          <Pressable style={sheetStyles.sheet} onPress={() => {}}>
+            <View style={sheetStyles.grip} />
+
+            <View style={sheetStyles.titleRow}>
+              <Text style={sheetStyles.titleIcon}>📞</Text>
+              <Text style={sheetStyles.title}>Call customer</Text>
+            </View>
+            <Text style={sheetStyles.subtitle}>
+              Tap to call — your extension is entered automatically. Or copy the number to dial from another app.
+            </Text>
+
+            <View style={sheetStyles.infoRow}>
+              <View style={sheetStyles.infoCell}>
+                <Text style={sheetStyles.infoLabel}>DIAL-IN</Text>
+                <Text style={sheetStyles.infoNum}>{formatPhone(pinData.dialIn)}</Text>
+              </View>
+              <View style={[sheetStyles.infoCell, { flex: 0, minWidth: 96 }]}>
+                <Text style={sheetStyles.infoLabel}>EXTENSION</Text>
+                <Text style={sheetStyles.infoExt}>{pinData.pin}</Text>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={sheetStyles.primaryBtn}
+              activeOpacity={0.85}
+              onPress={() => {
+                // Commas = ~2s dial pauses so the extension is sent after the
+                // bridge picks up — one tap, no manual entry.
+                Linking.openURL(`tel:${pinData.dialIn},,${pinData.pin}`).catch(() => {});
+                setSheetOpen(false);
+              }}
+            >
+              <Text style={sheetStyles.primaryBtnText}>📞  Call from phone</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={sheetStyles.secondaryBtn}
+              activeOpacity={0.7}
+              onPress={async () => {
+                await Clipboard.setStringAsync(`${pinData.dialIn},,${pinData.pin}`).catch(() => {});
+                setCopied(true);
+                setTimeout(() => { setCopied(false); setSheetOpen(false); }, 1100);
+              }}
+            >
+              <Text style={sheetStyles.secondaryBtnText}>
+                {copied ? '✓  Copied — paste into any dialer' : '📋  Copy number'}
+              </Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
+
+const sheetStyles = StyleSheet.create({
+  backdrop: { flex: 1, backgroundColor: 'rgba(4,10,20,0.55)', justifyContent: 'flex-end' },
+  sheet: {
+    backgroundColor: '#0f1c30',
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
+    borderWidth: 1,
+    borderBottomWidth: 0,
+    borderColor: '#24344e',
+    paddingHorizontal: 18,
+    paddingTop: 12,
+    paddingBottom: 30,
+  },
+  grip: { width: 38, height: 4, borderRadius: 2, backgroundColor: '#33465f', alignSelf: 'center', marginBottom: 16 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
+  titleIcon: { fontSize: 16 },
+  title: { fontSize: 16, fontWeight: '700', color: '#f1f5f9' },
+  subtitle: { fontSize: 13, lineHeight: 19, color: '#8ca0bd', marginBottom: 16 },
+  infoRow: { flexDirection: 'row', gap: 10, marginBottom: 18 },
+  infoCell: { flex: 1, backgroundColor: '#16243a', borderWidth: 1, borderColor: '#24344e', borderRadius: 12, paddingVertical: 11, paddingHorizontal: 13 },
+  infoLabel: { fontSize: 10, letterSpacing: 0.6, color: '#7f93b0', marginBottom: 3, fontWeight: '700' },
+  infoNum: { fontSize: 17, fontWeight: '700', color: '#f1f5f9' },
+  infoExt: { fontSize: 22, fontWeight: '700', color: '#4f8cff', letterSpacing: 3 },
+  primaryBtn: { height: 50, borderRadius: 13, backgroundColor: '#2563eb', alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
+  primaryBtnText: { fontSize: 16, fontWeight: '700', color: '#ffffff' },
+  secondaryBtn: { height: 50, borderRadius: 13, backgroundColor: 'transparent', borderWidth: 1, borderColor: '#34465f', alignItems: 'center', justifyContent: 'center' },
+  secondaryBtnText: { fontSize: 15, fontWeight: '700', color: '#cdd8e8' },
+});
 
 const callStyles = StyleSheet.create({
   box: {
@@ -242,7 +321,16 @@ const callStyles = StyleSheet.create({
   },
   callBtnText: { fontSize: FontSize.base, fontWeight: '700', color: '#fff' },
   hint: { fontSize: FontSize.xs, color: Colors.muted, lineHeight: 17 },
-  refreshText: { fontSize: FontSize.xs, color: Colors.muted, textDecorationLine: 'underline' },
+  refreshBtn: {
+    alignSelf: 'stretch',
+    alignItems: 'center',
+    marginTop: 4,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+  },
+  refreshText: { fontSize: FontSize.sm, fontWeight: '700', color: Colors.foreground, textDecorationLine: 'underline' },
   loadingText: { fontSize: FontSize.sm, color: Colors.muted },
   errorText: { fontSize: FontSize.sm, color: Colors.danger },
   retryBtn: {
@@ -405,6 +493,31 @@ const signalStyles = StyleSheet.create({
   pendingSub:   { fontSize: FontSize.xs, lineHeight: 18 },
 });
 
+// ── Friendly inline error note ─────────────────────────────────────────────
+// Shows a calm, short message (never raw "unauthorized" red text) so a hiccup
+// reads like a normal app state and keeps people in the app.
+function FriendlyErrorNote({ code }: { code: string }) {
+  const fe = friendlyError(code);
+  return (
+    <View
+      style={{
+        flexDirection: 'row', alignItems: 'flex-start', gap: 10,
+        backgroundColor: 'rgba(249,115,22,0.10)',
+        borderWidth: 1, borderColor: 'rgba(249,115,22,0.32)',
+        borderRadius: Radius.md, padding: Spacing.md, marginTop: Spacing.sm,
+      }}
+    >
+      <Text style={{ fontSize: 15, marginTop: 1 }}>⚠️</Text>
+      <View style={{ flex: 1 }}>
+        <Text style={{ color: Colors.foreground, fontWeight: '700', fontSize: FontSize.sm }}>{fe.title}</Text>
+        {!!fe.hint && (
+          <Text style={{ color: Colors.textSecondary, fontSize: FontSize.xs, marginTop: 2, lineHeight: 16 }}>{fe.hint}</Text>
+        )}
+      </View>
+    </View>
+  );
+}
+
 // ── Rating panel ───────────────────────────────────────────────────────────
 
 function RatingPanel({ leadId }: { leadId: string }) {
@@ -489,7 +602,7 @@ function RatingPanel({ leadId }: { leadId: string }) {
         </View>
       )}
 
-      {error && <Text style={ratingStyles.errorText}>{error}</Text>}
+      {error && <FriendlyErrorNote code={error} />}
 
       {/* Submit */}
       {thumb && reasonCode && (
@@ -581,7 +694,7 @@ function ReportPanel({ leadId, purchaseId }: { leadId: string; purchaseId: strin
             </TouchableOpacity>
           ))}
 
-          {error && <Text style={reportStyles.errorText}>{error}</Text>}
+          {error && <FriendlyErrorNote code={error} />}
 
           {reason && (
             <TouchableOpacity
@@ -1038,21 +1151,8 @@ export function LeadDetailScreen() {
     );
   }
 
-  // Internal system fields that should never be shown to buyers
-  const INTERNAL_META_KEYS = new Set([
-    'area_id', 'area_ids', 'decay_enabled', 'decay_started_at', 'nationwide',
-    'api_key_id', 'landing_page_id', 'ai_review', 'load_test', 'test_seed',
-  ]);
-  // Also drop any internal namespaced keys (trust_*, flagged_*, decay_*).
-  const isInternalKey = (k: string) =>
-    INTERNAL_META_KEYS.has(k) || /^(trust_|flagged_|decay_|ai_review)/.test(k);
-
-  // Parse metadata fields — skip nulls, blanks, and internal keys
-  const metaEntries = lead.metadata
-    ? Object.entries(lead.metadata).filter(
-        ([k, v]) => v !== null && v !== '' && v !== undefined && !isInternalKey(k)
-      )
-    : [];
+  // Job details now come pre-labeled from the server (lead.job_details) + vehicle;
+  // internal metadata is filtered server-side, so no client-side key filtering here.
 
   const price = lead.buyer_price_cents || Math.round(lead.price_cents * 1.15);
 
@@ -1097,6 +1197,26 @@ export function LeadDetailScreen() {
                   ? '🌐 Nationwide'
                   : `📍 ${([lead.city, lead.state].filter(Boolean).join(', ') + (lead.zip_code ? ` ${lead.zip_code}` : '')) || 'Location pending'}`}
               </Text>
+              {lead.provider_badge ? (
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    alignSelf: 'flex-start',
+                    marginTop: 6,
+                    backgroundColor: lead.provider_badge.color + '24',
+                    borderColor: lead.provider_badge.color,
+                    borderWidth: 1,
+                    borderRadius: 20,
+                    paddingVertical: 3,
+                    paddingHorizontal: 9,
+                  }}
+                >
+                  <View style={{ width: 9, height: 9, borderRadius: 5, backgroundColor: lead.provider_badge.color, marginRight: 6 }} />
+                  <Text style={{ fontSize: 9, letterSpacing: 0.5, color: lead.provider_badge.color, fontWeight: '700', marginRight: 5 }}>SOURCE</Text>
+                  <Text style={{ fontSize: 12, color: Colors.foreground }}>{lead.provider_badge.codename}</Text>
+                </View>
+              ) : null}
             </View>
             <View style={styles.priceBadge}>
               <Text style={[styles.priceLabel, { color: Colors.muted }]}>PAID</Text>
@@ -1166,19 +1286,44 @@ export function LeadDetailScreen() {
                     <Text style={{ color: Colors.muted }}>Phone: </Text>{lead.contact_phone}
                   </Text>
                 )}
+                {lead.contact_phone_alt && (
+                  <Text
+                    style={[styles.description, { color: Colors.accent }]}
+                    onPress={() => Linking.openURL(`tel:${lead.contact_phone_alt}`)}
+                  >
+                    <Text style={{ color: Colors.muted }}>Alt phone: </Text>{lead.contact_phone_alt}
+                  </Text>
+                )}
               </>
             )}
           </View>
         )}
 
-        {/* ── Lead details (metadata fields) ──────────── */}
-        {metaEntries.length > 0 && (
+        {/* ── Job Details: what the job is about (vehicle + the customer's
+              picked options), always visible after unlock — before and during
+              the call. Internal metadata (source, etc.) is intentionally hidden. */}
+        {(lead.vehicle || (lead.job_details && lead.job_details.length > 0)) && (
           <View style={[styles.section, { backgroundColor: Colors.panel, shadowColor: Colors.glowColor }]}>
-            <Text style={[styles.sectionTitle, { color: Colors.foreground }]}>🔍  Lead Details</Text>
-            {metaEntries.map(([key, value]) => (
-              <View key={key} style={[styles.metaRow, { borderBottomColor: Colors.border }]}>
-                <Text style={[styles.metaKey, { color: Colors.muted }]}>{labelify(key)}</Text>
-                <Text style={[styles.metaValue, { color: Colors.foreground }]}>{String(value)}</Text>
+            <Text style={[styles.sectionTitle, { color: Colors.foreground }]}>🧰  Job Details</Text>
+            {!!lead.summary && (
+              <Text style={{ color: Colors.foreground, fontSize: FontSize.base, fontWeight: '700', lineHeight: 21, marginBottom: 10, textTransform: 'capitalize' }}>
+                {lead.summary}
+              </Text>
+            )}
+            <View style={[styles.metaRow, { borderBottomColor: Colors.border }]}>
+              <Text style={[styles.metaKey, { color: Colors.muted }]}>Service</Text>
+              <Text style={[styles.metaValue, { color: Colors.foreground, textTransform: 'capitalize' }]}>{lead.job_type}</Text>
+            </View>
+            {!!lead.vehicle && (
+              <View style={[styles.metaRow, { borderBottomColor: Colors.border }]}>
+                <Text style={[styles.metaKey, { color: Colors.muted }]}>Vehicle</Text>
+                <Text style={[styles.metaValue, { color: Colors.accent, fontWeight: '700' }]}>🚗 {lead.vehicle}</Text>
+              </View>
+            )}
+            {(lead.job_details ?? []).map((f, i) => (
+              <View key={`${f.label}-${i}`} style={[styles.metaRow, { borderBottomColor: Colors.border }]}>
+                <Text style={[styles.metaKey, { color: Colors.muted }]}>{f.label}</Text>
+                <Text style={[styles.metaValue, { color: Colors.foreground }]}>{f.value}</Text>
               </View>
             ))}
           </View>
@@ -1241,7 +1386,7 @@ export function LeadDetailScreen() {
               </View>
             )}
 
-            <CallPanel purchaseId={lead.purchase_id} />
+            <CallPanel purchaseId={lead.purchase_id} hasAlt={!!lead.has_phone_alt} />
 
             {/* ── Call History — every call, recording, analysis ── */}
             <CallHistory purchaseId={lead.purchase_id} />

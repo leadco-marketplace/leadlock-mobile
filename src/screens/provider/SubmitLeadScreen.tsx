@@ -20,8 +20,6 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  KeyboardAvoidingView,
-  Platform,
   Alert,
   Modal,
   FlatList,
@@ -682,6 +680,7 @@ export function SubmitLeadScreen({ navigation }: any) {
   // Contact
   const [customerName,   setCustomerName]   = useState('');
   const [customerPhone,  setCustomerPhone]  = useState('');
+  const [customerPhoneAlt, setCustomerPhoneAlt] = useState('');
   const [customerEmail,  setCustomerEmail]  = useState('');
   // Extra fields
   const [extraValues,    setExtraValues]    = useState<Record<string, string>>({});
@@ -745,7 +744,7 @@ export function SubmitLeadScreen({ navigation }: any) {
     setJobType(''); setNationwide(false);
     setStreetAddress(''); setAddrCity(''); setAddrState(''); setAddrLat(null); setAddrLng(null);
     setCityInput(''); setStateInput(''); setCityLat(null); setCityLng(null);
-    setCustomerName(''); setCustomerPhone(''); setCustomerEmail('');
+    setCustomerName(''); setCustomerPhone(''); setCustomerPhoneAlt(''); setCustomerEmail('');
     setExtraValues({}); setSelectedTags([]); setPrice('');
     setDecayEnabled(false); setDecayFloor('');
     setError(null); setDuplicateInfo(null);
@@ -867,12 +866,13 @@ export function SubmitLeadScreen({ navigation }: any) {
           city:              submitCity,
           state:             submitState,
           nationwide,
-          public_summary:    selectedTags.join(' · '),
+          public_summary:    null, // free text removed — Lead Context chips go to metadata.lead_tags
           exact_address:     submitExactAddress,
           exact_address_lat: submitLat,
           exact_address_lng: submitLng,
           customer_name:     customerName  || null,
           customer_phone:    customerPhone || null,
+          customer_phone_alt: customerPhoneAlt || null,
           customer_email:    customerEmail || null,
           price_cents:       priceCents,
           auto_publish:      fieldConfig.autoPublish,
@@ -882,6 +882,7 @@ export function SubmitLeadScreen({ navigation }: any) {
             nationwide,
             ...decayConfig,
             ...extraValues,
+            ...(selectedTags.length ? { lead_tags: selectedTags } : {}),
           },
         }),
       });
@@ -937,18 +938,19 @@ export function SubmitLeadScreen({ navigation }: any) {
           city:              submitCity,
           state:             submitState,
           nationwide,
-          public_summary:    selectedTags.join(' · '),
+          public_summary:    null, // free text removed — Lead Context chips go to metadata.lead_tags
           exact_address:     submitExactAddress,
           exact_address_lat: nationwide ? null : (isNeedsAddress ? addrLat : cityLat),
           exact_address_lng: nationwide ? null : (isNeedsAddress ? addrLng : cityLng),
           customer_name:     customerName  || null,
           customer_phone:    customerPhone || null,
+          customer_phone_alt: customerPhoneAlt || null,
           customer_email:    customerEmail || null,
           price_cents:       priceCents,
           auto_publish:      fieldConfig.autoPublish,
           service_radius_miles: locationLocked ? radiusMiles : null,
           location_precision:   locationLocked ? (isNeedsAddress ? 'address' : 'city') : null,
-          metadata:          { nationwide, ...extraValues },
+          metadata:          { nationwide, ...extraValues, ...(selectedTags.length ? { lead_tags: selectedTags } : {}) },
           request_review:    true,
           existing_lead_id:  duplicateInfo.existingLeadId,
         }),
@@ -970,7 +972,7 @@ export function SubmitLeadScreen({ navigation }: any) {
     setJobType(''); setNationwide(false);
     setStreetAddress(''); setAddrCity(''); setAddrState(''); setAddrLat(null); setAddrLng(null);
     setCityInput(''); setStateInput(''); setCityLat(null); setCityLng(null);
-    setCustomerName(''); setCustomerPhone(''); setCustomerEmail('');
+    setCustomerName(''); setCustomerPhone(''); setCustomerPhoneAlt(''); setCustomerEmail('');
     setExtraValues({}); setSelectedTags([]); setPrice('');
     setDecayEnabled(false); setDecayFloor('');
     setError(null); setDuplicateInfo(null);
@@ -1048,8 +1050,8 @@ export function SubmitLeadScreen({ navigation }: any) {
         onClose={() => setDecayHrsOpen(false)}
       />
 
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScreenShell title="Submit a Lead" subtitle="Fill in the customer's details">
+      {/* Keyboard avoidance is handled globally by ScreenShell. */}
+      <ScreenShell title="Submit a Lead" subtitle="Fill in the customer's details">
 
           {/* ── Category selector ── */}
           <View style={[styles.section, { backgroundColor: Colors.panel, borderColor: Colors.borderOrange, shadowColor: Colors.glowColor }]}>
@@ -1219,6 +1221,13 @@ export function SubmitLeadScreen({ navigation }: any) {
                   value={customerPhone}
                   onChangeText={(v) => { setCustomerPhone(v); setDuplicateInfo(null); }}
                   placeholder="(555) 000-0000"
+                  keyboardType="phone-pad"
+                />
+                <Input
+                  label="Alternate phone (optional)"
+                  value={customerPhoneAlt}
+                  onChangeText={setCustomerPhoneAlt}
+                  placeholder="Second number, if any"
                   keyboardType="phone-pad"
                 />
                 <Input
@@ -1403,7 +1412,6 @@ export function SubmitLeadScreen({ navigation }: any) {
           )}
 
         </ScreenShell>
-      </KeyboardAvoidingView>
     </>
   );
 }

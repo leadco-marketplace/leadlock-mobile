@@ -7,11 +7,14 @@ import {
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
-import { profileApi, phoneVerifyApi, walletApi } from '@/lib/api';
+import { profileApi, phoneVerifyApi, walletApi, accountApi } from '@/lib/api';
+import { openTour } from '@/lib/tour';
+import { openAppStoreReview } from '@/lib/rateApp';
 import { ScreenShell } from '@/components/ScreenShell';
 import { Button } from '@/components/Button';
 import { Colors, FontSize, Spacing, Radius, Shadow } from '@/theme';
 import Constants from 'expo-constants';
+import * as Sentry from '@sentry/react-native';
 import { supabase } from '@/lib/supabase';
 import { useStripe, initStripe } from '@stripe/stripe-react-native';
 
@@ -28,8 +31,14 @@ export function AccountScreen() {
     if (profile?.role === 'provider') navigation.navigate('SubmissionsTab', { screen: 'Announcements' });
     else navigation.navigate('Announcements');
   }
+  function openHelpSupport() {
+    if (profile?.role === 'provider') navigation.navigate('SubmissionsTab', { screen: 'HelpSupport' });
+    else navigation.navigate('HelpSupport');
+  }
   const [saving,        setSaving]        = useState(false);
   const [deleting,      setDeleting]      = useState(false);
+  const [addingSide,    setAddingSide]    = useState(false);
+  const [sideAdded,     setSideAdded]     = useState(false);
   const [buyingCredits, setBuyingCredits] = useState<number | null>(null); // amountCents in flight
   const [customAmount,  setCustomAmount]  = useState(''); // free-entry deposit amount (dollars)
 
@@ -243,6 +252,21 @@ export function AccountScreen() {
     const cents = Math.round(dollars * 100);
     setCustomAmount('');
     handleAddCredits(cents);
+  }
+
+  // ── Add the other side (single-role → dual) ───────────────────────────────
+  async function handleAddOtherSide(missing: 'buyer' | 'provider') {
+    if (addingSide) return;
+    setAddingSide(true);
+    try {
+      await accountApi.enableRole(missing);
+      setSideAdded(true);
+      await refreshProfile();
+    } catch (e: any) {
+      Alert.alert('Something went wrong', e?.message ?? 'Could not add the other side. Please try again.');
+    } finally {
+      setAddingSide(false);
+    }
   }
 
   // ── Sign out ──────────────────────────────────────────────────────────────
@@ -627,6 +651,47 @@ export function AccountScreen() {
         </TouchableOpacity>
       )}
 
+      {/* ── Help & more ───────────────────────────────────────── */}
+      {!isGuest && (
+        <View style={[styles.card, { backgroundColor: Colors.panel, borderColor: Colors.borderOrange, shadowColor: Colors.glowColor }]}>
+          <TouchableOpacity
+            onPress={openHelpSupport}
+            style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: Spacing.sm + 2 }}
+            activeOpacity={0.7}
+          >
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: Colors.foreground, fontSize: FontSize.md, fontWeight: '600' }}>💬  Help &amp; Support</Text>
+              <Text style={{ color: Colors.muted, fontSize: FontSize.xs, marginTop: 2 }}>Chat with us or report a problem</Text>
+            </View>
+            <Text style={{ color: Colors.muted, fontSize: FontSize.lg }}>›</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={openTour}
+            style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: Spacing.sm + 2, borderTopWidth: 1, borderTopColor: Colors.border }}
+            activeOpacity={0.7}
+          >
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: Colors.foreground, fontSize: FontSize.md, fontWeight: '600' }}>🎓  Replay Tutorial</Text>
+              <Text style={{ color: Colors.muted, fontSize: FontSize.xs, marginTop: 2 }}>See the quick walkthrough of how Nabbit works</Text>
+            </View>
+            <Text style={{ color: Colors.muted, fontSize: FontSize.lg }}>›</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={openAppStoreReview}
+            style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: Spacing.sm + 2, borderTopWidth: 1, borderTopColor: Colors.border }}
+            activeOpacity={0.7}
+          >
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: Colors.foreground, fontSize: FontSize.md, fontWeight: '600' }}>⭐  Rate This App</Text>
+              <Text style={{ color: Colors.muted, fontSize: FontSize.xs, marginTop: 2 }}>Enjoying Nabbit? Leave a rating on the {Platform.OS === 'ios' ? 'App Store' : 'Play Store'}</Text>
+            </View>
+            <Text style={{ color: Colors.muted, fontSize: FontSize.lg }}>›</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* ── Notifications ──────────────────────────────────────── */}
       <View style={[styles.card, { backgroundColor: Colors.panel, borderColor: Colors.borderOrange, shadowColor: Colors.glowColor }]}>
         <Text style={[styles.sectionTitle, { color: Colors.foreground }]}>Notifications</Text>
@@ -647,6 +712,35 @@ export function AccountScreen() {
           </View>
         ))}
       </View>
+
+      {/* ── Add the other side (single-role accounts only) ──────── */}
+      {!isGuest && profile && (profile.can_buy ? !profile.can_sell : profile.can_sell) && (() => {
+        const missing: 'buyer' | 'provider' = profile.can_buy ? 'provider' : 'buyer';
+        const title = missing === 'provider' ? '🧰  Sell leads too' : '🎯  Buy leads too';
+        const desc  = missing === 'provider'
+          ? 'Add a seller side to submit and sell leads — kept completely separate from your buyer account.'
+          : 'Add a buyer side to browse and buy leads — kept completely separate from your seller account.';
+        return (
+          <View style={[styles.card, { backgroundColor: Colors.panel, borderColor: Colors.borderOrange, shadowColor: Colors.glowColor }]}>
+            <Text style={[styles.sectionTitle, { color: Colors.foreground }]}>{title}</Text>
+            <Text style={{ fontSize: FontSize.sm, color: Colors.textSecondary, lineHeight: 19, marginBottom: Spacing.md }}>{desc}</Text>
+            {sideAdded ? (
+              <View style={{ borderWidth: 1, borderColor: 'rgba(52,211,153,0.35)', backgroundColor: 'rgba(52,211,153,0.12)', borderRadius: Radius.md, padding: Spacing.md }}>
+                <Text style={{ fontSize: FontSize.sm, color: '#34d399', lineHeight: 19 }}>
+                  ✓ Your {missing === 'provider' ? 'seller' : 'buyer'} side is ready. Sign out and sign back in, then pick it at the account screen to finish setting it up.
+                </Text>
+              </View>
+            ) : (
+              <Button
+                label={addingSide ? 'Adding…' : (missing === 'provider' ? 'Also sell leads' : 'Also buy leads')}
+                onPress={() => handleAddOtherSide(missing)}
+                loading={addingSide}
+                fullWidth
+              />
+            )}
+          </View>
+        );
+      })()}
 
       {/* ── Appearance ─────────────────────────────────────────── */}
       <View style={[styles.card, { backgroundColor: Colors.panel, borderColor: Colors.borderOrange, shadowColor: Colors.glowColor }]}>
@@ -670,6 +764,21 @@ export function AccountScreen() {
           ))}
         </View>
       </View>
+
+      {/* ── Sentry test (TEST app only) — verify mobile errors reach Sentry ── */}
+      {WEB_APP.includes('test.') && (
+        <TouchableOpacity
+          onPress={() => {
+            Sentry.captureException(new Error('Mobile Sentry test — intentional (Account screen)'));
+            Alert.alert('Sent to Sentry', 'A test error was sent. It should appear in the Sentry issues feed shortly (tagged "staging").');
+          }}
+          style={{ alignItems: 'center', paddingVertical: Spacing.sm, marginBottom: Spacing.sm }}
+        >
+          <Text style={{ fontSize: FontSize.xs, color: Colors.muted, textDecorationLine: 'underline' }}>
+            🐞 Send a test error to Sentry
+          </Text>
+        </TouchableOpacity>
+      )}
 
       {/* ── Sign out ────────────────────────────────────────────── */}
       <Button label="Sign Out" onPress={handleSignOut} variant="danger" fullWidth />

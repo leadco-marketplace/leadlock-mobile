@@ -3,7 +3,7 @@
     "name": "Nabbit",
     "slug": "leadco-marketplace",
     "scheme": "leadco",
-    "version": "1.0.0",
+    "version": "1.0.6",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -16,14 +16,15 @@
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "com.leadco.marketplace",
-      "buildNumber": "4",
+      "buildNumber": "6",
       "infoPlist": {
         "UIBackgroundModes": [
           "remote-notification"
         ],
         "ITSAppUsesNonExemptEncryption": false,
+        "NSLocationWhenInUseUsageDescription": "Nabbit Marketplace uses your location to show home-service leads near you and to calculate how far each job is from where you are, so you can prioritize the closest opportunities. For example, a locksmith in Miami will see nearby lockout leads sorted by distance from their current location.",
         "NSCameraUsageDescription": "Nabbit Marketplace uses the camera to scan your card when you add a payment method.",
         "NSPhotoLibraryUsageDescription": "Nabbit Marketplace needs photo access if you choose an image while adding payment details.",
         "NSFaceIDUsageDescription": "Nabbit Marketplace uses Face ID to help verify your identity during secure payments."
@@ -35,15 +36,18 @@
         "backgroundColor": "#08101e"
       },
       "package": "com.leadco.marketplace",
+      "googleServicesFile": "./google-services.json",
       "permissions": [
         "RECEIVE_BOOT_COMPLETED",
-        "VIBRATE"
+        "VIBRATE",
+        "POST_NOTIFICATIONS"
       ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
+      "@sentry/react-native/expo",
       [
         "expo-notifications",
         {
@@ -68,7 +72,7 @@
         "@stripe/stripe-react-native",
         {
           "merchantIdentifier": "merchant.com.leadco.marketplace",
-          "enableGooglePay": false
+          "enableGooglePay": true
         }
       ]
     ],

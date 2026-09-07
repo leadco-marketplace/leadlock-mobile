@@ -305,6 +305,40 @@ function LeadCardInner({ lead, onUnlock, unlocking, purchased, highlighted, just
                    (lead.zip_code ? ` ${lead.zip_code}` : '')) || 'Location pending'}
             </Text>
 
+            {/* Anonymous provider badge — colored dot + codename (no real name) */}
+            {lead.provider_badge ? (
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  alignSelf: 'flex-start',
+                  marginTop: 6,
+                  backgroundColor: lead.provider_badge.color + '24',
+                  borderColor: lead.provider_badge.color,
+                  borderWidth: 1,
+                  borderRadius: 20,
+                  paddingVertical: 3,
+                  paddingHorizontal: 9,
+                }}
+              >
+                <View
+                  style={{
+                    width: 9,
+                    height: 9,
+                    borderRadius: 5,
+                    backgroundColor: lead.provider_badge.color,
+                    marginRight: 6,
+                  }}
+                />
+                <Text style={{ fontSize: 9, letterSpacing: 0.5, color: lead.provider_badge.color, fontWeight: '700', marginRight: 5 }}>
+                  SOURCE
+                </Text>
+                <Text style={{ fontSize: 12, color: Colors.foreground }}>
+                  {lead.provider_badge.codename}
+                </Text>
+              </View>
+            ) : null}
+
             {/* Badges row: distance pill + lead code */}
             <View style={styles.badgesRow}>
               {distanceLabel && (

@@ -1,4 +1,4 @@
-import React, { createRef, useEffect } from 'react';
+import React, { createRef, useEffect, useRef } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { NavigationContainer, DefaultTheme, LinkingOptions, NavigationContainerRef } from '@react-navigation/native';
 import { useAuth }            from '@/contexts/AuthContext';
@@ -7,6 +7,8 @@ import { BuyerNavigator }     from './BuyerNavigator';
 import { ProviderNavigator }  from './ProviderNavigator';
 import { AdminNavigator }     from './AdminNavigator';
 import { OnboardingScreen }   from '@/screens/onboarding/OnboardingScreen';
+import { ChooseAccountScreen } from '@/screens/auth/ChooseAccountScreen';
+import { maybePromptForReview } from '@/lib/rateApp';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Colors } from '@/theme';
 
@@ -60,21 +62,42 @@ const linking: LinkingOptions<any> = {
 };
 
 export function AppNavigator() {
-  const { session, profile, loading, isGuest, authStart } = useAuth();
+  const { session, profile, loading, isGuest, authStart, dual, activeRole, effectiveRole } = useAuth();
   const { setPreDashboard } = useTheme();
 
-  // Pre-dashboard surfaces (launch, login, signup, onboarding) are always
-  // DARK. The user's saved theme preference only kicks in once they reach
-  // the app proper (guest feed counts as "in the app").
+  // Dual account that hasn't picked a side yet → the sign-in gate. Single-role
+  // accounts are never dual, so this is always false for them.
+  const needsGate = !!session && !isGuest && !!profile && dual && !activeRole;
+
+  // Buyer side needs onboarding. Single-role buyers use onboarding_complete
+  // exactly as before; a dual account's buyer side uses its own buyer_ready flag.
+  const buyerNeedsOnboarding =
+    !!session && !isGuest && !!profile && effectiveRole === 'buyer' &&
+    (dual ? !profile.buyer_ready : !profile.onboarding_complete);
+
+  // Pre-dashboard surfaces (launch, login, signup, gate, onboarding) are always DARK.
   const preDashboard =
-    loading ||
-    (!session && !isGuest) ||
-    (!!session && !isGuest && profile?.role === 'buyer' && !profile?.onboarding_complete);
+    loading || (!session && !isGuest) || needsGate || buyerNeedsOnboarding;
 
   useEffect(() => {
     setPreDashboard(preDashboard);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [preDashboard]);
+
+  // Once the user is signed in and fully in the app (past the gate/onboarding),
+  // consider the gentle one-time "Rate this app?" soft-ask. The helper itself
+  // enforces "only after a few days, only once", so this is safe to trigger on
+  // entry; we just guard against re-firing within a single app session.
+  const reviewAsked = useRef(false);
+  useEffect(() => {
+    const inApp = !!session && !isGuest && !!profile && !needsGate && !buyerNeedsOnboarding;
+    if (inApp && !reviewAsked.current) {
+      reviewAsked.current = true;
+      const t = setTimeout(() => { maybePromptForReview(); }, 4000); // let the UI settle first
+      return () => clearTimeout(t);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session, isGuest, profile, needsGate, buyerNeedsOnboarding]);
 
   if (loading) {
     return (
@@ -84,12 +107,13 @@ export function AppNavigator() {
     );
   }
 
-  // Buyers must finish onboarding (profile + verified phone + services +
-  // areas) before entering the app — mirrors the web /onboarding middleware
-  // gate. Rendered outside NavigationContainer: it's a single screen with
-  // no navigation of its own; when refreshProfile() picks up
-  // onboarding_complete=true this component re-renders into BuyerNavigator.
-  if (session && !isGuest && profile && profile.role === 'buyer' && !profile.onboarding_complete) {
+  // Gate first: a dual account must pick which side to open.
+  if (needsGate) {
+    return <ChooseAccountScreen />;
+  }
+
+  // Buyer onboarding gate (mirrors web middleware). Single screen, no nav.
+  if (buyerNeedsOnboarding) {
     return <OnboardingScreen />;
   }
 
@@ -99,9 +123,9 @@ export function AppNavigator() {
         ? <AuthNavigator initialRouteName={authStart} />
         : isGuest
           ? <BuyerNavigator />
-          : profile?.role === 'admin'
+          : effectiveRole === 'admin'
             ? <AdminNavigator />
-            : profile?.role === 'provider'
+            : effectiveRole === 'provider'
               ? <ProviderNavigator />
               : <BuyerNavigator />
       }

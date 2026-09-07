@@ -14,6 +14,26 @@ import { ThemeProvider } from '@/contexts/ThemeContext';
 import { AppNavigator, navigationRef } from '@/navigation/AppNavigator';
 import { pushApi } from '@/lib/api';
 import { notificationEvents } from '@/lib/notificationEvents';
+import * as Sentry from '@sentry/react-native';
+
+// ── Error monitoring (Sentry) ──────────────────────────────────────────────
+// Mobile crashes + JS errors flow into the SAME Sentry project as the web app,
+// so they land in one issues feed and reuse the same email/SMS alerts. The
+// LIVE app tags events "production" (fires alerts); the TEST app tags "staging"
+// (no alerts). DSN is the public client key — safe to ship.
+const SENTRY_DSN =
+  'https://7b28687e562514d84e41d5bd6b3e5f41@o4512004134797312.ingest.us.sentry.io/4512004202299392';
+const SENTRY_ENV = String(Constants.expoConfig?.extra?.apiBaseUrl ?? '').includes('test.')
+  ? 'staging'
+  : 'production';
+Sentry.init({
+  dsn: SENTRY_DSN,
+  environment: SENTRY_ENV,
+  tracesSampleRate: 0.1,
+  sendDefaultPii: false,
+  // Don't report expected network blips as crashes.
+  ignoreErrors: ['Network request failed', 'AbortError'],
+});
 
 SplashScreen.preventAutoHideAsync();
 
@@ -249,7 +269,7 @@ function PushResponseHandler() {
 const STRIPE_PK = (Constants.expoConfig?.extra?.stripePublishableKey as string) ?? '';
 const STRIPE_MERCHANT_ID = (Constants.expoConfig?.extra?.stripeMerchantId as string) ?? 'merchant.com.leadco.marketplace';
 
-export default function App() {
+function App() {
   useEffect(() => {
     SplashScreen.hideAsync();
   }, []);
@@ -269,3 +289,6 @@ export default function App() {
     </StripeProvider>
   );
 }
+
+// Wrap the root so Sentry can capture render errors + attach navigation context.
+export default Sentry.wrap(App);

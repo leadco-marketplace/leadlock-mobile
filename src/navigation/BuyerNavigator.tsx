@@ -9,8 +9,10 @@ import { AccountScreen }     from '@/screens/shared/AccountScreen';
 import { LeadDetailScreen }  from '@/screens/buyer/LeadDetailScreen';
 import { AreaPickerScreen }  from '@/screens/buyer/AreaPickerScreen';
 import { AnnouncementsScreen } from '@/screens/buyer/AnnouncementsScreen';
+import { HelpSupportScreen } from '@/screens/shared/HelpSupportScreen';
 import { GuestLockedScreen } from '@/screens/shared/GuestLockedScreen';
 import { useAuth }           from '@/contexts/AuthContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors, FontSize }  from '@/theme';
 
 const Tab   = createBottomTabNavigator();
@@ -38,6 +40,7 @@ const GuestAccount = () => <GuestLockedScreen tab="account" />;
  *  Alerts / Account open teaser screens with a Sign Up CTA instead. */
 function BuyerTabs() {
   const { isGuest } = useAuth();
+  const insets = useSafeAreaInsets();
   return (
     <Tab.Navigator
       screenOptions={{
@@ -46,9 +49,9 @@ function BuyerTabs() {
           backgroundColor: Colors.panel,
           borderTopColor:  'rgba(59,130,246,0.35)',
           borderTopWidth:  1.5,
-          paddingBottom:   8,
+          paddingBottom:   8 + insets.bottom,
           paddingTop:      4,
-          height:          66,
+          height:          66 + insets.bottom,
           shadowColor:     '#000',
           shadowOffset:    { width: 0, height: -4 },
           shadowOpacity:   0.25,
@@ -112,6 +115,7 @@ export function BuyerNavigator() {
       <Stack.Screen name="LeadDetail"  component={LeadDetailScreen} />
       <Stack.Screen name="AreaPicker"  component={AreaPickerScreen} />
       <Stack.Screen name="Announcements" component={AnnouncementsScreen} />
+      <Stack.Screen name="HelpSupport" component={HelpSupportScreen} />
     </Stack.Navigator>
   );
 }

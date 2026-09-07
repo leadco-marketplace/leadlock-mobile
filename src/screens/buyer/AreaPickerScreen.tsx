@@ -155,12 +155,29 @@ export function AreaPickerScreen({ route, navigation }: any) {
   const [notifyEmail, setNotifyEmail] = useState<boolean>(initEmail);
   const [notifyPush,  setNotifyPush]  = useState<boolean>(initPush);
 
-  // Load city areas on mount
+  // City search results from the server (type-ahead). The full catalog is
+  // NEVER downloaded — only what the buyer searches for + already selected.
+  const [cityResults, setCityResults] = useState<ServiceArea[]>([]);
+
+  // On mount, load ONLY the areas already selected (so chips + map render).
   useEffect(() => {
-    areasApi.getAll()
+    areasApi.byIds(initialAreaIds)
       .then(data => { setAreas(data); setLoading(false); })
       .catch(() => setLoading(false));
   }, []);
+
+  // Debounced server-side city search (≤50 results as the buyer types).
+  useEffect(() => {
+    const q = citySearch.trim();
+    if (q.length < 2) { setCityResults([]); return; }
+    let cancelled = false;
+    const t = setTimeout(() => {
+      areasApi.search(q)
+        .then(rows => { if (!cancelled) setCityResults(rows); })
+        .catch(() => { if (!cancelled) setCityResults([]); });
+    }, 250);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [citySearch]);
 
   // ── Filtered lists ──────────────────────────────────────────────────────
   const filteredStates = useMemo(() => {
@@ -176,17 +193,10 @@ export function AreaPickerScreen({ route, navigation }: any) {
   // Filter to areas that have coordinates — null-coord DMA entries can't be
   // used for geo-radius matching and would silently give buyers false coverage.
   const filteredAreas = useMemo(() => {
-    const q = citySearch.trim().toLowerCase();
-    if (!q) return [];
-    return areas.filter(a =>
-      a.lat !== null && a.lng !== null &&
-      (
-        a.name.toLowerCase().includes(q) ||
-        (a.city  ?? '').toLowerCase().includes(q) ||
-        (a.state ?? '').toLowerCase().includes(q)
-      ),
-    );
-  }, [areas, citySearch]);
+    if (!citySearch.trim()) return [];
+    // Server already matched by name; keep only areas usable for geo-radius.
+    return cityResults.filter(a => a.lat !== null && a.lng !== null);
+  }, [cityResults, citySearch]);
 
   // When the local list is empty but the user is still typing, fall back to
   // Google Places city autocomplete after a 400ms debounce.
@@ -489,7 +499,11 @@ export function AreaPickerScreen({ route, navigation }: any) {
                 <TouchableOpacity
                   key={area.id}
                   style={[styles.listRow, sel && styles.listRowCitySelected]}
-                  onPress={() => toggleArea(area.id)}
+                  onPress={() => {
+                    // Cache the picked area so chips + the coverage map can resolve it.
+                    setAreas(prev => (prev.some(a => a.id === area.id) ? prev : [...prev, area]));
+                    toggleArea(area.id);
+                  }}
                   activeOpacity={0.75}
                 >
                   <View>

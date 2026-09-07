@@ -42,6 +42,17 @@ const US_AREA_CODES = new Set([
   "951","952","954","956","959","970","971","972","973","975","978","979","980","983","984","985","986","989",
 ]);
 
+// ── Canadian area codes in service as of 2026 (also NANP / +1) ────────────────
+// Canada shares the North American Numbering Plan with the US, so Canadian
+// numbers are the same 10-digit +1 format. Kept as a separate set so the error
+// message can name the country and so US-only tooling stays clear.
+// MAINTENANCE: add new CRTC-activated overlays here (both copies!).
+export const CA_AREA_CODES = new Set([
+  "204","226","236","249","250","263","289","306","343","354","365","367","368","382","387","403","416","418","428","431",
+  "437","438","450","468","474","506","514","519","548","579","581","584","587","604","613","639","647","672","683","705",
+  "709","742","753","778","780","782","807","819","825","867","873","902","905","942",
+]);
+
 export function normalizeUSPhone(raw: string | null | undefined): string | null {
   if (!raw) return null;
   let d = String(raw).replace(/\D/g, "");
@@ -60,14 +71,14 @@ export function validateUSPhone(raw: string | null | undefined): PhoneCheck {
   }
   const d = normalizeUSPhone(trimmed);
   if (!d) {
-    return { ok: false, reason: "Enter a valid 10-digit US phone number (e.g. 305-555-0123)." };
+    return { ok: false, reason: "Enter a valid 10-digit phone number (e.g. 305-555-0123)." };
   }
   if (/^(\d)\1{9}$/.test(d) || d === "1234567890" || d === "0123456789") {
     return { ok: false, reason: "That phone number doesn't look real — please enter the customer's actual phone number." };
   }
   const areaCode = d.slice(0, 3);
-  if (!US_AREA_CODES.has(areaCode)) {
-    return { ok: false, reason: `(${areaCode}) isn't a valid US area code — please double-check the phone number.` };
+  if (!US_AREA_CODES.has(areaCode) && !CA_AREA_CODES.has(areaCode)) {
+    return { ok: false, reason: `(${areaCode}) isn't a valid US or Canadian area code — please double-check the phone number.` };
   }
   if (d[3] === "0" || d[3] === "1") {
     return { ok: false, reason: "That phone number isn't valid — please double-check it." };
