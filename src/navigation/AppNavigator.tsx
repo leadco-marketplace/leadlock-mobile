@@ -1,6 +1,6 @@
-import React, { createRef, useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { View, ActivityIndicator } from 'react-native';
-import { NavigationContainer, DefaultTheme, LinkingOptions, NavigationContainerRef } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme, LinkingOptions } from '@react-navigation/native';
 import { useAuth }            from '@/contexts/AuthContext';
 import { AuthNavigator }      from './AuthNavigator';
 import { BuyerNavigator }     from './BuyerNavigator';
@@ -8,15 +8,20 @@ import { ProviderNavigator }  from './ProviderNavigator';
 import { AdminNavigator }     from './AdminNavigator';
 import { OnboardingScreen }   from '@/screens/onboarding/OnboardingScreen';
 import { ChooseAccountScreen } from '@/screens/auth/ChooseAccountScreen';
+import { WelcomeTour }        from '@/components/WelcomeTour';
 import { maybePromptForReview } from '@/lib/rateApp';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Colors } from '@/theme';
 
 /**
- * A ref to the NavigationContainer. Used by App.tsx (push notification
- * response handler) to navigate programmatically without needing a hook.
+ * A ref to the NavigationContainer. Lives in its OWN module so AppNavigator and
+ * WelcomeTour share ONE ref — otherwise the tour's navigate() calls a ref that
+ * isn't attached to the container and silently do nothing (that's exactly why
+ * "Replay Tutorial" appeared broken). Re-exported so App.tsx's existing
+ * `import { navigationRef } from './AppNavigator'` keeps working unchanged.
  */
-export const navigationRef = createRef<NavigationContainerRef<any>>();
+import { navigationRef } from './navigationRef';
+export { navigationRef };
 
 const NavTheme = {
   ...DefaultTheme,
@@ -117,6 +122,15 @@ export function AppNavigator() {
     return <OnboardingScreen />;
   }
 
+  // The interactive tutorial overlay runs for signed-in buyers/providers only
+  // (not guests/admins). Mounting it here subscribes it to openTour(), so the
+  // Account → "Replay Tutorial" button actually reopens it (and it auto-shows
+  // once per role on first login).
+  const tourRole: 'buyer' | 'provider' | null =
+    !!session && !isGuest && (effectiveRole === 'buyer' || effectiveRole === 'provider')
+      ? effectiveRole
+      : null;
+
   return (
     <NavigationContainer ref={navigationRef} theme={NavTheme} linking={linking}>
       {!session && !isGuest
@@ -129,6 +143,7 @@ export function AppNavigator() {
               ? <ProviderNavigator />
               : <BuyerNavigator />
       }
+      {tourRole && <WelcomeTour role={tourRole} />}
     </NavigationContainer>
   );
 }
