@@ -216,9 +216,24 @@ export function LiveFeedScreen() {
   // If those conditions aren't met events are silently dropped, so we also
   // run a 30-second polling fallback to guarantee the feed stays current.
   useEffect(() => {
+    // DEBOUNCE the realtime reload. postgres_changes fires for EVERY change to
+    // ANY row in the leads table platform-wide — the hourly price-decay cron,
+    // other buyers purchasing, status flips, etc. On a busy table that's many
+    // events per second, and each one used to trigger a full re-fetch + re-render
+    // of the whole (up to 1000-row) feed → the list flickered/stuttered even
+    // while the user sat idle. Coalesce bursts: the first event schedules ONE
+    // reload ~5s out; further events in that window are folded into it (the
+    // reload picks up all accumulated changes). So no matter how much background
+    // churn there is, the feed reloads at most once every ~5s.
+    let pending: ReturnType<typeof setTimeout> | null = null;
+    const scheduleReload = () => {
+      if (pending) return;                    // a reload is already queued
+      pending = setTimeout(() => { pending = null; loadRef.current(true); }, 5_000);
+    };
+
     const channel = supabase
       .channel('leads-feed')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'leads' }, () => loadRef.current(true))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'leads' }, scheduleReload)
       .subscribe();
 
     // Polling fallback: refresh every 30 s in case realtime events are blocked.
@@ -227,6 +242,7 @@ export function LiveFeedScreen() {
     const poll = setInterval(() => loadRef.current(true), 30_000);
 
     return () => {
+      if (pending) clearTimeout(pending);
       supabase.removeChannel(channel);
       clearInterval(poll);
     };

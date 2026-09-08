@@ -317,6 +317,27 @@ export const supportApi = {
     }),
 };
 
+// ── In-app lead chat (submit leads without a phone number) ───────────────────
+export type LeadChatMessage = {
+  id?: string;
+  role: 'provider' | 'assistant';
+  text: string;
+  at?: string;
+  kind?: string | null;
+  leadId?: string | null;
+};
+
+export const leadChatApi = {
+  /** Load the running submit-by-chat history. */
+  history: () => request<{ messages: LeadChatMessage[] }>('/api/provider/lead-chat'),
+  /** Send a message; returns the AI reply(ies) — asks and/or a submission confirmation. */
+  send: (message: string) =>
+    request<{ replies: { text: string; leadId: string | null }[] }>('/api/provider/lead-chat', {
+      method: 'POST',
+      body: JSON.stringify({ message }),
+    }),
+};
+
 // ── Profile ────────────────────────────────────────────────────────────────
 export type Profile = {
   id: string;

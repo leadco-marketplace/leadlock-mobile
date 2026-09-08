@@ -1053,6 +1053,24 @@ export function SubmitLeadScreen({ navigation }: any) {
       {/* Keyboard avoidance is handled globally by ScreenShell. */}
       <ScreenShell title="Submit a Lead" subtitle="Fill in the customer's details">
 
+          {/* ── Faster: submit by chat ── */}
+          <TouchableOpacity
+            onPress={() => navigation.navigate('SubmissionsTab', { screen: 'LeadChat' })}
+            activeOpacity={0.8}
+            style={{
+              flexDirection: 'row', alignItems: 'center', gap: 10,
+              backgroundColor: Colors.panel, borderWidth: 1, borderColor: Colors.borderOrange,
+              borderRadius: Radius.md, paddingVertical: 12, paddingHorizontal: 14, marginBottom: Spacing.md,
+            }}
+          >
+            <Text style={{ fontSize: 20 }}>💬</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: Colors.foreground, fontSize: FontSize.base, fontWeight: '700' }}>Submit by chat instead</Text>
+              <Text style={{ color: Colors.muted, fontSize: FontSize.xs, marginTop: 1 }}>Just type the lead in one message — no forms</Text>
+            </View>
+            <Text style={{ fontSize: 18, color: Colors.orange }}>›</Text>
+          </TouchableOpacity>
+
           {/* ── Category selector ── */}
           <View style={[styles.section, { backgroundColor: Colors.panel, borderColor: Colors.borderOrange, shadowColor: Colors.glowColor }]}>
             <SectionHeader title="Service Category" />
