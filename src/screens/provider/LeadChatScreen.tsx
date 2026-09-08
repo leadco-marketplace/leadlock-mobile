@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, FlatList, Image,
   KeyboardAvoidingView, Platform, ActivityIndicator, StyleSheet,
@@ -6,39 +6,44 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { leadChatApi, LeadChatMessage } from '@/lib/api';
-import { Colors, FontSize, Spacing } from '@/theme';
+import { useTheme } from '@/contexts/ThemeContext';
+import { DarkColors, LightColors, InnerLightColors, FontSize, Spacing } from '@/theme';
 
 // The real Nabbit grid logo — assistant avatar (header + each AI bubble).
 const AVATAR = require('../../../assets/nabbit-logo.png');
 
 const TEMPLATE = 'Name:\nPhone:\nAddress:\nService needed:\nNotes:';
 
+type Palette = typeof DarkColors;
 type Bubble = { role: 'provider' | 'assistant'; content: string; ts: number; flag?: boolean };
 
 const isFlag = (k?: string | null) => k === 'trust_prompt' || k === 'signal_prompt';
 const fmtTime = (ts: number) => new Date(ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 
+// Row is memoized; it takes the active palette + styles as props so it re-renders
+// on a theme change but not on every keystroke.
 const MessageRow = React.memo(function MessageRow(
-  { role, content, time, flag }: { role: 'provider' | 'assistant'; content: string; time: string; flag?: boolean },
+  { role, content, time, flag, C, s }:
+  { role: 'provider' | 'assistant'; content: string; time: string; flag?: boolean; C: Palette; s: ReturnType<typeof makeStyles> },
 ) {
   if (role === 'provider') {
     return (
       <View style={{ alignItems: 'flex-end', marginBottom: 10 }}>
-        <View style={[styles.bubble, styles.me]}>
-          <Text selectable style={[styles.bubbleText, { color: '#fff' }]}>{content}</Text>
+        <View style={[s.bubble, s.me]}>
+          <Text selectable style={[s.bubbleText, { color: '#fff' }]}>{content}</Text>
         </View>
-        <Text style={styles.seen}>Sent · {time}</Text>
+        <Text style={s.stamp}>Sent · {time}</Text>
       </View>
     );
   }
   return (
-    <View style={styles.aiRow}>
-      <Image source={AVATAR} style={styles.avatar} />
-      <View style={styles.aiCol}>
-        <View style={[styles.bubble, styles.ai, flag && styles.flagBubble]}>
-          <Text selectable style={[styles.bubbleText, { color: Colors.foreground }]}>{content}</Text>
+    <View style={s.aiRow}>
+      <Image source={AVATAR} style={s.avatar} />
+      <View style={s.aiCol}>
+        <View style={[s.bubble, s.ai, flag && s.flagBubble]}>
+          <Text selectable style={[s.bubbleText, { color: C.foreground }]}>{content}</Text>
         </View>
-        <Text style={styles.attrib}>✨ Nabbit AI · {time}</Text>
+        <Text style={s.stamp}>✨ Nabbit AI · {time}</Text>
       </View>
     </View>
   );
@@ -47,6 +52,10 @@ const MessageRow = React.memo(function MessageRow(
 export function LeadChatScreen() {
   const nav = useNavigation<any>();
   const insets = useSafeAreaInsets();
+  const { mode } = useTheme();
+  const C: Palette = mode === 'light' ? LightColors : mode === 'inner-light' ? InnerLightColors : DarkColors;
+  const s = useMemo(() => makeStyles(C), [mode]);
+
   const [msgs, setMsgs] = useState<Bubble[]>([]);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
@@ -100,20 +109,20 @@ export function LeadChatScreen() {
   }
 
   const renderItem = useCallback(
-    ({ item }: { item: Bubble }) => <MessageRow role={item.role} content={item.content} time={fmtTime(item.ts)} flag={item.flag} />,
-    [],
+    ({ item }: { item: Bubble }) => <MessageRow role={item.role} content={item.content} time={fmtTime(item.ts)} flag={item.flag} C={C} s={s} />,
+    [C, s],
   );
 
   return (
-    <View style={{ flex: 1, backgroundColor: Colors.bg, paddingTop: insets.top }}>
-      <View style={styles.top}>
+    <View style={{ flex: 1, backgroundColor: C.bg, paddingTop: insets.top }}>
+      <View style={s.top}>
         <TouchableOpacity onPress={() => nav.goBack()} style={{ paddingHorizontal: 6, paddingVertical: 4 }}>
-          <Text style={{ color: Colors.orange, fontSize: 26, marginTop: -4 }}>‹</Text>
+          <Text style={{ color: C.orange, fontSize: 26, marginTop: -4 }}>‹</Text>
         </TouchableOpacity>
-        <Image source={AVATAR} style={styles.hicon} />
+        <Image source={AVATAR} style={s.hicon} />
         <View style={{ flex: 1 }}>
-          <Text style={styles.title}>Submit a lead</Text>
-          <Text style={styles.sub}>Nabbit AI · no phone number needed</Text>
+          <Text style={s.title}>Submit a lead</Text>
+          <Text style={s.sub}>Nabbit AI · no phone number needed</Text>
         </View>
       </View>
 
@@ -133,38 +142,38 @@ export function LeadChatScreen() {
           ListEmptyComponent={loaded ? (
             <View style={{ alignItems: 'center', paddingTop: 40, paddingHorizontal: 20 }}>
               <Image source={AVATAR} style={{ width: 44, height: 44, borderRadius: 12, marginBottom: 12, opacity: 0.9 }} />
-              <Text style={{ color: Colors.foreground, fontSize: FontSize.md, fontWeight: '600' }}>Send your first lead</Text>
-              <Text style={{ color: Colors.muted, fontSize: FontSize.sm, textAlign: 'center', marginTop: 6 }}>
+              <Text style={{ color: C.foreground, fontSize: FontSize.md, fontWeight: '600' }}>Send your first lead</Text>
+              <Text style={{ color: C.muted, fontSize: FontSize.sm, textAlign: 'center', marginTop: 6 }}>
                 Type the customer&apos;s name, phone, address and what they need — all in one message. I&apos;ll read it, ask for anything missing, and post it.
               </Text>
-              <Text style={{ color: Colors.muted, fontSize: FontSize.xs, textAlign: 'center', marginTop: 8 }}>
+              <Text style={{ color: C.muted, fontSize: FontSize.xs, textAlign: 'center', marginTop: 8 }}>
                 Uses the same prices, ranges and price drops you set on Text-to-Submit.
               </Text>
               <TouchableOpacity onPress={() => setInput(TEMPLATE)} style={{ marginTop: 12 }}>
-                <Text style={{ color: Colors.orange, fontSize: FontSize.sm, fontWeight: '700' }}>Use a template</Text>
+                <Text style={{ color: C.orange, fontSize: FontSize.sm, fontWeight: '700' }}>Use a template</Text>
               </TouchableOpacity>
             </View>
           ) : null}
           ListFooterComponent={busy ? (
-            <View style={styles.aiRow}>
-              <Image source={AVATAR} style={styles.avatar} />
-              <View style={[styles.bubble, styles.ai, { flexDirection: 'row', gap: 6, alignItems: 'center' }]}>
-                <ActivityIndicator color={Colors.muted} />
-                <Text style={{ color: Colors.muted, fontSize: FontSize.sm }}>reading your lead…</Text>
+            <View style={s.aiRow}>
+              <Image source={AVATAR} style={s.avatar} />
+              <View style={[s.bubble, s.ai, { flexDirection: 'row', gap: 6, alignItems: 'center' }]}>
+                <ActivityIndicator color={C.muted} />
+                <Text style={{ color: C.muted, fontSize: FontSize.sm }}>reading your lead…</Text>
               </View>
             </View>
           ) : null}
         />
 
-        <View style={[styles.inputBar, { paddingBottom: 8 + insets.bottom }]}>
-          <View style={styles.inputWrap}>
+        <View style={[s.inputBar, { paddingBottom: 8 + insets.bottom }]}>
+          <View style={s.inputWrap}>
             <TextInput
               value={input} onChangeText={setInput}
               placeholder="e.g. John, 305-555-1234, house lockout, Miami 33139"
-              placeholderTextColor={Colors.muted}
-              style={styles.input} multiline
+              placeholderTextColor={C.placeholder}
+              style={s.input} multiline
             />
-            <TouchableOpacity onPress={onSend} disabled={busy || !input.trim()} style={[styles.sendBtn, (busy || !input.trim()) && { opacity: 0.5 }]}>
+            <TouchableOpacity onPress={onSend} disabled={busy || !input.trim()} style={[s.sendBtn, (busy || !input.trim()) && { opacity: 0.5 }]}>
               <Text style={{ color: '#fff', fontSize: 18, fontWeight: '700' }}>↑</Text>
             </TouchableOpacity>
           </View>
@@ -174,23 +183,25 @@ export function LeadChatScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  top: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: Spacing.sm, paddingVertical: Spacing.sm, borderBottomWidth: 1, borderBottomColor: Colors.border },
-  hicon: { width: 30, height: 30, borderRadius: 15 },
-  title: { color: Colors.foreground, fontSize: FontSize.md, fontWeight: '600' },
-  sub: { color: Colors.muted, fontSize: FontSize.xs },
-  aiRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, marginBottom: 10 },
-  aiCol: { flexShrink: 1, maxWidth: '84%' },
-  avatar: { width: 26, height: 26, borderRadius: 13 },
-  bubble: { paddingHorizontal: 12, paddingVertical: 9, borderRadius: 16 },
-  ai: { alignSelf: 'flex-start', backgroundColor: Colors.panel, borderTopLeftRadius: 5 },
-  flagBubble: { backgroundColor: 'rgba(245,158,11,0.15)', borderWidth: 1, borderColor: 'rgba(245,158,11,0.4)' },
-  me: { maxWidth: '86%', alignSelf: 'flex-end', backgroundColor: Colors.orange, borderTopRightRadius: 5 },
-  bubbleText: { fontSize: FontSize.base, lineHeight: 21 },
-  seen: { color: Colors.muted, fontSize: FontSize.xs, marginTop: 3, marginRight: 4 },
-  attrib: { color: Colors.muted, fontSize: FontSize.xs, marginTop: 3, marginLeft: 4 },
-  inputBar: { paddingHorizontal: Spacing.md, paddingTop: Spacing.xs, borderTopWidth: 1, borderTopColor: Colors.border, backgroundColor: Colors.bg },
-  inputWrap: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, backgroundColor: Colors.panel, borderWidth: 1, borderColor: Colors.border, borderRadius: 22, paddingLeft: 14, paddingRight: 6, paddingVertical: 6 },
-  input: { flex: 1, color: Colors.foreground, fontSize: FontSize.base, maxHeight: 120, paddingTop: 4, paddingBottom: 4 },
-  sendBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: Colors.orange, alignItems: 'center', justifyContent: 'center' },
-});
+// Built per-mode so every surface matches the active theme (no frozen palette).
+function makeStyles(C: Palette) {
+  return StyleSheet.create({
+    top: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: Spacing.sm, paddingVertical: Spacing.sm, borderBottomWidth: 1, borderBottomColor: C.border },
+    hicon: { width: 30, height: 30, borderRadius: 15 },
+    title: { color: C.headerText, fontSize: FontSize.md, fontWeight: '600' },
+    sub: { color: C.headerSubText, fontSize: FontSize.xs },
+    aiRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, marginBottom: 10 },
+    aiCol: { flexShrink: 1, maxWidth: '84%' },
+    avatar: { width: 26, height: 26, borderRadius: 13 },
+    bubble: { paddingHorizontal: 12, paddingVertical: 9, borderRadius: 16 },
+    ai: { alignSelf: 'flex-start', backgroundColor: C.panel2, borderWidth: 1, borderColor: C.border, borderTopLeftRadius: 5 },
+    flagBubble: { backgroundColor: 'rgba(245,158,11,0.15)', borderWidth: 1, borderColor: 'rgba(245,158,11,0.45)' },
+    me: { maxWidth: '86%', alignSelf: 'flex-end', backgroundColor: C.orange, borderTopRightRadius: 5 },
+    bubbleText: { fontSize: FontSize.base, lineHeight: 21 },
+    stamp: { color: C.muted, fontSize: FontSize.xs, marginTop: 3, marginHorizontal: 4 },
+    inputBar: { paddingHorizontal: Spacing.md, paddingTop: Spacing.xs, borderTopWidth: 1, borderTopColor: C.border, backgroundColor: C.bg },
+    inputWrap: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, backgroundColor: C.panel2, borderWidth: 1, borderColor: C.border, borderRadius: 22, paddingLeft: 14, paddingRight: 6, paddingVertical: 6 },
+    input: { flex: 1, color: C.foreground, fontSize: FontSize.base, maxHeight: 120, paddingTop: 4, paddingBottom: 4 },
+    sendBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: C.orange, alignItems: 'center', justifyContent: 'center' },
+  });
+}
