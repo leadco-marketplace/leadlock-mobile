@@ -1248,10 +1248,10 @@ export function LeadDetailScreen() {
         )}
 
         {/* ── Customer contact ────────────────────────────
-            While the masked number is active (14 days after purchase) the
-            server sends FIRST NAME ONLY — phone/email arrive only after the
-            window ends (contact_hidden=false). */}
-        {(lead.contact_name || lead.contact_email || lead.contact_phone || lead.contact_hidden) && (
+            Two gates: name/email/address open on a validated final sale
+            (contact_hidden=false); the PHONE stays masked the full 14-day
+            window (phone_hidden) — the buyer gets it on the recorded call. */}
+        {(lead.contact_name || lead.contact_email || lead.contact_phone || lead.exact_address || lead.contact_hidden) && (
           <View style={[styles.section, { backgroundColor: Colors.panel, shadowColor: Colors.glowColor }]}>
             <Text style={[styles.sectionTitle, { color: Colors.foreground }]}>👤  Customer Contact</Text>
             {lead.contact_name && (
@@ -1261,7 +1261,7 @@ export function LeadDetailScreen() {
             )}
             {lead.contact_hidden ? (
               <Text style={[styles.description, { color: Colors.muted }]}>
-                🔒 Direct phone & email unlock{' '}
+                🔒 Full contact unlocks{' '}
                 {lead.contact_reveals_at
                   ? `on ${new Date(lead.contact_reveals_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}`
                   : 'when the call window ends'}
@@ -1278,21 +1278,38 @@ export function LeadDetailScreen() {
                     <Text style={{ color: Colors.muted }}>Email: </Text>{lead.contact_email}
                   </Text>
                 )}
-                {lead.contact_phone && (
-                  <Text
-                    style={[styles.description, { color: Colors.accent }]}
-                    onPress={() => Linking.openURL(`tel:${lead.contact_phone}`)}
-                  >
-                    <Text style={{ color: Colors.muted }}>Phone: </Text>{lead.contact_phone}
+                {lead.exact_address && (
+                  <Text style={[styles.description, { color: Colors.text }]}>
+                    <Text style={{ color: Colors.muted }}>Address: </Text>{lead.exact_address}
                   </Text>
                 )}
-                {lead.contact_phone_alt && (
-                  <Text
-                    style={[styles.description, { color: Colors.accent }]}
-                    onPress={() => Linking.openURL(`tel:${lead.contact_phone_alt}`)}
-                  >
-                    <Text style={{ color: Colors.muted }}>Alt phone: </Text>{lead.contact_phone_alt}
+                {lead.phone_hidden ? (
+                  <Text style={[styles.description, { color: Colors.muted }]}>
+                    🔒 Phone unlocks{' '}
+                    {lead.contact_reveals_at
+                      ? `on ${new Date(lead.contact_reveals_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}`
+                      : 'when the call window ends'}
+                    . Reach the customer on the recorded call below and ask for it directly.
                   </Text>
+                ) : (
+                  <>
+                    {lead.contact_phone && (
+                      <Text
+                        style={[styles.description, { color: Colors.accent }]}
+                        onPress={() => Linking.openURL(`tel:${lead.contact_phone}`)}
+                      >
+                        <Text style={{ color: Colors.muted }}>Phone: </Text>{lead.contact_phone}
+                      </Text>
+                    )}
+                    {lead.contact_phone_alt && (
+                      <Text
+                        style={[styles.description, { color: Colors.accent }]}
+                        onPress={() => Linking.openURL(`tel:${lead.contact_phone_alt}`)}
+                      >
+                        <Text style={{ color: Colors.muted }}>Alt phone: </Text>{lead.contact_phone_alt}
+                      </Text>
+                    )}
+                  </>
                 )}
               </>
             )}

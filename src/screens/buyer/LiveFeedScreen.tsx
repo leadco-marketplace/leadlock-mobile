@@ -83,6 +83,9 @@ export function LiveFeedScreen() {
   const holdTimersRef    = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   // Leads THIS user purchased — never stamp their own purchase.
   const selfPurchasedRef = useRef<Set<string>>(new Set());
+  // Signature of the last rendered feed (id+status+price). Lets the fast poll
+  // skip setLeads when nothing changed → no re-render on idle ticks.
+  const feedSigRef       = useRef<string>('');
 
   // Put a lead into the 4s hold, then release with a smooth layout animation
   // so the re-sort (sold sinks to bottom) slides instead of jumping.
@@ -148,6 +151,12 @@ export function LiveFeedScreen() {
       // closure race where a focus/realtime load captured empty prefs and
       // intermittently pulled every category (real estate, etc.). Guests browse all.
       const data = await leadsApi.getLive(loc ?? buyerLocation ?? undefined, { matched: !isGuest });
+      // Signature of what actually matters visually (id + status + price). If it
+      // is identical to the last render, SKIP setLeads entirely — this lets us
+      // poll fast (every ~2s, for near-instant sold removal) WITHOUT re-rendering
+      // the whole FlatList every tick when nothing changed (the flicker source).
+      const sig = data.map(l => `${l.id}:${l.status}:${l.price_cents}`).join('|');
+      if (sig === feedSigRef.current) { setError(null); return; }
       // Diff against the previous snapshot: any lead the viewer could see as
       // available/reserved that is now sold enters the "just sold" hold —
       // unless this user bought it themselves. First load never triggers.
@@ -161,6 +170,7 @@ export function LiveFeedScreen() {
         }
       }
       prevStatusesRef.current = new Map(data.map(l => [l.id, l.status]));
+      feedSigRef.current = sig;
       setLeads(data);
       setError(null);
     } catch (e: any) {
@@ -236,10 +246,15 @@ export function LiveFeedScreen() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'leads' }, scheduleReload)
       .subscribe();
 
-    // Polling fallback: refresh every 30 s in case realtime events are blocked.
-    // Supabase realtime handles instant updates; this is just a safety net.
-    // (Was 10 s — reduced to cut unnecessary re-renders during high-lead periods.)
-    const poll = setInterval(() => loadRef.current(true), 30_000);
+    // Fast poll (~2 s) so a sold lead disappears near-instantly — the whole point
+    // of Nabbit is grabbing a lead before it's gone. Realtime postgres_changes is
+    // unreliable for the feed (RLS scopes buyers to their own rows, and the test
+    // project's auth/DB clock drift can drop the realtime auth), so this poll is
+    // the PRIMARY freshness path, not just a fallback. It's cheap: load() is now
+    // diff-guarded (feedSigRef), so an unchanged poll does NOT re-render the list.
+    // SCALE FOLLOW-UP: replace this per-client poll with a realtime BROADCAST of
+    // just-sold lead ids (no RLS-per-row issue, no full re-fetch) at high volume.
+    const poll = setInterval(() => loadRef.current(true), 2_000);
 
     return () => {
       if (pending) clearTimeout(pending);

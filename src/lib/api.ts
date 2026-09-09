@@ -114,9 +114,15 @@ export type PurchasedLead = Lead & {
   /** Whether a second number exists (so the UI can offer "call alternate" even while masked). */
   has_phone_alt?: boolean;
   contact_email: string | null;
-  /** true while the masked-number window is active — phone/email withheld
-   *  server-side and contact_name is the customer's first name only. */
+  /** Exact street address — revealed with the other details on a validated
+   *  final sale (or when the window ends); null while details are hidden. */
+  exact_address?: string | null;
+  /** true while the customer's general contact (name/email/address) is withheld —
+   *  contact_name is the customer's first name only. Opens on a final sale. */
   contact_hidden?: boolean;
+  /** true while the PHONE specifically is still masked — stays true through a
+   *  final-sale reveal (the phone waits the full 14-day window regardless). */
+  phone_hidden?: boolean;
   contact_reveals_at?: string | null;
   /** Latest AI call analysis for this purchase (null until a call is analyzed).
    *  call_analysis_status: transcribing | analyzing | done | failed */
