@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  ScrollView, Linking,
+  ScrollView, Linking, Modal,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth }  from '@/contexts/AuthContext';
@@ -22,6 +22,9 @@ export function SignupScreen({ navigation }: Props) {
   const [error,    setError]    = useState<string | null>(null);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [coverCents, setCoverCents] = useState(0);
+  // Warm easy-signup welcome — shown once when the signup screen opens so a
+  // recruited pro knows it's fast (just phone verification, no credit card).
+  const [showWelcome, setShowWelcome] = useState(true);
 
   useEffect(() => {
     promoApi.signupBonus()
@@ -47,6 +50,39 @@ export function SignupScreen({ navigation }: Props) {
   }
 
   return (
+    <>
+    {/* ── Warm easy-signup welcome pop-up ─────────────────────────────────── */}
+    <Modal visible={showWelcome} transparent animationType="fade" onRequestClose={() => setShowWelcome(false)}>
+      <View style={welcome.backdrop}>
+        <View style={welcome.card}>
+          <View style={welcome.logoBox}>
+            <Text style={welcome.logoText}>
+              <Text style={{ color: Colors.accent }}>Na</Text>
+              <Text style={{ color: Colors.orange, fontWeight: '900' }}>bb</Text>
+              <Text style={{ color: Colors.accent }}>it</Text>
+            </Text>
+          </View>
+          <Text style={welcome.title}>Welcome to Nabbit 👋</Text>
+          <Text style={welcome.body}>
+            Fast, easy sign-up — <Text style={{ color: Colors.good, fontWeight: '700' }}>no credit card needed</Text>.
+            Just verify your phone number and your first lead is on us.
+          </Text>
+          <View style={{ alignSelf: 'stretch', marginTop: 16 }}>
+            {['Verify your phone — that’s it', 'No card, no commitment', 'Takes about 30 seconds'].map((t) => (
+              <View key={t} style={welcome.pill}>
+                <Text style={welcome.pillCheck}>✓</Text>
+                <Text style={welcome.pillText}>{t}</Text>
+              </View>
+            ))}
+          </View>
+          <TouchableOpacity style={welcome.btn} onPress={() => setShowWelcome(false)} activeOpacity={0.85}>
+            <Text style={welcome.btnText}>Get started →</Text>
+          </TouchableOpacity>
+          <Text style={welcome.note}>Your first lead is free.</Text>
+        </View>
+      </View>
+    </Modal>
+
     <ScrollView
       style={styles.screen}
       contentContainerStyle={styles.content}
@@ -167,8 +203,24 @@ export function SignupScreen({ navigation }: Props) {
           </TouchableOpacity>
         </View>
     </ScrollView>
+    </>
   );
 }
+
+const welcome = StyleSheet.create({
+  backdrop: { flex: 1, backgroundColor: 'rgba(6,12,24,0.72)', alignItems: 'center', justifyContent: 'center', padding: 22 },
+  card: { alignSelf: 'stretch', backgroundColor: '#1c2a43', borderWidth: 1, borderColor: '#34507a', borderRadius: 22, padding: 24, alignItems: 'center' },
+  logoBox: { width: 52, height: 52, borderRadius: 15, backgroundColor: '#0e1830', alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
+  logoText: { fontSize: 20, fontWeight: '800' },
+  title: { color: '#ffffff', fontSize: 20, fontWeight: '800', textAlign: 'center' },
+  body: { color: '#bdd5f8', fontSize: 13.5, lineHeight: 20, textAlign: 'center', marginTop: 10 },
+  pill: { flexDirection: 'row', alignItems: 'center', gap: 9, marginBottom: 8 },
+  pillCheck: { width: 18, height: 18, borderRadius: 9, textAlign: 'center', lineHeight: 18, fontSize: 11, color: '#34d399', backgroundColor: 'rgba(52,211,153,0.15)', overflow: 'hidden' },
+  pillText: { color: '#cfe0f6', fontSize: 12.5 },
+  btn: { alignSelf: 'stretch', backgroundColor: '#f97316', borderRadius: 13, paddingVertical: 13, alignItems: 'center', marginTop: 18 },
+  btnText: { color: '#ffffff', fontWeight: '800', fontSize: 15 },
+  note: { color: '#6f8bb0', fontSize: 11, marginTop: 11 },
+});
 
 const styles = StyleSheet.create({
   screen:  { flex: 1, backgroundColor: Colors.bg },

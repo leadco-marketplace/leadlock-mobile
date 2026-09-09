@@ -3,7 +3,7 @@
     "name": "Nabbit",
     "slug": "leadco-marketplace",
     "scheme": "leadco",
-    "version": "1.0.6",
+    "version": "1.0.7",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -18,7 +18,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.leadco.marketplace",
-      "buildNumber": "6",
+      "buildNumber": "7",
       "infoPlist": {
         "UIBackgroundModes": [
           "remote-notification"
