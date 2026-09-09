@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, FlatList, Image,
-  KeyboardAvoidingView, Platform, ActivityIndicator, StyleSheet,
+  KeyboardAvoidingView, Platform, ActivityIndicator, StyleSheet, Keyboard,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -60,9 +60,21 @@ export function LeadChatScreen() {
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [kbdUp, setKbdUp] = useState(false);
   const listRef = useRef<FlatList<Bubble>>(null);
   const busyRef = useRef(false);
   useEffect(() => { busyRef.current = busy; }, [busy]);
+
+  // While the keyboard is up it already covers the home-indicator area, so the
+  // bottom safe-area padding on the input bar would just push the field up into
+  // an empty gap. Drop it whenever the keyboard is open.
+  useEffect(() => {
+    const showEvt = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvt = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const a = Keyboard.addListener(showEvt, () => setKbdUp(true));
+    const b = Keyboard.addListener(hideEvt, () => setKbdUp(false));
+    return () => { a.remove(); b.remove(); };
+  }, []);
   const down = () => requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
 
   // Pull the server thread; skipped while sending. Only updates when changed so
@@ -126,7 +138,7 @@ export function LeadChatScreen() {
         </View>
       </View>
 
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={insets.top + 6}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={0}>
         <FlatList
           ref={listRef}
           data={msgs}
@@ -165,7 +177,7 @@ export function LeadChatScreen() {
           ) : null}
         />
 
-        <View style={[s.inputBar, { paddingBottom: 8 + insets.bottom }]}>
+        <View style={[s.inputBar, { paddingBottom: 8 + (kbdUp ? 0 : insets.bottom) }]}>
           <View style={s.inputWrap}>
             <TextInput
               value={input} onChangeText={setInput}
