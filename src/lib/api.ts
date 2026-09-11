@@ -92,6 +92,10 @@ export type Lead = {
   // True when this lead matches the buyer's alert preferences (computed
   // server-side with the same logic as the alert engine). Drives "My Matches".
   is_match?: boolean;
+  // True when the signed-in buyer is still eligible for their FIRST FREE lead
+  // AND this lead is fully covered — the card/unlock modal shows a green FREE
+  // with the struck price so they aren't scared off by a price they won't pay.
+  first_lead_free?: boolean;
   // Provider AI score fields
   provider_ai_score?: number | null;
   provider_ai_answer_rate?: number | null;
@@ -120,10 +124,13 @@ export type PurchasedLead = Lead & {
   /** true while the customer's general contact (name/email/address) is withheld —
    *  contact_name is the customer's first name only. Opens on a final sale. */
   contact_hidden?: boolean;
-  /** true while the PHONE specifically is still masked — stays true through a
-   *  final-sale reveal (the phone waits the full 14-day window regardless). */
+  /** true while the PHONE specifically is still masked. A validated final sale
+   *  (trust_status 'verified') reveals it along with everything else. */
   phone_hidden?: boolean;
   contact_reveals_at?: string | null;
+  /** Trust-engine status: 'verified' = final sale, no dispute (buyer owns the
+   *  lead — all details revealed, dispute/signal panel hidden). */
+  trust_status?: 'verified' | 'flagged_pending' | 'awaiting_recall' | 'confirmed_fake' | null;
   /** Latest AI call analysis for this purchase (null until a call is analyzed).
    *  call_analysis_status: transcribing | analyzing | done | failed */
   call_outcome?: string | null;

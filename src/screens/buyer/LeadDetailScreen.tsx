@@ -1239,6 +1239,17 @@ export function LeadDetailScreen() {
           </View>
         </View>
 
+        {/* ── Final sale badge ─────────────────────────────
+            A validated call (trust_status 'verified') makes the sale FINAL —
+            no dispute, provider paid, buyer owns the lead outright. Everything
+            (incl. the direct phone) is revealed and the dispute/signal panel
+            is hidden below. */}
+        {lead.trust_status === 'verified' && (
+          <View style={[styles.finalSaleBadge, { backgroundColor: 'rgba(52,211,153,0.12)', borderColor: 'rgba(52,211,153,0.4)' }]}>
+            <Text style={styles.finalSaleText}>✓ Final sale · no dispute</Text>
+          </View>
+        )}
+
         {/* ── Job description ──────────────────────────── */}
         {lead.public_summary && (
           <View style={[styles.section, { backgroundColor: Colors.panel, shadowColor: Colors.glowColor }]}>
@@ -1408,8 +1419,12 @@ export function LeadDetailScreen() {
             {/* ── Call History — every call, recording, analysis ── */}
             <CallHistory purchaseId={lead.purchase_id} />
 
-            {/* ── Signal panel ─────────────────────────────── */}
-            <SignalPanel purchaseId={lead.purchase_id} />
+            {/* ── Signal panel ───────────────────────────────
+                Hidden on a final sale: a validated no-dispute sale can't be
+                signaled/reversed — the buyer owns it. */}
+            {lead.trust_status !== 'verified' && (
+              <SignalPanel purchaseId={lead.purchase_id} />
+            )}
           </>
         )}
 
@@ -1451,6 +1466,16 @@ const styles = StyleSheet.create({
   },
   backArrow: { fontSize: FontSize.lg, color: Colors.orange, lineHeight: 26 },
   backLabel: { fontSize: FontSize.base, color: Colors.orange, fontWeight: '600' },
+
+  finalSaleBadge: {
+    borderWidth: 1,
+    borderRadius: Radius.lg,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    marginBottom: Spacing.md,
+    alignItems: 'center',
+  },
+  finalSaleText: { fontSize: FontSize.sm, fontWeight: '700', color: '#34d399' },
 
   headerCard: {
     backgroundColor: Colors.panel,

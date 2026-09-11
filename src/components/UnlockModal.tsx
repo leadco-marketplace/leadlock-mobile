@@ -28,6 +28,9 @@ export function UnlockModal({ lead, visible, onCancel, onConfirm }: UnlockModalP
   const sellerPrice    = lead.price_cents;
   const platformFee    = Math.round(sellerPrice * 0.15);
   const total          = sellerPrice + platformFee;
+  // First-lead-free: this buyer hasn't used their free lead and this lead is
+  // fully covered — show FREE (struck price) so they aren't scared off.
+  const isFree         = !!lead.first_lead_free;
 
   function handleConfirm() {
     if (!accepted) return;
@@ -115,8 +118,20 @@ export function UnlockModal({ lead, visible, onCancel, onConfirm }: UnlockModalP
 
             <View style={styles.priceRow}>
               <Text style={[styles.totalLabel, { color: Colors.foreground }]}>Total</Text>
-              <Text style={styles.totalValue}>{fmt(total)}</Text>
+              {isFree ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Text style={[styles.totalValue, { color: Colors.muted, textDecorationLine: 'line-through', fontSize: FontSize.base }]}>{fmt(total)}</Text>
+                  <Text style={[styles.totalValue, { color: '#34d399' }]}>FREE</Text>
+                </View>
+              ) : (
+                <Text style={styles.totalValue}>{fmt(total)}</Text>
+              )}
             </View>
+            {isFree && (
+              <Text style={{ fontSize: FontSize.xs, color: '#34d399', textAlign: 'right', marginTop: 4, fontWeight: '600' }}>
+                🎁 Your first lead is on us
+              </Text>
+            )}
           </View>
 
           {/* ── Privacy notice ──────────────────────────────── */}
@@ -160,7 +175,7 @@ export function UnlockModal({ lead, visible, onCancel, onConfirm }: UnlockModalP
               disabled={!accepted}
               activeOpacity={0.85}
             >
-              <Text style={styles.payBtnText}>Pay {fmt(total)}</Text>
+              <Text style={styles.payBtnText}>{isFree ? 'Get it FREE' : `Pay ${fmt(total)}`}</Text>
             </TouchableOpacity>
           </View>
         </View>

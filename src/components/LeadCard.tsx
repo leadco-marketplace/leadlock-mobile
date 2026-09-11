@@ -359,7 +359,12 @@ function LeadCardInner({ lead, onUnlock, unlocking, purchased, highlighted, just
                 <Text style={[styles.timeAgo, { color: Colors.muted }]}>
                   {timeAgo(lead.published_at ?? lead.created_at)}
                 </Text>
-                {/* Price shown only in the Unlock button (was duplicated here) */}
+                {lead.first_lead_free && !purchased && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 3 }}>
+                    <Text style={{ fontSize: 12, color: Colors.muted, textDecorationLine: 'line-through' }}>{formatPrice(price)}</Text>
+                    <Text style={{ fontSize: 12, color: '#34d399', fontWeight: '800' }}>FREE</Text>
+                  </View>
+                )}
               </View>
 
               {!purchased && (onUnlock || justSold) && (
@@ -376,7 +381,7 @@ function LeadCardInner({ lead, onUnlock, unlocking, purchased, highlighted, just
                     style={[styles.unlockBtn, (unlocking || justSold) && { opacity: 0.6 }]}
                   >
                     <Text style={styles.unlockText}>
-                      {unlocking ? 'Unlocking…' : `Unlock ${formatPrice(price)}`}
+                      {unlocking ? 'Unlocking…' : lead.first_lead_free ? 'Unlock FREE' : `Unlock ${formatPrice(price)}`}
                     </Text>
                   </LinearGradient>
                 </TouchableOpacity>
@@ -435,6 +440,7 @@ export const LeadCard = React.memo(LeadCardInner, (prev, next) =>
   prev.lead.status      === next.lead.status       &&
   prev.lead.price_cents === next.lead.price_cents  &&
   prev.lead.buyer_price_cents === next.lead.buyer_price_cents &&
+  prev.lead.first_lead_free   === next.lead.first_lead_free   &&
   prev.lead.quality_score     === next.lead.quality_score     &&
   prev.unlocking    === next.unlocking  &&
   prev.highlighted  === next.highlighted &&
