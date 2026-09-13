@@ -15,17 +15,22 @@ const fmtTime = (at: string) => {
 /**
  * Per-lead reachability chat — tap-only chips, no free text. Shared by the
  * buyer (keyed on their purchase) and the provider (keyed on the lead).
- * Renders inline (no own scroll) so it drops into a parent ScrollView/ScreenShell.
- * Theme-reactive via makeStyles(C) — never a frozen module-level palette.
+ *
+ * `collapsible` (buyer lead card) folds the whole thing into a single
+ * "Chat with the lead provider" row until tapped. The chips are grouped into
+ * accordion topics — only the tapped topic's chips show, so the card never
+ * shows a wall of chips. Theme-reactive via makeStyles(C).
  */
 export function ReachChat({
   role,
   purchaseId,
   leadId,
+  collapsible = false,
 }: {
   role: ChipSide;
   purchaseId?: string;
   leadId?: string;
+  collapsible?: boolean;
 }) {
   const { mode } = useTheme();
   const C: Palette = mode === 'light' ? LightColors : mode === 'inner-light' ? InnerLightColors : DarkColors;
@@ -35,13 +40,13 @@ export function ReachChat({
   const [loaded, setLoaded]   = useState(false);
   const [sending, setSending] = useState(false);
   const [reopened, setReopened] = useState(false);
+  const [collapsed, setCollapsed] = useState(collapsible);
+  const [openGroup, setOpenGroup] = useState<string | null>(null);
   const sendingRef = useRef(false);
   useEffect(() => { sendingRef.current = sending; }, [sending]);
 
   const args = useMemo(() => ({ purchaseId, leadId }), [purchaseId, leadId]);
 
-  // Pull the thread; skipped mid-send. Only swaps state when it actually changed
-  // so the list doesn't churn every tick.
   async function refresh() {
     if (sendingRef.current) return;
     try {
@@ -55,7 +60,6 @@ export function ReachChat({
     } catch { /* ignore — best effort */ }
   }
 
-  // Load once, then poll every 2s so the other side's chips appear live.
   useEffect(() => {
     let alive = true;
     (async () => { await refresh(); if (alive) setLoaded(true); })();
@@ -68,7 +72,7 @@ export function ReachChat({
     if (sending) return;
     setSending(true);
     setReopened(false);
-    // Optimistic append — the tap should feel instant.
+    setOpenGroup(null); // drop back to the topic list after a send
     const optimistic: ReachMessage = {
       id: `local-${Date.now()}`,
       sender: role,
@@ -88,13 +92,36 @@ export function ReachChat({
         return { ...prev, messages: msgs, lastChip: res.message.chip, resolved: res.resolved };
       });
     } catch {
-      // Roll the optimistic bubble back out on failure.
       setThread(prev => prev
         ? { ...prev, messages: prev.messages.filter(m => m.id !== optimistic.id) }
         : prev);
     } finally {
       setSending(false);
     }
+  }
+
+  const messages = thread?.messages ?? [];
+  const badge = thread?.providerBadge ?? null;
+  const tray = chipTray(role, thread?.lastChip);
+  const showTray = !thread?.resolved || reopened;
+  const hasReply = messages.length > 0 && !messages[messages.length - 1].mine;
+
+  // ── Collapsed row (buyer lead card) ──
+  if (collapsible && collapsed) {
+    return (
+      <TouchableOpacity style={s.collapsedRow} activeOpacity={0.85} onPress={() => setCollapsed(false)}>
+        <View style={s.collapsedIcon}><Text style={s.collapsedIconTxt}>💬</Text></View>
+        <View style={{ flex: 1 }}>
+          <Text style={s.collapsedTitle}>Chat with the lead provider</Text>
+          <View style={s.collapsedSub}>
+            {badge && <View style={[s.dot, { backgroundColor: badge.color }]} />}
+            <Text style={s.collapsedSubTxt}>{badge ? badge.codename : 'Lead provider'}</Text>
+          </View>
+        </View>
+        {hasReply && !thread?.resolved && <Text style={s.newPill}>New reply</Text>}
+        <Text style={s.chevron}>▾</Text>
+      </TouchableOpacity>
+    );
   }
 
   if (!loaded) {
@@ -105,15 +132,15 @@ export function ReachChat({
     );
   }
 
-  const messages = thread?.messages ?? [];
-  const badge = thread?.providerBadge ?? null;
-  const tray = chipTray(role, thread?.lastChip);
-  const showTray = !thread?.resolved || reopened;
-
   return (
     <View style={s.wrap}>
-      {/* Header — provider badge (buyer view) or plain "Buyer" (provider view) */}
-      <View style={s.header}>
+      {/* Header — tap to collapse when collapsible */}
+      <TouchableOpacity
+        style={s.header}
+        activeOpacity={collapsible ? 0.7 : 1}
+        onPress={collapsible ? () => setCollapsed(true) : undefined}
+        disabled={!collapsible}
+      >
         {role === 'buyer' && badge ? (
           <>
             <View style={[s.dot, { backgroundColor: badge.color }]} />
@@ -124,15 +151,16 @@ export function ReachChat({
         )}
         <Text style={s.headerHint}>· reachability</Text>
         {thread?.resolved && <Text style={s.resolvedPill}>Resolved</Text>}
-      </View>
+        {collapsible && <Text style={[s.chevron, { marginLeft: thread?.resolved ? 6 : 'auto' }]}>▴</Text>}
+      </TouchableOpacity>
 
       {/* Thread */}
       <View style={s.thread}>
         {messages.length === 0 ? (
           <Text style={s.empty}>
             {role === 'buyer'
-              ? "Trouble reaching the customer? Tap a chip below — the lead provider will see it and can help."
-              : "The buyer can tap chips here about reaching the customer. Tap a chip to reply."}
+              ? 'Trouble reaching the customer? Pick a topic below — the lead provider will see it and can help.'
+              : 'The buyer can tap chips here about reaching the customer. Pick a topic to reply.'}
           </Text>
         ) : (
           messages.map(m => (
@@ -146,27 +174,40 @@ export function ReachChat({
         )}
       </View>
 
-      {/* Chip tray, or a collapsed "reopen" affordance once resolved */}
+      {/* Chip tray — accordion topics */}
       {showTray ? (
         <View style={s.tray}>
-          {tray.map(group => (
-            <View key={group.group} style={s.group}>
-              <Text style={s.groupTitle}>{group.group}</Text>
-              <View style={s.pills}>
-                {group.chips.map(chip => (
-                  <TouchableOpacity
-                    key={chip.code}
-                    style={[s.pill, sending && { opacity: 0.5 }]}
-                    disabled={sending}
-                    activeOpacity={0.8}
-                    onPress={() => sendChip(chip.code)}
-                  >
-                    <Text style={s.pillText}>{chip.label}</Text>
-                  </TouchableOpacity>
-                ))}
+          <Text style={s.trayHint}>{role === 'buyer' ? 'Pick a topic to send' : 'Pick a topic to reply'}</Text>
+          {tray.map(group => {
+            const open = openGroup === group.group;
+            return (
+              <View key={group.group} style={s.group}>
+                <TouchableOpacity
+                  style={[s.groupHeader, open && s.groupHeaderOpen]}
+                  activeOpacity={0.8}
+                  onPress={() => setOpenGroup(open ? null : group.group)}
+                >
+                  <Text style={s.groupTitle}>{group.group}</Text>
+                  <Text style={s.groupChevron}>{open ? '▴' : '▾'}</Text>
+                </TouchableOpacity>
+                {open && (
+                  <View style={s.pills}>
+                    {group.chips.map(chip => (
+                      <TouchableOpacity
+                        key={chip.code}
+                        style={[s.pill, sending && { opacity: 0.5 }]}
+                        disabled={sending}
+                        activeOpacity={0.8}
+                        onPress={() => sendChip(chip.code)}
+                      >
+                        <Text style={s.pillText}>{chip.label}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
               </View>
-            </View>
-          ))}
+            );
+          })}
           {sending && <ActivityIndicator color={C.orange} style={{ marginTop: 4 }} />}
         </View>
       ) : (
@@ -191,6 +232,27 @@ function makeStyles(C: Palette) {
       padding: Spacing.md,
       gap: Spacing.sm,
     },
+    // Collapsed row
+    collapsedRow: {
+      flexDirection: 'row', alignItems: 'center', gap: 12,
+      backgroundColor: C.panel, borderRadius: Radius.lg, borderWidth: 1, borderColor: C.border,
+      paddingHorizontal: 14, paddingVertical: 13,
+    },
+    collapsedIcon: {
+      width: 34, height: 34, borderRadius: 17,
+      backgroundColor: 'rgba(249,115,22,0.14)', alignItems: 'center', justifyContent: 'center',
+    },
+    collapsedIconTxt: { fontSize: 16 },
+    collapsedTitle: { color: C.foreground, fontSize: FontSize.sm, fontWeight: '700' },
+    collapsedSub: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 },
+    collapsedSubTxt: { color: C.muted, fontSize: FontSize.xs },
+    newPill: {
+      color: C.orange, fontSize: FontSize.xs - 1, fontWeight: '700',
+      backgroundColor: 'rgba(249,115,22,0.14)', borderRadius: Radius.sm,
+      paddingHorizontal: 7, paddingVertical: 2, overflow: 'hidden',
+    },
+    chevron: { color: C.muted, fontSize: 16 },
+    // Header
     header: { flexDirection: 'row', alignItems: 'center', gap: 6 },
     dot: { width: 10, height: 10, borderRadius: 5 },
     headerName: { color: C.foreground, fontSize: FontSize.sm, fontWeight: '700' },
@@ -209,10 +271,21 @@ function makeStyles(C: Palette) {
     other: { backgroundColor: C.panel2, borderWidth: 1, borderColor: C.border, borderTopLeftRadius: 5 },
     bubbleText: { fontSize: FontSize.sm, lineHeight: 20 },
     stamp: { color: C.muted, fontSize: FontSize.xs - 1, marginTop: 3, marginHorizontal: 3 },
-    tray: { gap: Spacing.sm, marginTop: 2 },
-    group: { gap: 6 },
-    groupTitle: { color: C.textSecondary, fontSize: FontSize.xs - 1, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.4 },
-    pills: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+    // Accordion tray
+    tray: { gap: 8, marginTop: 2 },
+    trayHint: { color: C.muted, fontSize: FontSize.xs - 1, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.4 },
+    group: { borderWidth: 1, borderColor: C.border, borderRadius: Radius.md, overflow: 'hidden' },
+    groupHeader: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      paddingHorizontal: 13, paddingVertical: 11, backgroundColor: C.panel2,
+    },
+    groupHeaderOpen: { backgroundColor: C.panel3 },
+    groupTitle: { color: C.foreground, fontSize: FontSize.sm, fontWeight: '700' },
+    groupChevron: { color: C.muted, fontSize: 15 },
+    pills: {
+      flexDirection: 'row', flexWrap: 'wrap', gap: 6,
+      padding: 11, borderTopWidth: 1, borderTopColor: C.border,
+    },
     pill: {
       backgroundColor: C.panel2,
       borderWidth: 1,

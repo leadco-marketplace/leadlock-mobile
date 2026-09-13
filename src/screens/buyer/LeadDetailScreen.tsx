@@ -1272,7 +1272,7 @@ export function LeadDetailScreen() {
                 customer. Hidden on a final sale: a validated no-dispute sale
                 can't be signaled/reversed — the buyer owns it. */}
             {lead.trust_status !== 'verified' && (
-              <ReachChat role="buyer" purchaseId={lead.purchase_id} leadId={lead.id} />
+              <ReachChat role="buyer" purchaseId={lead.purchase_id} leadId={lead.id} collapsible />
             )}
           </>
         )}
