@@ -293,7 +293,7 @@ export const providerApi = {
     }),
   /** Edit customer contact + description. Allowed even after the lead is
    *  sold (fixing a wrong number); sold-lead contact edits notify the buyer. */
-  updateDetails: (id: string, fields: { customer_name?: string | null; customer_phone?: string | null; customer_email?: string | null; public_summary?: string | null; exact_address?: string | null; city?: string | null; state?: string | null; zip_code?: string | null; price_cents?: number }) =>
+  updateDetails: (id: string, fields: { customer_name?: string | null; customer_phone?: string | null; customer_email?: string | null; public_summary?: string | null; exact_address?: string | null; city?: string | null; state?: string | null; zip_code?: string | null; customer_lat?: number; customer_lng?: number; price_cents?: number }) =>
     request<{ ok: boolean }>(`/api/provider/leads/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(fields),

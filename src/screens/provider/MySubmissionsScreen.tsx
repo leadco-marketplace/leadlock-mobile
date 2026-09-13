@@ -1,7 +1,7 @@
-import React, { useCallback, useState } from 'react';
-import { View, Text, FlatList, ScrollView, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { View, Text, FlatList, ScrollView, StyleSheet, ActivityIndicator, Alert, TextInput } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { providerApi, reachApi, ProviderLead } from '@/lib/api';
+import { providerApi, reachApi, placesApi, ProviderLead, PlacePrediction } from '@/lib/api';
 import { ScreenShell } from '@/components/ScreenShell';
 import { Button }  from '@/components/Button';
 import { Input }   from '@/components/Input';
@@ -42,6 +42,88 @@ const OUTCOME_META: Record<string, { label: string; color: string; bg: string }>
   no_answer:             { label: 'No Answer',            color: '#94a3b8', bg: 'rgba(148,163,184,0.10)' },
 };
 
+/**
+ * Street-address autocomplete for the edit sheet — same pattern as SubmitLeadScreen
+ * (Google/Nominatim via placesApi.autocomplete('address')). On pick it returns the
+ * street + city + state + coords so the corrected address re-maps its location.
+ * Theme-reactive: layout in StyleSheet, colors read inline at render (frozen-palette rule).
+ */
+function EditAddressInput({
+  value, onSelect, onManualChange,
+}: {
+  value: string;
+  onSelect: (r: { street: string; city: string; state: string; lat: number; lng: number }) => void;
+  onManualChange: (text: string) => void;
+}) {
+  useTheme();
+  const [query, setQuery] = useState(value);
+  const [suggestions, setSuggestions] = useState<PlacePrediction[]>([]);
+  const [loading, setLoading] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => { setQuery(value); }, [value]);
+
+  function handleChangeText(text: string) {
+    setQuery(text);
+    onManualChange(text); // keep the street field editable + drop stale coords
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (text.length < 5) { setSuggestions([]); return; }
+    debounceRef.current = setTimeout(async () => {
+      setLoading(true);
+      try { setSuggestions(await placesApi.autocomplete(text, 'address')); }
+      catch { /* ignore */ }
+      finally { setLoading(false); }
+    }, 400);
+  }
+
+  function pick(item: PlacePrediction) {
+    setQuery(item.street || item.description.split(',')[0] || item.description);
+    setSuggestions([]);
+    onSelect({
+      street: item.street || item.description.split(',')[0] || '',
+      city: item.city ?? '', state: item.state ?? '',
+      lat: item.lat, lng: item.lng,
+    });
+  }
+
+  return (
+    <View style={{ gap: 4 }}>
+      <Text style={[addrStyles.label, { color: Colors.muted }]}>Street address</Text>
+      <View style={[addrStyles.inputRow, { backgroundColor: Colors.panel2, borderColor: Colors.border }]}>
+        <TextInput
+          style={[addrStyles.input, { color: Colors.foreground }]}
+          value={query}
+          onChangeText={handleChangeText}
+          placeholder="Start typing the address…"
+          placeholderTextColor={Colors.placeholder}
+          autoCorrect={false}
+          autoCapitalize="words"
+        />
+        {loading && <ActivityIndicator size="small" color={Colors.orange} style={{ marginRight: 8 }} />}
+      </View>
+      <Text style={[addrStyles.hint, { color: Colors.muted }]}>Pick from the list to auto-fill city/state and re-map the location.</Text>
+      {suggestions.length > 0 && (
+        <View style={[addrStyles.dropdown, { backgroundColor: Colors.panel2, borderColor: Colors.border }]}>
+          {suggestions.map((item) => (
+            <TouchableOpacity key={item.place_id} style={addrStyles.suggestion} onPress={() => pick(item)}>
+              <Text style={{ color: Colors.foreground, fontSize: FontSize.sm }}>{item.description}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
+    </View>
+  );
+}
+
+const addrStyles = StyleSheet.create({
+  label:     { fontSize: FontSize.xs, fontWeight: '500', textTransform: 'uppercase', letterSpacing: 0.5 },
+  inputRow:  { flexDirection: 'row', alignItems: 'center', borderRadius: Radius.md, borderWidth: 1, paddingHorizontal: Spacing.md },
+  input:     { flex: 1, fontSize: FontSize.base, paddingVertical: Spacing.sm + 4 },
+  hint:      { fontSize: FontSize.xs },
+  dropdown:  { borderRadius: Radius.md, borderWidth: 1, overflow: 'hidden' },
+  suggestion:{ paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm + 2, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(148,163,184,0.2)' },
+});
+
 interface EditLeadSheetProps {
   lead: ProviderLead;
   onClose: () => void;
@@ -65,6 +147,8 @@ function EditLeadSheet({ lead, onClose, onSaved }: EditLeadSheetProps) {
   const [city,    setCity]    = useState(lead.city ?? '');
   const [stateV,  setStateV]  = useState(lead.state ?? '');
   const [zip,     setZip]     = useState(lead.zip_code ?? '');
+  // Coords from a picked address → re-map the pin/area server-side. Cleared on manual typing.
+  const [coords,  setCoords]  = useState<{ lat: number; lng: number } | null>(null);
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState<string | null>(null);
 
@@ -87,6 +171,7 @@ function EditLeadSheet({ lead, onClose, onSaved }: EditLeadSheetProps) {
         city:           city.trim()  || null,
         state:          stateV.trim() || null,
         zip_code:       zip.trim()   || null,
+        ...(coords ? { customer_lat: coords.lat, customer_lng: coords.lng } : {}),
       });
       onSaved();
       onClose();
@@ -118,7 +203,16 @@ function EditLeadSheet({ lead, onClose, onSaved }: EditLeadSheetProps) {
           <Input label="Customer name"  value={name}  onChangeText={setName}  autoCapitalize="words" />
           <Input label="Customer phone" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
           <Input label="Customer email" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
-          <Input label="Street address" value={address} onChangeText={setAddress} autoCapitalize="words" />
+          <EditAddressInput
+            value={address}
+            onManualChange={(t) => { setAddress(t); setCoords(null); }}
+            onSelect={(r) => {
+              setAddress(r.street || address);
+              if (r.city)  setCity(r.city);
+              if (r.state) setStateV(r.state);
+              setCoords({ lat: r.lat, lng: r.lng });
+            }}
+          />
           <Input label="City"  value={city}   onChangeText={setCity}   autoCapitalize="words" />
           <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
             <View style={{ flex: 1 }}>
