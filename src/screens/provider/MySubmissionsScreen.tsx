@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, FlatList, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, FlatList, ScrollView, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { providerApi, reachApi, ProviderLead } from '@/lib/api';
 import { ScreenShell } from '@/components/ScreenShell';
@@ -61,6 +61,10 @@ function EditLeadSheet({ lead, onClose, onSaved }: EditLeadSheetProps) {
   const [phone,   setPhone]   = useState(lead.customer_phone ?? '');
   const [email,   setEmail]   = useState(lead.customer_email ?? '');
   const [summary, setSummary] = useState(lead.public_summary ?? '');
+  const [address, setAddress] = useState(lead.exact_address ?? '');
+  const [city,    setCity]    = useState(lead.city ?? '');
+  const [stateV,  setStateV]  = useState(lead.state ?? '');
+  const [zip,     setZip]     = useState(lead.zip_code ?? '');
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState<string | null>(null);
 
@@ -79,6 +83,10 @@ function EditLeadSheet({ lead, onClose, onSaved }: EditLeadSheetProps) {
         customer_phone: phone.trim() || null,
         customer_email: email.trim() || null,
         public_summary: summary.trim() || null,
+        exact_address:  address.trim() || null,
+        city:           city.trim()  || null,
+        state:          stateV.trim() || null,
+        zip_code:       zip.trim()   || null,
       });
       onSaved();
       onClose();
@@ -93,19 +101,36 @@ function EditLeadSheet({ lead, onClose, onSaved }: EditLeadSheetProps) {
       <View style={[sheet.card, { backgroundColor: Colors.panel, borderColor: Colors.borderOrange }]}>
         <Text style={[sheet.title, { color: Colors.foreground }]}>Edit Lead Details</Text>
         <Text style={[sheet.sub, { color: Colors.muted }]}>{lead.service_category} — {lead.job_type}</Text>
-        {priceEditable ? (
-          <Input label="Your asking price ($)" value={dollars} onChangeText={setDollars} keyboardType="decimal-pad" />
-        ) : (
-          <Text style={[sheet.sub, { color: Colors.muted }]}>
-            This lead is sold — the price is locked, but you can still correct the
-            customer's contact details. The buyer will be notified of the fix.
-          </Text>
-        )}
-        <Input label="Customer name"  value={name}  onChangeText={setName}  autoCapitalize="words" />
-        <Input label="Customer phone" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
-        <Input label="Customer email" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
-        <Input label="Job description" value={summary} onChangeText={setSummary} multiline />
-        {error && <Text style={{ color: Colors.danger, fontSize: FontSize.sm }}>{error}</Text>}
+        <ScrollView
+          style={sheet.scroll}
+          contentContainerStyle={{ gap: Spacing.md, paddingBottom: Spacing.sm }}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator
+        >
+          {priceEditable ? (
+            <Input label="Your asking price ($)" value={dollars} onChangeText={setDollars} keyboardType="decimal-pad" />
+          ) : (
+            <Text style={[sheet.sub, { color: Colors.muted }]}>
+              This lead is sold — the price is locked, but you can still correct the
+              customer's contact details or job address. The buyer will be notified of the fix.
+            </Text>
+          )}
+          <Input label="Customer name"  value={name}  onChangeText={setName}  autoCapitalize="words" />
+          <Input label="Customer phone" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
+          <Input label="Customer email" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
+          <Input label="Street address" value={address} onChangeText={setAddress} autoCapitalize="words" />
+          <Input label="City"  value={city}   onChangeText={setCity}   autoCapitalize="words" />
+          <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
+            <View style={{ flex: 1 }}>
+              <Input label="State" value={stateV} onChangeText={setStateV} autoCapitalize="characters" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Input label="ZIP" value={zip} onChangeText={setZip} keyboardType="number-pad" />
+            </View>
+          </View>
+          <Input label="Job description" value={summary} onChangeText={setSummary} multiline />
+          {error && <Text style={{ color: Colors.danger, fontSize: FontSize.sm }}>{error}</Text>}
+        </ScrollView>
         <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
           <Button label="Cancel" onPress={onClose} variant="secondary" style={{ flex: 1 }} />
           <Button label="Save" onPress={save} loading={loading} style={{ flex: 1 }} />
@@ -117,9 +142,10 @@ function EditLeadSheet({ lead, onClose, onSaved }: EditLeadSheetProps) {
 
 const sheet = StyleSheet.create({
   overlay: { position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end', zIndex: 50 },
-  card:    { backgroundColor: Colors.panel, borderTopLeftRadius: Radius.xxl, borderTopRightRadius: Radius.xxl, borderWidth: 1, borderColor: Colors.borderOrange, padding: Spacing.lg, gap: Spacing.md },
+  card:    { backgroundColor: Colors.panel, borderTopLeftRadius: Radius.xxl, borderTopRightRadius: Radius.xxl, borderWidth: 1, borderColor: Colors.borderOrange, padding: Spacing.lg, gap: Spacing.md, maxHeight: '88%' },
   title:   { fontSize: FontSize.lg, fontWeight: '700', color: Colors.foreground },
   sub:     { fontSize: FontSize.sm, color: Colors.muted },
+  scroll:  { flexGrow: 0 },
 });
 
 /** Trust Engine state → tag copy + colors ("Sale Is Final" per user design). */

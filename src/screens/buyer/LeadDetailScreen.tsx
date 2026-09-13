@@ -1137,9 +1137,13 @@ export function LeadDetailScreen() {
                     <Text style={{ color: Colors.muted }}>Email: </Text>{lead.contact_email}
                   </Text>
                 )}
-                {lead.exact_address && (
+                {(lead.exact_address || lead.city || lead.state || lead.zip_code) && (
                   <Text style={[styles.description, { color: Colors.text }]}>
-                    <Text style={{ color: Colors.muted }}>Address: </Text>{lead.exact_address}
+                    <Text style={{ color: Colors.muted }}>Address: </Text>
+                    {[
+                      lead.exact_address,
+                      [lead.city, lead.state].filter(Boolean).join(', ') + (lead.zip_code ? ` ${lead.zip_code}` : ''),
+                    ].filter((part) => part && part.trim()).join(', ')}
                   </Text>
                 )}
                 {lead.phone_hidden ? (
