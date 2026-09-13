@@ -105,6 +105,8 @@ function GlowTitle({ text, fontFamily }: { text: string; fontFamily: string }) {
 interface ScreenShellProps {
   title?: string;
   subtitle?: string;
+  /** Rich subtitle (e.g. a styled lead code); rendered in place of `subtitle`. */
+  subtitleNode?: React.ReactNode;
   children: React.ReactNode;
   scrollable?: boolean;
   onRefresh?: () => void;
@@ -116,6 +118,7 @@ interface ScreenShellProps {
 export function ScreenShell({
   title,
   subtitle,
+  subtitleNode,
   children,
   scrollable = true,
   onRefresh,
@@ -127,7 +130,7 @@ export function ScreenShell({
 
   const content = (
     <View style={[styles.content, contentStyle]}>
-      {(title || subtitle || rightElement) && (
+      {(title || subtitle || subtitleNode || rightElement) && (
         <View>
           {/*
            * Simple left-aligned row: [logo] [title] — both anchored to
@@ -142,8 +145,8 @@ export function ScreenShell({
             {rightElement && <View>{rightElement}</View>}
           </View>
 
-          {subtitle && (
-            <Text style={[styles.subtitle, { color: Colors.headerSubText }]}>{subtitle}</Text>
+          {(subtitleNode || subtitle) && (
+            <Text style={[styles.subtitle, { color: Colors.headerSubText }]}>{subtitleNode ?? subtitle}</Text>
           )}
         </View>
       )}

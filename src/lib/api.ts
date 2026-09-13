@@ -366,6 +366,9 @@ export type ReachThread = {
   purchaseId: string | null;
   leadId: string | null;
   leadCode: string | null;
+  city: string | null;
+  state: string | null;
+  zip: string | null;
   providerBadge: { codename: string; color: string } | null;
   lastChip: string | null;
   resolved: boolean;

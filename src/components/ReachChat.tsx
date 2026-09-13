@@ -103,6 +103,14 @@ export function ReachChat({
   const messages = thread?.messages ?? [];
   const badge = thread?.providerBadge ?? null;
   const tray = chipTray(role, thread?.lastChip);
+  // City, ST ZIP — empty-safe. Shown on the provider header so a pro juggling
+  // many leads knows exactly which one they're replying to.
+  const cityState = [thread?.city, thread?.state].filter(Boolean).join(', ');
+  const loc = cityState ? (thread?.zip ? `${cityState} ${thread.zip}` : cityState) : (thread?.zip ?? '');
+  // The lead code pops in a theme-aware accent: orange in dark, indigo on the
+  // light peach (theme-primary C.orange is remapped to sapphire in dark, so we
+  // pick explicit hues here instead of using it).
+  const codeColor = mode === 'dark' ? '#f97316' : '#4338ca';
   const showTray = !thread?.resolved || reopened;
   const hasReply = messages.length > 0 && !messages[messages.length - 1].mine;
 
@@ -141,17 +149,31 @@ export function ReachChat({
         onPress={collapsible ? () => setCollapsed(true) : undefined}
         disabled={!collapsible}
       >
-        {role === 'buyer' && badge ? (
-          <>
-            <View style={[s.dot, { backgroundColor: badge.color }]} />
-            <Text style={s.headerName}>{badge.codename}</Text>
-          </>
-        ) : (
-          <Text style={s.headerName}>{role === 'provider' ? 'Buyer' : 'Lead provider'}</Text>
-        )}
-        <Text style={s.headerHint}>· reachability</Text>
+        <View style={s.headerLeft}>
+          {role === 'buyer' && badge ? (
+            <View style={s.headerLine}>
+              <View style={[s.dot, { backgroundColor: badge.color }]} />
+              <Text style={s.headerName}>{badge.codename}</Text>
+              <Text style={s.headerHint}> · reachability</Text>
+            </View>
+          ) : role === 'provider' ? (
+            <>
+              <Text style={s.headerName} numberOfLines={2}>
+                Buyer
+                {thread?.leadCode ? <Text style={[s.headerCode, { color: codeColor }]}> #{thread.leadCode}</Text> : null}
+                {loc ? <Text style={s.headerLoc}> · {loc}</Text> : null}
+              </Text>
+              <Text style={s.headerHint}>reachability</Text>
+            </>
+          ) : (
+            <View style={s.headerLine}>
+              <Text style={s.headerName}>Lead provider</Text>
+              <Text style={s.headerHint}> · reachability</Text>
+            </View>
+          )}
+        </View>
         {thread?.resolved && <Text style={s.resolvedPill}>Resolved</Text>}
-        {collapsible && <Text style={[s.chevron, { marginLeft: thread?.resolved ? 6 : 'auto' }]}>▴</Text>}
+        {collapsible && <Text style={s.chevron}>▴</Text>}
       </TouchableOpacity>
 
       {/* Thread */}
@@ -253,12 +275,16 @@ function makeStyles(C: Palette) {
     },
     chevron: { color: C.muted, fontSize: 16 },
     // Header
-    header: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-    dot: { width: 10, height: 10, borderRadius: 5 },
+    header: { flexDirection: 'row', alignItems: 'flex-start', gap: 6 },
+    headerLeft: { flex: 1 },
+    headerLine: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' },
+    dot: { width: 10, height: 10, borderRadius: 5, marginRight: 6 },
     headerName: { color: C.foreground, fontSize: FontSize.sm, fontWeight: '700' },
-    headerHint: { color: C.muted, fontSize: FontSize.xs },
+    headerCode: { fontSize: FontSize.sm, fontWeight: '700' },
+    headerLoc: { color: C.muted, fontSize: FontSize.xs, fontWeight: '400' },
+    headerHint: { color: C.muted, fontSize: FontSize.xs, marginTop: 1 },
     resolvedPill: {
-      marginLeft: 'auto', color: C.good, fontSize: FontSize.xs - 1, fontWeight: '700',
+      marginTop: 1, color: C.good, fontSize: FontSize.xs - 1, fontWeight: '700',
       backgroundColor: 'rgba(52,211,153,0.12)', borderRadius: Radius.sm,
       paddingHorizontal: 6, paddingVertical: 2, overflow: 'hidden',
     },
