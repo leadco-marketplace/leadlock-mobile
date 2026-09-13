@@ -5,7 +5,8 @@ import { Text } from 'react-native';
 import { MySubmissionsScreen } from '@/screens/provider/MySubmissionsScreen';
 import { SubmitLeadScreen }    from '@/screens/provider/SubmitLeadScreen';
 import { LeadChatScreen }      from '@/screens/provider/LeadChatScreen';
-import { SignalsScreen }       from '@/screens/provider/SignalsScreen';
+import { ReachChatScreen }     from '@/screens/provider/ReachChatScreen';
+import { ReachInboxScreen }    from '@/screens/provider/ReachInboxScreen';
 import { AnnouncementsScreen } from '@/screens/buyer/AnnouncementsScreen';
 import { HelpSupportScreen }   from '@/screens/shared/HelpSupportScreen';
 import { AccountScreen }       from '@/screens/shared/AccountScreen';
@@ -26,8 +27,20 @@ function SubmissionsStack() {
       <Stack.Screen name="MySubmissions" component={MySubmissionsScreen} />
       <Stack.Screen name="SubmitLead"    component={SubmitLeadScreen}    />
       <Stack.Screen name="LeadChat"      component={LeadChatScreen}      />
+      <Stack.Screen name="ReachChat"     component={ReachChatScreen}     />
       <Stack.Screen name="Announcements" component={AnnouncementsScreen} />
       <Stack.Screen name="HelpSupport"   component={HelpSupportScreen}   />
+    </Stack.Navigator>
+  );
+}
+
+// Messages inbox tab → buyer reachability chats. ReachChat lives here too so
+// the inbox (and a push deep-link) can open a thread within this stack.
+function MessagesStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: Colors.bg } }}>
+      <Stack.Screen name="ReachInbox" component={ReachInboxScreen} />
+      <Stack.Screen name="ReachChat"  component={ReachChatScreen}  />
     </Stack.Navigator>
   );
 }
@@ -67,11 +80,11 @@ export function ProviderNavigator() {
         }}
       />
       <Tab.Screen
-        name="SignalsTab"
-        component={SignalsScreen}
+        name="MessagesTab"
+        component={MessagesStack}
         options={{
-          title: 'Signals',
-          tabBarIcon: ({ focused }) => <TabIcon emoji="🔔" focused={focused} />,
+          title: 'Messages',
+          tabBarIcon: ({ focused }) => <TabIcon emoji="💬" focused={focused} />,
         }}
       />
       <Tab.Screen

@@ -46,7 +46,7 @@ const STEPS: Record<Role, Step[]> = {
     { tabIndex: null, title: 'Welcome to Nabbit 👋', body: "Let's walk through how you turn leads into income. I'll highlight each part as we go." },
     { tabIndex: 1, title: 'Submit a lead', body: 'Add a lead here — or text it straight to your dedicated Nabbit number with Text-to-Submit.', navigate: () => nav('SubmitLeadTab') },
     { tabIndex: 0, title: 'Track & get paid', body: "Every lead and sale shows here. You're paid the moment a lead SELLS to a buyer.", navigate: () => nav('SubmissionsTab', { screen: 'MySubmissions' }) },
-    { tabIndex: 2, title: 'Buyer signals', body: "When a buyer needs a corrected number or has a question, respond right here so the lead stays sold.", navigate: () => nav('SignalsTab') },
+    { tabIndex: 2, title: 'Messages', body: "When a buyer has trouble reaching a customer, they tap chips here — reply with a tap so the lead stays sold.", navigate: () => nav('MessagesTab') },
     { tabIndex: 3, title: 'Account', body: 'Manage your profile, payouts, and replay this tour anytime. Tip: build AI landing pages on the web dashboard.', navigate: () => nav('AccountTab') },
     { tabIndex: null, title: "You're all set ✅", body: 'Submit your first lead to get going. Replay this tour anytime from Account.' },
   ],

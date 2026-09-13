@@ -351,6 +351,46 @@ export const leadChatApi = {
     }),
 };
 
+// ── Per-lead reachability chat (tap-only chips; replaces signals) ────────────
+export type ReachMessage = {
+  id: string;
+  sender: 'buyer' | 'provider';
+  chip: string;
+  label: string;
+  at: string;
+  mine: boolean;
+};
+
+export type ReachThread = {
+  role: 'buyer' | 'provider';
+  purchaseId: string | null;
+  leadId: string | null;
+  leadCode: string | null;
+  providerBadge: { codename: string; color: string } | null;
+  lastChip: string | null;
+  resolved: boolean;
+  messages: ReachMessage[];
+};
+
+export const reachApi = {
+  /** Load the thread — buyer keys on their purchase, provider on the lead. */
+  history: ({ purchaseId, leadId }: { purchaseId?: string; leadId?: string }) => {
+    const qs = purchaseId
+      ? `purchase_id=${encodeURIComponent(purchaseId)}`
+      : `lead_id=${encodeURIComponent(leadId ?? '')}`;
+    return request<ReachThread>(`/api/lead-chat?${qs}`);
+  },
+  /** Send one chip; returns the stored message + the new resolved state. */
+  send: ({ purchaseId, leadId, chip }: { purchaseId?: string; leadId?: string; chip: string }) =>
+    request<{ ok: boolean; message: ReachMessage; resolved: boolean }>('/api/lead-chat', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(purchaseId ? { purchase_id: purchaseId, chip } : { lead_id: leadId, chip }),
+    }),
+  /** Provider: unread reach-message counts, keyed by lead id. */
+  unread: () => request<{ total: number; byLeadId: Record<string, number> }>('/api/lead-chat/unread'),
+};
+
 // ── Profile ────────────────────────────────────────────────────────────────
 export type Profile = {
   id: string;

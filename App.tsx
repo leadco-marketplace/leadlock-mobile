@@ -201,10 +201,10 @@ function PushResponseHandler() {
         return;
       }
 
-      // ── Provider: buyer sent a signal (no_answer / wrong_number) ──────────
+      // ── Provider: legacy signal push → the Messages inbox (signals retired) ─
       if (type === 'lead_signal') {
         tryNavigate(() => {
-          navigationRef.current!.navigate('SignalsTab' as never);
+          navigationRef.current!.navigate('MessagesTab' as never);
         });
         return;
       }
@@ -235,6 +235,29 @@ function PushResponseHandler() {
         tryNavigate(() => {
           navigationRef.current!.navigate('Announcements' as never);
         });
+        return;
+      }
+
+      // ── Reachability chat (per-lead tap-only chips) ───────────────────────
+      // Provider → open the lead's thread in the Messages tab; buyer → open the
+      // lead detail (the ReachChat lives there, mirroring lead_signal_response).
+      if (type === 'reach_chat' && leadId) {
+        const role = data?.role as string | undefined;
+        if (role === 'provider') {
+          tryNavigate(() => {
+            (navigationRef.current as any)?.navigate('MessagesTab', {
+              screen: 'ReachChat',
+              params: { leadId },
+            });
+          });
+        } else {
+          tryNavigate(() => {
+            (navigationRef.current as any)?.navigate('BuyerTabs', { screen: 'MyLeads' });
+            setTimeout(() => {
+              (navigationRef.current as any)?.navigate('LeadDetail', { leadId, purchaseId });
+            }, 100);
+          });
+        }
         return;
       }
 

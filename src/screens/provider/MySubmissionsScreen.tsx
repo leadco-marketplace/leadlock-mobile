@@ -1,10 +1,11 @@
 import React, { useCallback, useState } from 'react';
 import { View, Text, FlatList, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { providerApi, ProviderLead } from '@/lib/api';
+import { providerApi, reachApi, ProviderLead } from '@/lib/api';
 import { ScreenShell } from '@/components/ScreenShell';
 import { Button }  from '@/components/Button';
 import { Input }   from '@/components/Input';
+import { TouchableOpacity } from 'react-native';
 import { Colors, FontSize, Spacing, Radius, Shadow } from '@/theme';
 import { useTheme } from '@/contexts/ThemeContext';
 
@@ -131,16 +132,20 @@ const TRUST_META: Record<string, { label: string; color: string; bg: string }> =
 
 function SubmissionCard({
   lead,
+  unread,
   onEdit,
   onDelete,
   onRespondFlag,
   onResubmit,
+  onMessages,
 }: {
   lead: ProviderLead;
+  unread: number;
   onEdit: () => void;
   onDelete: () => void;
   onRespondFlag: () => void;
   onResubmit: () => void;
+  onMessages: () => void;
 }) {
   useTheme();
   const sc = STATUS_COLORS[lead.status] ?? STATUS_COLORS.archived;
@@ -244,6 +249,22 @@ function SubmissionCard({
           )}
         </View>
       )}
+
+      {/* Reachability messages — the buyer can chip about reaching the customer. */}
+      {(lead.status === 'sold' || unread > 0) && (
+        <TouchableOpacity
+          style={[styles.messagesBtn, { borderColor: Colors.borderOrange, backgroundColor: Colors.glowBg }]}
+          onPress={onMessages}
+          activeOpacity={0.8}
+        >
+          <Text style={[styles.messagesText, { color: Colors.accent }]}>💬 Messages</Text>
+          {unread > 0 && (
+            <View style={[styles.unreadDot, { backgroundColor: Colors.orange }]}>
+              <Text style={styles.unreadDotText}>{unread}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
@@ -257,9 +278,14 @@ export function MySubmissionsScreen({ navigation }: any) {
   const [refreshing, setRefreshing] = useState(false);
   const [loadError,  setLoadError]  = useState<string | null>(null);
   const [editTarget, setEditTarget] = useState<ProviderLead | null>(null);
+  const [unreadByLead, setUnreadByLead] = useState<Record<string, number>>({});
 
   async function load() {
     try {
+      // Unread reach-message counts (best-effort — never blocks the list).
+      reachApi.unread()
+        .then(r => setUnreadByLead(r.byLeadId ?? {}))
+        .catch(() => {});
       const data = await providerApi.getSubmissions();
       // Flagged leads (fix window ticking) sort to the VERY TOP — the one
       // thing a provider must see the second they open the screen.
@@ -407,10 +433,12 @@ export function MySubmissionsScreen({ navigation }: any) {
           renderItem={({ item }) => (
             <SubmissionCard
               lead={item}
+              unread={unreadByLead[item.id] ?? 0}
               onEdit={() => setEditTarget(item)}
               onDelete={() => handleDelete(item)}
               onRespondFlag={() => handleRespondFlag(item)}
               onResubmit={() => handleResubmit(item)}
+              onMessages={() => navigation.navigate('ReachChat', { leadId: item.id, leadCode: item.lead_code })}
             />
           )}
           onRefresh={() => { setRefreshing(true); load(); }}
@@ -513,4 +541,16 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   outcomeText: { fontSize: FontSize.xs - 1, fontWeight: '700' },
+  // ── Messages button ───────────────────────────────────────────────────────
+  messagesBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    paddingVertical: 10, borderRadius: Radius.md, borderWidth: 1,
+    borderColor: 'rgba(59,130,246,0.45)', backgroundColor: 'rgba(59,130,246,0.08)',
+  },
+  messagesText: { fontSize: FontSize.sm, fontWeight: '700', color: Colors.accent },
+  unreadDot: {
+    minWidth: 20, height: 20, borderRadius: 10, paddingHorizontal: 6,
+    alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.orange,
+  },
+  unreadDotText: { fontSize: FontSize.xs - 1, fontWeight: '800', color: '#fff' },
 });
