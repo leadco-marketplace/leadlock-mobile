@@ -315,7 +315,10 @@ export function HelpSupportScreen() {
           </View>
         )}
 
-        <View style={[s.inputBar, { paddingBottom: 8 + insets.bottom }]}>
+        {/* No bottom safe-area inset: this screen sits above the tab bar, which
+            already reserves the home-indicator area — adding it here too left a
+            visible gap between the input pill and the tabs. */}
+        <View style={[s.inputBar, { paddingBottom: 8 }]}>
           <View style={s.inputWrap}>
             <TextInput
               value={input} onChangeText={setInput}
@@ -338,11 +341,6 @@ export function HelpSupportScreen() {
 // StyleSheet.create captured the DARK palette at import, so the navy bubbles + dark
 // input band rendered on the light peach bg. Always makeStyles(C) keyed on mode.
 function makeStyles(C: Palette) {
-  // Help & Support chips stay the orange family in every mode (the confirmed look);
-  // only the text hue flips so it stays readable — dark orange on the peach bg,
-  // light orange on the navy bg (inner-light + dark both keep a navy chip surface).
-  const onPeach = C.bg === LightColors.bg;
-  const chipTextColor = onPeach ? '#c2410c' : '#fdba74';
   return StyleSheet.create({
     top: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: Spacing.sm, paddingVertical: Spacing.sm, borderBottomWidth: 1, borderBottomColor: C.border },
     hicon: { width: 30, height: 30, borderRadius: 15 },
@@ -358,8 +356,8 @@ function makeStyles(C: Palette) {
     seen: { color: C.muted, fontSize: FontSize.xs, marginTop: 3, marginRight: 4 },
     attrib: { color: C.muted, fontSize: FontSize.xs, marginTop: 3, marginLeft: 4 },
     chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, paddingHorizontal: Spacing.md, paddingBottom: Spacing.sm },
-    chip: { borderWidth: 1, borderColor: 'rgba(249,115,22,0.4)', backgroundColor: 'rgba(249,115,22,0.12)', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 999 },
-    chipText: { color: chipTextColor, fontSize: FontSize.sm },
+    chip: { borderWidth: 1, borderColor: C.borderOrange, backgroundColor: C.glowBg, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 999 },
+    chipText: { color: C.orange, fontSize: FontSize.sm },
     inputBar: { paddingHorizontal: Spacing.md, paddingTop: Spacing.xs, borderTopWidth: 1, borderTopColor: C.border, backgroundColor: C.bg },
     inputWrap: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, backgroundColor: C.panel2, borderWidth: 1, borderColor: C.border, borderRadius: 22, paddingLeft: 14, paddingRight: 6, paddingVertical: 6 },
     input: { flex: 1, color: C.foreground, fontSize: FontSize.base, maxHeight: 100, paddingTop: 4, paddingBottom: 4 },
