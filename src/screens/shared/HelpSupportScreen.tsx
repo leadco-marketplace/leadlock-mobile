@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, FlatList, Image,
   KeyboardAvoidingView, Platform, ActivityIndicator, StyleSheet,
@@ -7,8 +7,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { supportApi, SupportMsg } from '@/lib/api';
-import { Colors, FontSize, Spacing } from '@/theme';
+import { DarkColors, LightColors, InnerLightColors, FontSize, Spacing } from '@/theme';
+
+type Palette = typeof DarkColors;
 
 // The real Nabbit grid logo — assistant avatar (header + each AI bubble).
 const AVATAR = require('../../../assets/nabbit-logo.png');
@@ -86,26 +89,27 @@ const fmtTime = (ts: number) => new Date(ts).toLocaleTimeString([], { hour: 'num
 // (that re-render is what makes a naive chat feel janky). Only new/changed
 // bubbles render → smooth, Wolt-like scrolling.
 const MessageRow = React.memo(function MessageRow(
-  { role, content, time }: { role: 'user' | 'assistant'; content: string; time: string },
+  { role, content, time, C, s }:
+  { role: 'user' | 'assistant'; content: string; time: string; C: Palette; s: ReturnType<typeof makeStyles> },
 ) {
   if (role === 'user') {
     return (
       <View style={{ alignItems: 'flex-end', marginBottom: 10 }}>
-        <View style={[styles.bubble, styles.me]}>
-          <Text selectable style={[styles.bubbleText, { color: '#0b1220' }]}>{content}</Text>
+        <View style={[s.bubble, s.me]}>
+          <Text selectable style={[s.bubbleText, { color: '#fff' }]}>{content}</Text>
         </View>
-        <Text style={styles.seen}>Seen · {time}</Text>
+        <Text style={s.seen}>Seen · {time}</Text>
       </View>
     );
   }
   return (
-    <View style={styles.aiRow}>
-      <Image source={AVATAR} style={styles.avatar} />
-      <View style={styles.aiCol}>
-        <View style={[styles.bubble, styles.ai]}>
-          <Text selectable style={[styles.bubbleText, { color: Colors.foreground }]}>{content}</Text>
+    <View style={s.aiRow}>
+      <Image source={AVATAR} style={s.avatar} />
+      <View style={s.aiCol}>
+        <View style={[s.bubble, s.ai]}>
+          <Text selectable style={[s.bubbleText, { color: C.foreground }]}>{content}</Text>
         </View>
-        <Text style={styles.attrib}>✨ Answered by Nabbit AI · {time}</Text>
+        <Text style={s.attrib}>✨ Answered by Nabbit AI · {time}</Text>
       </View>
     </View>
   );
@@ -115,6 +119,9 @@ export function HelpSupportScreen() {
   const nav = useNavigation<any>();
   const insets = useSafeAreaInsets();
   const { profile } = useAuth();
+  const { mode: themeMode } = useTheme();
+  const C: Palette = themeMode === 'light' ? LightColors : themeMode === 'inner-light' ? InnerLightColors : DarkColors;
+  const s = useMemo(() => makeStyles(C), [themeMode]);
   const [msgs, setMsgs] = useState<Bubble[]>([
     { role: 'assistant', ts: Date.now(), content: "Hi! 👋 I'm the Nabbit assistant. Tap a category below and I'll help you fix it fast — or type a question. 😊" },
   ]);
@@ -245,20 +252,20 @@ export function HelpSupportScreen() {
   }
 
   const renderItem = useCallback(
-    ({ item }: { item: Bubble }) => <MessageRow role={item.role} content={item.content} time={fmtTime(item.ts)} />,
-    [],
+    ({ item }: { item: Bubble }) => <MessageRow role={item.role} content={item.content} time={fmtTime(item.ts)} C={C} s={s} />,
+    [C, s],
   );
 
   return (
-    <View style={{ flex: 1, backgroundColor: Colors.bg, paddingTop: insets.top }}>
-      <View style={styles.top}>
+    <View style={{ flex: 1, backgroundColor: C.bg, paddingTop: insets.top }}>
+      <View style={s.top}>
         <TouchableOpacity onPress={() => nav.goBack()} style={{ paddingHorizontal: 6, paddingVertical: 4 }}>
-          <Text style={{ color: Colors.orange, fontSize: 26, marginTop: -4 }}>‹</Text>
+          <Text style={{ color: C.orange, fontSize: 26, marginTop: -4 }}>‹</Text>
         </TouchableOpacity>
-        <Image source={AVATAR} style={styles.hicon} />
+        <Image source={AVATAR} style={s.hicon} />
         <View style={{ flex: 1 }}>
-          <Text style={styles.title}>Help and support</Text>
-          <Text style={styles.sub}>{mode === 'compose' ? 'Reporting a problem' : 'Nabbit AI · replies instantly'}</Text>
+          <Text style={s.title}>Help and support</Text>
+          <Text style={s.sub}>{mode === 'compose' ? 'Reporting a problem' : 'Nabbit AI · replies instantly'}</Text>
         </View>
       </View>
 
@@ -276,48 +283,48 @@ export function HelpSupportScreen() {
           removeClippedSubviews={false}
           onContentSizeChange={down}
           ListFooterComponent={busy ? (
-            <View style={styles.aiRow}>
-              <Image source={AVATAR} style={styles.avatar} />
-              <View style={[styles.bubble, styles.ai, { flexDirection: 'row', gap: 6, alignItems: 'center' }]}>
-                <ActivityIndicator color={Colors.muted} />
-                <Text style={{ color: Colors.muted, fontSize: FontSize.sm }}>typing…</Text>
+            <View style={s.aiRow}>
+              <Image source={AVATAR} style={s.avatar} />
+              <View style={[s.bubble, s.ai, { flexDirection: 'row', gap: 6, alignItems: 'center' }]}>
+                <ActivityIndicator color={C.muted} />
+                <Text style={{ color: C.muted, fontSize: FontSize.sm }}>typing…</Text>
               </View>
             </View>
           ) : null}
         />
 
         {chips.length > 0 && (
-          <View style={styles.chipsRow}>
+          <View style={s.chipsRow}>
             {chips.map(c => {
               const isBack = c === BACK;
               const isSend = c === SEND;
               const isFixed = c === FIXED;
               return (
                 <TouchableOpacity key={c} onPress={() => onChip(c)}
-                  style={[styles.chip,
-                    isBack  && { borderColor: Colors.border, backgroundColor: 'transparent' },
+                  style={[s.chip,
+                    isBack  && { borderColor: C.border, backgroundColor: 'transparent' },
                     isFixed && { borderColor: 'rgba(52,211,153,0.5)', backgroundColor: 'rgba(52,211,153,0.12)' },
-                    isSend  && { borderColor: Colors.orange, backgroundColor: Colors.orange }]}>
-                  <Text style={[styles.chipText,
-                    isBack  && { color: Colors.muted },
+                    isSend  && { borderColor: C.orange, backgroundColor: C.orange }]}>
+                  <Text style={[s.chipText,
+                    isBack  && { color: C.muted },
                     isFixed && { color: '#6ee7b7' },
-                    isSend  && { color: '#0b1220', fontWeight: '700' }]}>{c}</Text>
+                    isSend  && { color: '#fff', fontWeight: '700' }]}>{c}</Text>
                 </TouchableOpacity>
               );
             })}
           </View>
         )}
 
-        <View style={[styles.inputBar, { paddingBottom: 8 + insets.bottom }]}>
-          <View style={styles.inputWrap}>
+        <View style={[s.inputBar, { paddingBottom: 8 + insets.bottom }]}>
+          <View style={s.inputWrap}>
             <TextInput
               value={input} onChangeText={setInput}
               placeholder={mode === 'compose' ? 'Add details (optional)…' : 'Ask a question…'}
-              placeholderTextColor={Colors.muted}
-              style={styles.input} multiline returnKeyType="send" onSubmitEditing={onSend}
+              placeholderTextColor={C.placeholder}
+              style={s.input} multiline returnKeyType="send" onSubmitEditing={onSend}
             />
-            <TouchableOpacity onPress={onSend} disabled={busy} style={[styles.sendBtn, busy && { opacity: 0.5 }]}>
-              <Text style={{ color: '#0b1220', fontSize: 18, fontWeight: '700' }}>↑</Text>
+            <TouchableOpacity onPress={onSend} disabled={busy} style={[s.sendBtn, busy && { opacity: 0.5 }]}>
+              <Text style={{ color: '#fff', fontSize: 18, fontWeight: '700' }}>↑</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -326,25 +333,36 @@ export function HelpSupportScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  top: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: Spacing.sm, paddingVertical: Spacing.sm, borderBottomWidth: 1, borderBottomColor: Colors.border },
-  hicon: { width: 30, height: 30, borderRadius: 15 },
-  title: { color: Colors.foreground, fontSize: FontSize.md, fontWeight: '600' },
-  sub: { color: Colors.muted, fontSize: FontSize.xs },
-  aiRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, marginBottom: 10 },
-  aiCol: { flexShrink: 1, maxWidth: '84%' },
-  avatar: { width: 26, height: 26, borderRadius: 13 },
-  bubble: { paddingHorizontal: 12, paddingVertical: 9, borderRadius: 16 },
-  ai: { alignSelf: 'flex-start', backgroundColor: Colors.panel, borderTopLeftRadius: 5 },
-  me: { maxWidth: '86%', alignSelf: 'flex-end', backgroundColor: Colors.orange, borderTopRightRadius: 5 },
-  bubbleText: { fontSize: FontSize.base, lineHeight: 21 },
-  seen: { color: Colors.muted, fontSize: FontSize.xs, marginTop: 3, marginRight: 4 },
-  attrib: { color: Colors.muted, fontSize: FontSize.xs, marginTop: 3, marginLeft: 4 },
-  chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, paddingHorizontal: Spacing.md, paddingBottom: Spacing.sm },
-  chip: { borderWidth: 1, borderColor: 'rgba(249,115,22,0.4)', backgroundColor: 'rgba(249,115,22,0.12)', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 999 },
-  chipText: { color: '#fdba74', fontSize: FontSize.sm },
-  inputBar: { paddingHorizontal: Spacing.md, paddingTop: Spacing.xs, borderTopWidth: 1, borderTopColor: Colors.border, backgroundColor: Colors.bg },
-  inputWrap: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, backgroundColor: Colors.panel, borderWidth: 1, borderColor: Colors.border, borderRadius: 22, paddingLeft: 14, paddingRight: 6, paddingVertical: 6 },
-  input: { flex: 1, color: Colors.foreground, fontSize: FontSize.base, maxHeight: 100, paddingTop: 4, paddingBottom: 4 },
-  sendBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: Colors.orange, alignItems: 'center', justifyContent: 'center' },
-});
+// Built per-mode so every surface matches the active theme (no frozen palette).
+// The whole reason this screen mis-rendered in light / inner-light: a module-level
+// StyleSheet.create captured the DARK palette at import, so the navy bubbles + dark
+// input band rendered on the light peach bg. Always makeStyles(C) keyed on mode.
+function makeStyles(C: Palette) {
+  // Help & Support chips stay the orange family in every mode (the confirmed look);
+  // only the text hue flips so it stays readable — dark orange on the peach bg,
+  // light orange on the navy bg (inner-light + dark both keep a navy chip surface).
+  const onPeach = C.bg === LightColors.bg;
+  const chipTextColor = onPeach ? '#c2410c' : '#fdba74';
+  return StyleSheet.create({
+    top: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: Spacing.sm, paddingVertical: Spacing.sm, borderBottomWidth: 1, borderBottomColor: C.border },
+    hicon: { width: 30, height: 30, borderRadius: 15 },
+    title: { color: C.headerText, fontSize: FontSize.md, fontWeight: '600' },
+    sub: { color: C.headerSubText, fontSize: FontSize.xs },
+    aiRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, marginBottom: 10 },
+    aiCol: { flexShrink: 1, maxWidth: '84%' },
+    avatar: { width: 26, height: 26, borderRadius: 13 },
+    bubble: { paddingHorizontal: 12, paddingVertical: 9, borderRadius: 16 },
+    ai: { alignSelf: 'flex-start', backgroundColor: C.panel2, borderWidth: 1, borderColor: C.border, borderTopLeftRadius: 5 },
+    me: { maxWidth: '86%', alignSelf: 'flex-end', backgroundColor: C.orange, borderTopRightRadius: 5 },
+    bubbleText: { fontSize: FontSize.base, lineHeight: 21 },
+    seen: { color: C.muted, fontSize: FontSize.xs, marginTop: 3, marginRight: 4 },
+    attrib: { color: C.muted, fontSize: FontSize.xs, marginTop: 3, marginLeft: 4 },
+    chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, paddingHorizontal: Spacing.md, paddingBottom: Spacing.sm },
+    chip: { borderWidth: 1, borderColor: 'rgba(249,115,22,0.4)', backgroundColor: 'rgba(249,115,22,0.12)', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 999 },
+    chipText: { color: chipTextColor, fontSize: FontSize.sm },
+    inputBar: { paddingHorizontal: Spacing.md, paddingTop: Spacing.xs, borderTopWidth: 1, borderTopColor: C.border, backgroundColor: C.bg },
+    inputWrap: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, backgroundColor: C.panel2, borderWidth: 1, borderColor: C.border, borderRadius: 22, paddingLeft: 14, paddingRight: 6, paddingVertical: 6 },
+    input: { flex: 1, color: C.foreground, fontSize: FontSize.base, maxHeight: 100, paddingTop: 4, paddingBottom: 4 },
+    sendBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: C.orange, alignItems: 'center', justifyContent: 'center' },
+  });
+}
