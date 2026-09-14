@@ -60,8 +60,19 @@ async function request<T>(path: string, opts?: RequestInit): Promise<T> {
     } catch { /* fall through to the error below */ }
   }
 
-  const body = await res.json();
-  if (!res.ok) throw new Error(body?.error ?? `HTTP ${res.status}`);
+  // Read as text first: a transient gateway error (Cloudflare/Supabase 525,
+  // Vercel 502/504) returns an HTML page, not JSON. res.json() would throw and
+  // its message = the raw HTML — which screens then rendered verbatim in the UI.
+  const text = await res.text();
+  let body: any = null;
+  try { body = text ? JSON.parse(text) : null; } catch { /* non-JSON error page */ }
+  if (!res.ok) {
+    const msg = body?.error
+      ?? (res.status >= 500
+        ? 'Connection problem — please try again in a moment.'
+        : `Request failed (${res.status})`);
+    throw new Error(msg);
+  }
   return body as T;
 }
 
