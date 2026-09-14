@@ -134,11 +134,22 @@ export function HelpSupportScreen() {
   const hydrated = useRef(false);
   const down = () => requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
 
+  // Chat history is DEVICE-local (AsyncStorage) but must be scoped to the signed-in
+  // account — otherwise a new account on the same phone inherits the previous
+  // account's chat. Key it per user id so each account only ever sees its own thread.
+  const uid = profile?.id ?? null;
+  const chatKey = uid ? `${STORE_KEY}:${uid}` : null;
+
   // Load any saved conversation on mount and apply the resume / closed / purge rules.
   useEffect(() => {
+    if (!chatKey) { hydrated.current = true; return; } // no account yet → start fresh, don't persist
+    hydrated.current = false;
     (async () => {
       try {
-        const raw = await AsyncStorage.getItem(STORE_KEY);
+        // One-time cleanup: drop the old un-scoped global key so it can never
+        // leak into an account (harmless if already gone).
+        await AsyncStorage.removeItem(STORE_KEY).catch(() => {});
+        const raw = await AsyncStorage.getItem(chatKey);
         if (raw) {
           const s = JSON.parse(raw);
           const age = Date.now() - (s.updatedAt || 0);
@@ -154,20 +165,20 @@ export function HelpSupportScreen() {
               setMsgs([...s.msgs, { role: 'assistant', ts: Date.now(), content: "Welcome back! 👋 Your last chat timed out, but I'm right here — tap a category below or ask a new question. 😊" }]);
             }
           } else {
-            await AsyncStorage.removeItem(STORE_KEY); // older than 3 days → purge
+            await AsyncStorage.removeItem(chatKey); // older than 3 days → purge
           }
         }
       } catch { /* ignore — start fresh */ }
       hydrated.current = true;
     })();
-  }, []);
+  }, [chatKey]);
 
   // Persist the conversation after every change (once hydrated so we never
   // overwrite a saved thread with the empty initial state).
   useEffect(() => {
-    if (!hydrated.current) return;
-    AsyncStorage.setItem(STORE_KEY, JSON.stringify({ msgs, path, mode, reportTopic, updatedAt: Date.now() })).catch(() => {});
-  }, [msgs, path, mode, reportTopic]);
+    if (!hydrated.current || !chatKey) return;
+    AsyncStorage.setItem(chatKey, JSON.stringify({ msgs, path, mode, reportTopic, updatedAt: Date.now() })).catch(() => {});
+  }, [msgs, path, mode, reportTopic, chatKey]);
 
   const pushUser = (c: string) => setMsgs(m => [...m, { role: 'user', content: c, ts: Date.now() }]);
   const pushAI   = (c: string) => setMsgs(m => [...m, { role: 'assistant', content: c, ts: Date.now() }]);
