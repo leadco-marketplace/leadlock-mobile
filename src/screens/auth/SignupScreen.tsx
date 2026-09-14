@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  ScrollView, Linking, Modal,
+  ScrollView, Linking, Modal, Image,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth }  from '@/contexts/AuthContext';
@@ -10,6 +10,8 @@ import { Button }  from '@/components/Button';
 import { promoApi } from '@/lib/api';
 import { Colors, FontSize, Spacing, Radius } from '@/theme';
 import type { AuthStackParamList } from '@/navigation/AuthNavigator';
+
+const LOGO = require('../../../assets/nabbit-logo.png');
 
 type Props = { navigation: NativeStackNavigationProp<AuthStackParamList, 'Signup'> };
 
@@ -55,13 +57,7 @@ export function SignupScreen({ navigation }: Props) {
     <Modal visible={showWelcome} transparent animationType="fade" onRequestClose={() => setShowWelcome(false)}>
       <View style={welcome.backdrop}>
         <View style={welcome.card}>
-          <View style={welcome.logoBox}>
-            <Text style={welcome.logoText}>
-              <Text style={{ color: Colors.accent }}>Na</Text>
-              <Text style={{ color: Colors.orange, fontWeight: '900' }}>bb</Text>
-              <Text style={{ color: Colors.accent }}>it</Text>
-            </Text>
-          </View>
+          <Image source={LOGO} style={welcome.logoImg} resizeMode="contain" />
           <Text style={welcome.title}>Welcome to Nabbit 👋</Text>
           <Text style={welcome.body}>
             Fast, easy sign-up — <Text style={{ color: Colors.good, fontWeight: '700' }}>no credit card needed</Text>.
@@ -210,8 +206,7 @@ export function SignupScreen({ navigation }: Props) {
 const welcome = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(6,12,24,0.72)', alignItems: 'center', justifyContent: 'center', padding: 22 },
   card: { alignSelf: 'stretch', backgroundColor: '#1c2a43', borderWidth: 1, borderColor: '#34507a', borderRadius: 22, padding: 24, alignItems: 'center' },
-  logoBox: { width: 52, height: 52, borderRadius: 15, backgroundColor: '#0e1830', alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
-  logoText: { fontSize: 20, fontWeight: '800' },
+  logoImg: { width: 64, height: 64, marginBottom: 14 },
   title: { color: '#ffffff', fontSize: 20, fontWeight: '800', textAlign: 'center' },
   body: { color: '#bdd5f8', fontSize: 13.5, lineHeight: 20, textAlign: 'center', marginTop: 10 },
   pill: { flexDirection: 'row', alignItems: 'center', gap: 9, marginBottom: 8 },
