@@ -142,11 +142,15 @@ export function LeadChatScreen() {
           ListEmptyComponent={loaded ? (
             <View style={{ alignItems: 'center', paddingTop: 40, paddingHorizontal: 20 }}>
               <Image source={AVATAR} style={{ width: 44, height: 44, borderRadius: 12, marginBottom: 12, opacity: 0.9 }} />
-              <Text style={{ color: C.foreground, fontSize: FontSize.md, fontWeight: '600' }}>Send your first lead</Text>
-              <Text style={{ color: C.muted, fontSize: FontSize.sm, textAlign: 'center', marginTop: 6 }}>
+              {/* This empty state renders directly on the screen bg (C.bg = dark navy
+                  in dark AND inner-light), NOT inside a card — so use headerText/
+                  headerSubText (light on the dark shell, dark on the light peach),
+                  NOT foreground (dark card text → invisible on the navy inner-light shell). */}
+              <Text style={{ color: C.headerText, fontSize: FontSize.md, fontWeight: '600' }}>Send your first lead</Text>
+              <Text style={{ color: C.headerSubText, fontSize: FontSize.sm, textAlign: 'center', marginTop: 6 }}>
                 Type the customer&apos;s name, phone, address and what they need — all in one message. I&apos;ll read it, ask for anything missing, and post it.
               </Text>
-              <Text style={{ color: C.muted, fontSize: FontSize.xs, textAlign: 'center', marginTop: 8 }}>
+              <Text style={{ color: C.headerSubText, fontSize: FontSize.xs, textAlign: 'center', marginTop: 8 }}>
                 Uses the same prices, ranges and price drops you set on Text-to-Submit.
               </Text>
               <TouchableOpacity onPress={() => setInput(TEMPLATE)} style={{ marginTop: 12 }}>
