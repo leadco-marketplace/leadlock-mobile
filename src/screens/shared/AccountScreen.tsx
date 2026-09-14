@@ -27,12 +27,18 @@ export function AccountScreen() {
   const { mode: themeMode, setMode: setThemeMode } = useTheme();
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const navigation = useNavigation<any>();
+  // Route by effectiveRole (the value AppNavigator uses to mount Buyer vs Provider),
+  // NOT profile.role. For a DUAL account, profile.role can be 'provider' while the
+  // account is on the BUYER side — the old profile.role check then tried to reach
+  // 'SubmissionsTab' (which only exists in the provider tree), so it silently
+  // no-op'd → "Help & Support doesn't open on the buyer side". effectiveRole always
+  // matches whichever navigator is actually mounted.
   function openAnnouncements() {
-    if (profile?.role === 'provider') navigation.navigate('SubmissionsTab', { screen: 'Announcements' });
+    if (effectiveRole === 'provider') navigation.navigate('SubmissionsTab', { screen: 'Announcements' });
     else navigation.navigate('Announcements');
   }
   function openHelpSupport() {
-    if (profile?.role === 'provider') navigation.navigate('SubmissionsTab', { screen: 'HelpSupport' });
+    if (effectiveRole === 'provider') navigation.navigate('SubmissionsTab', { screen: 'HelpSupport' });
     else navigation.navigate('HelpSupport');
   }
   const [saving,        setSaving]        = useState(false);

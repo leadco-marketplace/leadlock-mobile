@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  ScrollView, Linking, Modal, Image,
+  ScrollView, Modal, Image,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth }  from '@/contexts/AuthContext';
 import { Input }   from '@/components/Input';
 import { Button }  from '@/components/Button';
 import { promoApi } from '@/lib/api';
+import { openExternal } from '@/lib/openLink';
 import { Colors, FontSize, Spacing, Radius } from '@/theme';
 import type { AuthStackParamList } from '@/navigation/AuthNavigator';
 
@@ -172,7 +173,7 @@ export function SignupScreen({ navigation }: Props) {
               I have read and agree to the{' '}
               <Text
                 style={styles.termsLink}
-                onPress={() => Linking.openURL(termsUrl)}
+                onPress={() => openExternal(termsUrl)}
               >
                 {role === 'provider' ? 'Lead Provider' : 'Service Provider'} Terms of Use
               </Text>
