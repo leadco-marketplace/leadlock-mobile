@@ -33,6 +33,19 @@ Sentry.init({
   sendDefaultPii: false,
   // Don't report expected network blips as crashes.
   ignoreErrors: ['Network request failed', 'AbortError'],
+  // Drop iOS "WatchdogTermination" reports. The SDK never actually witnesses
+  // the kill — it INFERS it on the next launch when the prior session ended for
+  // an unattributable reason (force-quit, beta OS, reboot…), so it's heavily
+  // false-positive. We saw one on iOS 27 beta / an old build with no real stack.
+  // Real JS/native crashes still report; only this inferred class is dropped.
+  // ⚠ If a genuine launch-hang/OOM pattern ever appears (many events across the
+  // CURRENT build + real devices), remove this filter to see them again.
+  beforeSend(event) {
+    const isWatchdog = event.exception?.values?.some(
+      (v) => v?.mechanism?.type === 'watchdog_termination' || v?.type === 'WatchdogTermination',
+    );
+    return isWatchdog ? null : event;
+  },
 });
 
 SplashScreen.preventAutoHideAsync();
@@ -47,6 +60,22 @@ Notifications.setNotificationHandler({
 });
 
 async function registerForPushNotifications(userId: string): Promise<void> {
+  try {
+    await registerForPushNotificationsInner(userId);
+  } catch (e: any) {
+    // Guard the WHOLE flow: on Mac Catalyst (and any device where the OS
+    // disallows notifications) Notifications.getPermissionsAsync/
+    // requestPermissionsAsync REJECT with "Notifications are not allowed for
+    // this application" (UNErrorDomain Code=1). This function is called
+    // fire-and-forget from PushRegistrar, so an un-caught reject here becomes
+    // an UNHANDLED promise rejection → Sentry pages on a benign, expected
+    // no-notifications environment. Swallow to a log; there's simply no push
+    // token to register on such a device.
+    console.log('[push] Registration skipped/failed:', e?.message ?? String(e));
+  }
+}
+
+async function registerForPushNotificationsInner(userId: string): Promise<void> {
   if (!Device.isDevice) return; // simulators can't receive push notifications
 
   const { status: existingStatus } = await Notifications.getPermissionsAsync();
