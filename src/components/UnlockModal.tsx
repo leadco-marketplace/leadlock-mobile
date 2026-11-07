@@ -17,8 +17,18 @@ function fmt(cents: number) {
   return `$${(cents / 100).toFixed(2)}`;
 }
 
+/** Compact "time on the board" (45m / 3h / 2d). */
+function onBoard(dateStr: string | null | undefined) {
+  if (!dateStr) return '';
+  const ms = Date.now() - new Date(dateStr).getTime();
+  if (ms < 3_600_000) return `${Math.max(1, Math.floor(ms / 60_000))}m`;
+  const h = Math.floor(ms / 3_600_000);
+  return h < 48 ? `${h}h` : `${Math.floor(h / 24)}d`;
+}
+
 export function UnlockModal({ lead, visible, onCancel, onConfirm }: UnlockModalProps) {
   const [accepted, setAccepted] = useState(false);
+  const [ackedStale, setAckedStale] = useState(false);
   const { mode } = useTheme(); // re-render on theme change
   // Vehicle tag: brand orange in dark mode, near-black in light modes.
   const vehicleColor = mode === 'dark' ? '#f97316' : '#111827';
@@ -31,15 +41,21 @@ export function UnlockModal({ lead, visible, onCancel, onConfirm }: UnlockModalP
   // First-lead-free: this buyer hasn't used their free lead and this lead is
   // fully covered — show FREE (struck price) so they aren't scared off.
   const isFree         = !!lead.first_lead_free;
+  // Stale EMERGENCY lead (lockout/tow/active leak past its short window): the
+  // buyer must confirm before unlocking — these are the main "dead lead" refunds.
+  const requiresAck    = !!lead.requires_ack;
+  const ageLabel       = onBoard(lead.published_at ?? lead.created_at);
 
   function handleConfirm() {
-    if (!accepted) return;
+    if (!accepted || (requiresAck && !ackedStale)) return;
     setAccepted(false);
+    setAckedStale(false);
     onConfirm();
   }
 
   function handleCancel() {
     setAccepted(false);
+    setAckedStale(false);
     onCancel();
   }
 
@@ -103,6 +119,13 @@ export function UnlockModal({ lead, visible, onCancel, onConfirm }: UnlockModalP
               </Text>
             </View>
 
+            {ageLabel ? (
+              <View style={styles.priceRow}>
+                <Text style={[styles.priceLabel, { color: Colors.textSecondary }]}>On the board</Text>
+                <Text style={[styles.priceValue, { color: requiresAck ? '#f59e0b' : Colors.foreground }]}>{ageLabel}</Text>
+              </View>
+            ) : null}
+
             <View style={[styles.divider, { backgroundColor: Colors.border }]} />
 
             <View style={styles.priceRow}>
@@ -141,6 +164,24 @@ export function UnlockModal({ lead, visible, onCancel, onConfirm }: UnlockModalP
             </Text>
           </View>
 
+          {/* ── Stale-emergency acknowledge gate (speed bump, not a block) ── */}
+          {requiresAck && (
+            <View style={styles.staleBox}>
+              <Text style={styles.staleWarn}>
+                ⏳ This emergency lead has been on the board for {ageLabel}. For lockouts, tows,
+                and active leaks the customer has often already been helped and may no longer need service.
+              </Text>
+              <TouchableOpacity style={styles.checkRow} onPress={() => setAckedStale(!ackedStale)} activeOpacity={0.7}>
+                <View style={[styles.checkbox, { borderColor: '#f59e0b' }, ackedStale && { backgroundColor: '#f59e0b' }]}>
+                  {ackedStale && <Text style={styles.checkmark}>✓</Text>}
+                </View>
+                <Text style={[styles.checkLabel, { color: '#fcd9a0' }]}>
+                  I understand this lead may already be handled and still want to unlock it.
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
           {/* ── Terms checkbox ──────────────────────────────── */}
           <TouchableOpacity
             style={styles.checkRow}
@@ -170,9 +211,9 @@ export function UnlockModal({ lead, visible, onCancel, onConfirm }: UnlockModalP
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.payBtn, !accepted && styles.payBtnDisabled]}
+              style={[styles.payBtn, (!accepted || (requiresAck && !ackedStale)) && styles.payBtnDisabled]}
               onPress={handleConfirm}
-              disabled={!accepted}
+              disabled={!accepted || (requiresAck && !ackedStale)}
               activeOpacity={0.85}
             >
               <Text style={styles.payBtnText}>{isFree ? 'Get it FREE' : `Pay ${fmt(total)}`}</Text>
@@ -266,6 +307,21 @@ const styles = StyleSheet.create({
   noticeText: {
     fontSize: FontSize.xs,
     lineHeight: 17,
+  },
+
+  // Stale-emergency acknowledge box
+  staleBox: {
+    backgroundColor: 'rgba(245,158,11,0.10)',
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(245,158,11,0.45)',
+    padding: Spacing.sm + 4,
+    gap: Spacing.sm,
+  },
+  staleWarn: {
+    fontSize: FontSize.xs,
+    lineHeight: 17,
+    color: '#fcd9a0',
   },
 
   // Terms checkbox

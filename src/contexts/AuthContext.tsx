@@ -74,22 +74,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    // COLD-START POLICY:
+    // COLD-START POLICY — NEVER auto-logout:
     //  • Logged-in, fully onboarded account → session persists, open the app
     //    (live feed). Push-alert taps keep working without re-login.
     //  • Logged out → Login page.
-    //  • HALF-FINISHED signup (buyer who never completed onboarding) → sign
-    //    out (this device only) so reopening never lands on the onboarding
-    //    form uninvited; the user logs in and resumes onboarding.
+    //  • HALF-FINISHED signup (buyer who never completed onboarding) → STAY
+    //    LOGGED IN; the AppNavigator's buyerNeedsOnboarding gate routes them
+    //    back to the onboarding screen to resume. (We used to sign them out
+    //    here, but that wrongly logged out anyone whose profile momentarily
+    //    came back incomplete — e.g. a dual account that finished via
+    //    buyer_ready — so a signed-in user could land on Login. Per the
+    //    product rule "never log out unless the user taps Sign Out", we keep
+    //    the session and let the gate handle routing.)
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!session) { setLoading(false); return; }
       setSession(session);
-      const p = await loadProfile();
-      if (p && p.role === 'buyer' && !p.onboarding_complete) {
-        try { await supabase.auth.signOut({ scope: 'local' }); } catch { /* offline — local session still cleared */ }
-        setSession(null);
-        setProfile(null);
-      }
+      await loadProfile();
       setLoading(false);
     });
 

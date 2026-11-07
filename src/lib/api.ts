@@ -107,6 +107,12 @@ export type Lead = {
   // AND this lead is fully covered — the card/unlock modal shows a green FREE
   // with the struck price so they aren't scared off by a price they won't pay.
   first_lead_free?: boolean;
+  // Lead shelf life (computed server-side). is_stale = past its useful-by window;
+  // requires_ack = stale AND an emergency lead (lockout/tow/active leak) → the
+  // unlock modal shows a flickering warning + a confirm step. Nothing is hidden.
+  is_stale?: boolean;
+  requires_ack?: boolean;
+  shelf_tier?: string;
   // Provider AI score fields
   provider_ai_score?: number | null;
   provider_ai_answer_rate?: number | null;

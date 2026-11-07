@@ -78,6 +78,14 @@ function timeAgo(dateStr: string) {
   return `${Math.floor(h / 24)}d ago`;
 }
 
+/** Compact "time on the board" (45m / 3h / 2d) for the stale-emergency chip. */
+function onBoard(dateStr: string) {
+  const ms = Date.now() - new Date(dateStr).getTime();
+  if (ms < 3_600_000) return `${Math.max(1, Math.floor(ms / 60_000))}m`;
+  const h = Math.floor(ms / 3_600_000);
+  return h < 48 ? `${h}h` : `${Math.floor(h / 24)}d`;
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 // React.memo: re-renders ONLY when this specific lead's data changes.
 // Without this, every setLeads() call (every 30s poll + every realtime event)
@@ -339,7 +347,7 @@ function LeadCardInner({ lead, onUnlock, unlocking, purchased, highlighted, just
               </View>
             ) : null}
 
-            {/* Badges row: distance pill + lead code */}
+            {/* Badges row: distance pill + lead code + stale-emergency warning */}
             <View style={styles.badgesRow}>
               {distanceLabel && (
                 <View style={styles.distanceBadge}>
@@ -350,6 +358,16 @@ function LeadCardInner({ lead, onUnlock, unlocking, purchased, highlighted, just
                 <View style={styles.leadIdPill}>
                   <Text style={styles.leadIdCode}>#{lead.lead_code}</Text>
                 </View>
+              )}
+              {/* Stale EMERGENCY lead (lockout/tow/active leak past its window):
+                  flickering warning (reuses the LIVE pulse). Nothing is hidden —
+                  this just tells the buyer the customer may already be helped. */}
+              {lead.requires_ack && !isSold && (
+                <Animated.View style={[styles.staleBadge, { opacity: liveOpacity }]}>
+                  <Text style={styles.staleText}>
+                    ⏳ On board {onBoard(lead.published_at ?? lead.created_at)} · may be handled
+                  </Text>
+                </Animated.View>
               )}
             </View>
 
@@ -441,6 +459,7 @@ export const LeadCard = React.memo(LeadCardInner, (prev, next) =>
   prev.lead.price_cents === next.lead.price_cents  &&
   prev.lead.buyer_price_cents === next.lead.buyer_price_cents &&
   prev.lead.first_lead_free   === next.lead.first_lead_free   &&
+  prev.lead.requires_ack      === next.lead.requires_ack      &&
   prev.lead.quality_score     === next.lead.quality_score     &&
   prev.unlocking    === next.unlocking  &&
   prev.highlighted  === next.highlighted &&
@@ -679,6 +698,19 @@ const styles = StyleSheet.create({
     fontFamily:    'Courier',
     fontWeight:    '700',
     letterSpacing: 0.8,
+  },
+  staleBadge: {
+    paddingHorizontal: 6,
+    paddingVertical:   2,
+    borderRadius:      Radius.sm,
+    backgroundColor:   'rgba(245,158,11,0.12)',
+    borderWidth:       1,
+    borderColor:       'rgba(245,158,11,0.45)',
+  },
+  staleText: {
+    fontSize:   FontSize.xs - 1,
+    color:      '#f59e0b',
+    fontWeight: '700',
   },
 
   // ── Footer ────────────────────────────────────────────────────────────────
