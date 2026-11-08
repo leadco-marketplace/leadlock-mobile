@@ -12,8 +12,9 @@ import { AnnouncementsScreen } from '@/screens/buyer/AnnouncementsScreen';
 import { HelpSupportScreen } from '@/screens/shared/HelpSupportScreen';
 import { GuestLockedScreen } from '@/screens/shared/GuestLockedScreen';
 import { useAuth }           from '@/contexts/AuthContext';
+import { useTheme }          from '@/contexts/ThemeContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Colors, FontSize }  from '@/theme';
+import { FontSize, DarkColors, LightColors, InnerLightColors } from '@/theme';
 
 const Tab   = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -41,12 +42,19 @@ const GuestAccount = () => <GuestLockedScreen tab="account" />;
 function BuyerTabs() {
   const { isGuest } = useAuth();
   const insets = useSafeAreaInsets();
+  // Subscribe to the theme so the tab bar RE-RENDERS the instant the mode
+  // changes. Reading the mutable module-level `Colors` (as before) left the
+  // bar stuck on the old palette until some other re-render — switching tabs —
+  // happened to pick up the mutated object. Deriving from the mode-specific
+  // palette keyed on `mode` makes the bar update immediately.
+  const { mode } = useTheme();
+  const C = mode === 'light' ? LightColors : mode === 'inner-light' ? InnerLightColors : DarkColors;
   return (
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: Colors.panel,
+          backgroundColor: C.panel,
           borderTopColor:  'rgba(59,130,246,0.35)',
           borderTopWidth:  1.5,
           paddingBottom:   8 + insets.bottom,
@@ -58,8 +66,8 @@ function BuyerTabs() {
           shadowRadius:    12,
           elevation:       12,
         },
-        tabBarActiveTintColor:   Colors.orange,
-        tabBarInactiveTintColor: Colors.tabInactive,
+        tabBarActiveTintColor:   C.orange,
+        tabBarInactiveTintColor: C.tabInactive,
         tabBarLabelStyle: {
           fontSize:      FontSize.xs,
           fontWeight:    '700',

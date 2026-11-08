@@ -11,7 +11,15 @@ import { AnnouncementsScreen } from '@/screens/buyer/AnnouncementsScreen';
 import { HelpSupportScreen }   from '@/screens/shared/HelpSupportScreen';
 import { AccountScreen }       from '@/screens/shared/AccountScreen';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Colors, FontSize } from '@/theme';
+import { useTheme } from '@/contexts/ThemeContext';
+import { FontSize, DarkColors, LightColors, InnerLightColors } from '@/theme';
+import type { ThemeMode } from '@/theme';
+
+// Pick the palette for the active mode. Used so the tab bar + stack backgrounds
+// re-render on a theme switch instead of staying stuck on the mutable `Colors`.
+function paletteFor(mode: ThemeMode) {
+  return mode === 'light' ? LightColors : mode === 'inner-light' ? InnerLightColors : DarkColors;
+}
 
 const Tab   = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -22,8 +30,9 @@ function TabIcon({ emoji, focused }: { emoji: string; focused: boolean }) {
 
 // Wrap My Submissions + Submit Lead in a stack so Submit is accessible from the tab
 function SubmissionsStack() {
+  const { mode } = useTheme();
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: Colors.bg } }}>
+    <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: paletteFor(mode).bg } }}>
       <Stack.Screen name="MySubmissions" component={MySubmissionsScreen} />
       <Stack.Screen name="SubmitLead"    component={SubmitLeadScreen}    />
       <Stack.Screen name="LeadChat"      component={LeadChatScreen}      />
@@ -37,8 +46,9 @@ function SubmissionsStack() {
 // Messages inbox tab → buyer reachability chats. ReachChat lives here too so
 // the inbox (and a push deep-link) can open a thread within this stack.
 function MessagesStack() {
+  const { mode } = useTheme();
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: Colors.bg } }}>
+    <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: paletteFor(mode).bg } }}>
       <Stack.Screen name="ReachInbox" component={ReachInboxScreen} />
       <Stack.Screen name="ReachChat"  component={ReachChatScreen}  />
     </Stack.Navigator>
@@ -47,19 +57,24 @@ function MessagesStack() {
 
 export function ProviderNavigator() {
   const insets = useSafeAreaInsets();
+  // Subscribe to the theme so the bottom tab bar updates the instant the mode
+  // changes (previously it read the mutable `Colors` and stayed on the old
+  // palette until another re-render — switching tabs — happened to run).
+  const { mode } = useTheme();
+  const C = paletteFor(mode);
   return (
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: Colors.panel,
+          backgroundColor: C.panel,
           borderTopColor:  'rgba(59,130,246,0.30)',
           borderTopWidth:  1,
           paddingBottom:   8 + insets.bottom,
           height:          62 + insets.bottom,
         },
-        tabBarActiveTintColor:   Colors.orange,
-        tabBarInactiveTintColor: Colors.tabInactive,
+        tabBarActiveTintColor:   C.orange,
+        tabBarInactiveTintColor: C.tabInactive,
         tabBarLabelStyle: { fontSize: FontSize.xs - 1, fontWeight: '600', marginTop: -2 },
       }}
     >
