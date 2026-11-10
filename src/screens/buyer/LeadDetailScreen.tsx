@@ -18,7 +18,7 @@ import { Linking, Alert } from 'react-native';
 
 const BASE = (Constants.expoConfig?.extra?.apiBaseUrl as string) ?? 'https://www.nabbitmarketplace.com';
 
-type LeadDetailRouteParams = { leadId: string; purchaseId?: string };
+type LeadDetailRouteParams = { leadId: string; purchaseId?: string; justPurchased?: boolean };
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -833,11 +833,15 @@ export function LeadDetailScreen() {
   useTheme(); // re-render on theme change so inline Colors.* picks up new values
   const navigation = useNavigation<any>();
   const route = useRoute<RouteProp<{ LeadDetail: LeadDetailRouteParams }, 'LeadDetail'>>();
-  const { leadId, purchaseId } = route.params;
+  const { leadId, purchaseId, justPurchased } = route.params;
 
   const [lead,    setLead]    = useState<PurchasedLead | null>(null);
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState<string | null>(null);
+  // Final-sale acknowledgement — shown ONCE per fresh purchase (justPurchased
+  // is passed only by the two unlock paths in LiveFeedScreen, never when a lead
+  // is re-opened from My Leads). One-tap "I understand" dismisses it.
+  const [showFinalSale, setShowFinalSale] = useState(!!justPurchased);
 
   async function loadLead() {
     setLoading(true);
@@ -1295,9 +1299,90 @@ export function LeadDetailScreen() {
         {/* ── Report this lead ─────────────────────────── */}
         <ReportPanel leadId={lead.id} purchaseId={lead.purchase_id} />
       </ScrollView>
+
+      {/* ── Final-sale pop-up (fresh purchase only) ──────── */}
+      <Modal
+        visible={showFinalSale}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowFinalSale(false)}
+      >
+        <View style={fsStyles.overlay}>
+          <View style={[fsStyles.card, { backgroundColor: Colors.panel, borderColor: Colors.border2 }]}>
+            <View style={[fsStyles.badge, { backgroundColor: Colors.glowBg }]}>
+              <Text style={[fsStyles.badgeIcon, { color: Colors.orange }]}>🤝</Text>
+            </View>
+
+            <Text style={[fsStyles.title, { color: Colors.foreground }]}>This lead is yours now</Text>
+            <Text style={[fsStyles.body, { color: Colors.text }]}>
+              The moment you exchange direct phone numbers with the customer, the
+              sale is final.
+            </Text>
+
+            <View style={fsStyles.list}>
+              {['No disputes', 'No refunds', "Can't be marked invalid"].map((t) => (
+                <View key={t} style={fsStyles.row}>
+                  <Text style={[fsStyles.rowX, { color: Colors.danger }]}>✕</Text>
+                  <Text style={[fsStyles.rowLabel, { color: Colors.text }]}>{t}</Text>
+                </View>
+              ))}
+            </View>
+
+            <TouchableOpacity
+              style={[fsStyles.btn, { backgroundColor: Colors.orange }]}
+              activeOpacity={0.85}
+              onPress={() => setShowFinalSale(false)}
+            >
+              <Text style={fsStyles.btnText}>I understand</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </ScreenShell>
   );
 }
+
+const fsStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(6,12,22,0.72)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  card: {
+    width: '100%',
+    maxWidth: 360,
+    borderRadius: 22,
+    borderWidth: 1,
+    paddingHorizontal: 22,
+    paddingTop: 24,
+    paddingBottom: 18,
+  },
+  badge: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignSelf: 'center',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
+  },
+  badgeIcon: { fontSize: 28 },
+  title: { fontSize: 19, fontWeight: '700', textAlign: 'center' },
+  body: { fontSize: 14, lineHeight: 20, textAlign: 'center', marginTop: 8 },
+  list: { marginTop: 18, gap: 11 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 11 },
+  rowX: { fontSize: 15, fontWeight: '800', width: 18, textAlign: 'center' },
+  rowLabel: { fontSize: 14, fontWeight: '500' },
+  btn: {
+    marginTop: 20,
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  btnText: { color: '#ffffff', fontSize: 16, fontWeight: '700' },
+});
 
 const styles = StyleSheet.create({
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.md },

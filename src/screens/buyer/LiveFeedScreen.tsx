@@ -380,7 +380,7 @@ export function LiveFeedScreen() {
       // alone is a Stack-only method and is not available on Tab navigation
       // objects — calling it from here would fail silently and fall back to the
       // deduplicating navigate(), which is exactly the bug we're fixing.
-      navigation.dispatch(StackActions.push('LeadDetail', { leadId: lead.id, purchaseId: purchase_id }));
+      navigation.dispatch(StackActions.push('LeadDetail', { leadId: lead.id, purchaseId: purchase_id, justPurchased: true }));
     } catch (e: any) {
       if (e.message === 'insufficient_credits') {
         // Store builds (iOS + Android): no in-app card purchase (App Store 3.1.1
@@ -474,7 +474,7 @@ export function LiveFeedScreen() {
         '✅ Payment received',
         "We're unlocking your lead now. If you paid with a credit card, it will be refunded — this trial is debit-card only.",
       );
-      navigation.dispatch(StackActions.push('LeadDetail', { leadId: lead.id, purchaseId: intent.purchaseId }));
+      navigation.dispatch(StackActions.push('LeadDetail', { leadId: lead.id, purchaseId: intent.purchaseId, justPurchased: true }));
     } catch (ce: any) {
       if (ce.message === 'card_intro_exhausted') {
         Alert.alert(
