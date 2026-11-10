@@ -387,7 +387,15 @@ export function AccountScreen() {
     profile.role === 'buyer'    ? '🎯 Lead Buyer' :
     profile.role === 'provider' ? '💼 Lead Seller' : '🛡️ Admin';
 
-  const isBuyer = profile.role === 'buyer';
+  // Gate the buyer-only cards (Add Funds + Manage Billing) on whether the account
+  // CAN BUY at all — NOT on profile.role or effectiveRole. Any buyer-capable
+  // account has a wallet it must be able to fund, on either side of a dual
+  // account, so these cards show whenever can_buy is true (restores the exact
+  // pre-regression behaviour — they showed for a base-role-'buyer' account on
+  // both sides). can_buy has no dependency on the active side being resolved, so
+  // it never flickers/hides during a cold-start. A pure provider (can_buy false)
+  // correctly never sees them.
+  const isBuyer = !!profile.can_buy;
 
   return (
     <ScreenShell title="My Account" scrollable>
